@@ -1,0 +1,64 @@
+name: arth
+description: Privacy-first personal finance for India. All data stays on-device.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # Local DB (typed queries + migrations). Checked 2026-08: drift 2.32+ /
+  # sqlite3 3.x is the recommended SQLite3MultipleCiphers path.
+  drift: ^2.34.3
+  drift_flutter: ^0.3.1
+  sqlite3: ^3.5.0
+  path: ^1.9.1
+  path_provider: ^2.1.6
+
+  # Encryption key in Android Keystore / iOS Keychain.
+  # Checked 2026-08: actively maintained (flutter_secure_storage 10.x).
+  flutter_secure_storage: ^10.3.1
+
+  # Cryptographically secure random for DB key generation.
+  # Checked 2026-08: Dart team package, actively maintained.
+  crypto: ^3.0.7
+  ffi: ^2.1.4
+  shared_preferences: ^2.5.3
+
+  # Android SMS permission. Checked 2026-08: permission_handler 13.x active.
+  # SMS inbox reads via in-house Kotlin ContentProvider channel (no flutter_sms_inbox).
+  permission_handler: ^13.0.0
+
+  # Statement import. Checked 2026-08:
+  # excel_community 2.2.0 — active fork (Jul 2026), xlsx + legacy xls.
+  # csv 8.x — dart-lang ecosystem, recent releases.
+  # file_picker 8.x — actively maintained.
+  excel_community: ^2.2.0
+  file_picker: ^8.1.0
+  csv: ^8.0.0
+  pdfrx_engine: ^0.4.6
+  pdfium_flutter: ^0.2.3
+  pdf: ^3.13.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  drift_dev: ^2.34.5
+  build_runner: ^2.15.1
+
+# Bundle SQLite3MultipleCiphers instead of stock SQLite (encryption at rest).
+# See: https://drift.simonbinder.eu/platforms/encryption/
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlite3mc
+
+flutter:
+  uses-material-design: true
+  assets:
+    - lib/llm/gbnf/parsed_transaction.gbnf

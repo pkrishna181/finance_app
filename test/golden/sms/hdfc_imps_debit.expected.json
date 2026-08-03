@@ -1,0 +1,18 @@
+{
+  "amount_paise": 99900,
+  "direction": "debit",
+  "type": "imps",
+  "booked_at": "2026-07-16T00:00:00.000Z",
+  "bank_code": "HDFC",
+  "account_hint": "1234",
+  "raw_merchant": "Unknown",
+  "raw_description": "Rs.999.00 debited from a/c **1234 on 16-07-26 towards IMPS/P2A/412355566677/PHONEPE. HDFC Bank",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": "412355566677",
+  "balance_after_paise": null,
+  "dedupe_key": "HDFC|99900|412355566677",
+  "direction_inferred": false
+}

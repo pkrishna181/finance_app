@@ -1,0 +1,21 @@
+# Flutter / Dart
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+*~
+
+# Models / secrets (never commit weights or keys)
+model/*.gguf
+model/*.bin
+**/.env
+**/secrets/

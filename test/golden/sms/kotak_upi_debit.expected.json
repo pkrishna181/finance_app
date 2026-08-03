@@ -1,0 +1,18 @@
+{
+  "amount_paise": 64000,
+  "direction": "debit",
+  "type": "upi",
+  "booked_at": "2026-08-03T00:00:00.000Z",
+  "bank_code": "KOTAK",
+  "account_hint": "2211",
+  "raw_merchant": "food@okaxis",
+  "raw_description": "Kotak Bank A/c XX2211 debited with Rs.640.00 on 03-08-26 towards food@okaxis UPI Ref 701122334455. -Kotak Mahindra Bank",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": "food@okaxis",
+  "upi_ref": "701122334455",
+  "remarks": null,
+  "external_ref": "701122334455",
+  "balance_after_paise": null,
+  "dedupe_key": "KOTAK|64000|701122334455",
+  "direction_inferred": false
+}

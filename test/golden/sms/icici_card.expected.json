@@ -1,0 +1,18 @@
+{
+  "amount_paise": 225000,
+  "direction": "debit",
+  "type": "card",
+  "booked_at": "2026-07-22T00:00:00.000Z",
+  "bank_code": "ICICI",
+  "account_hint": "7788",
+  "raw_merchant": "SWIGGY",
+  "raw_description": "INR 2,250.00 spent on ICICI Bank Card XX7788 at SWIGGY on 22-Jul-26. Call 18001080 if not you.",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": "ICICI-7788-2026-07-22-225000",
+  "balance_after_paise": null,
+  "dedupe_key": "ICICI|2026-07-22|225000|ICICI-7788-2026-07-22-225000",
+  "direction_inferred": false
+}

@@ -1,0 +1,18 @@
+{
+  "amount_paise": 300000,
+  "direction": "debit",
+  "type": "atm",
+  "booked_at": "2026-07-15T00:00:00.000Z",
+  "bank_code": "AXIS",
+  "account_hint": "4455",
+  "raw_merchant": "AXIS INDIRANAGAR",
+  "raw_description": "AXIS BANK: INR 3,000.00 withdrawn from A/c XX4455 at ATM AXIS INDIRANAGAR on 15-07-26. Avl Bal INR 8,500.00",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": null,
+  "balance_after_paise": 850000,
+  "dedupe_key": "AXIS|2026-07-15|300000|00:00|AXIS BANK: INR 3,000.00 withdrawn from A/c XX4455 at ATM AXIS INDIRANAGAR on 15-07-26. Avl Bal INR 8,500.00",
+  "direction_inferred": false
+}

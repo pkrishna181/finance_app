@@ -1,0 +1,18 @@
+{
+  "amount_paise": 800000,
+  "direction": "credit",
+  "type": "upi",
+  "booked_at": "2026-08-04T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "5678",
+  "raw_merchant": "MOM",
+  "raw_description": "Dear SBI User, your A/c X5678 credited by Rs.8,000.00 on 04/08/26 by UPI Ref No 526700011122 -MOM. Avl Bal Rs.20,345.67",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": "526700011122",
+  "remarks": "MOM",
+  "external_ref": "526700011122",
+  "balance_after_paise": 2034567,
+  "dedupe_key": "SBI|800000|526700011122",
+  "direction_inferred": false
+}

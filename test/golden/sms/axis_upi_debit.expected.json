@@ -1,0 +1,18 @@
+{
+  "amount_paise": 45000,
+  "direction": "debit",
+  "type": "upi",
+  "booked_at": "2026-07-30T00:00:00.000Z",
+  "bank_code": "AXIS",
+  "account_hint": "4455",
+  "raw_merchant": "merchant@axisbank",
+  "raw_description": "AXIS BANK: INR 450.00 debited from A/c XX4455 on 30-07-26. UPI Ref No 698877665544 to merchant@axisbank. Avl Bal INR 5,000.00",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": "merchant@axisbank",
+  "upi_ref": "698877665544",
+  "remarks": null,
+  "external_ref": "698877665544",
+  "balance_after_paise": 500000,
+  "dedupe_key": "AXIS|45000|698877665544",
+  "direction_inferred": false
+}

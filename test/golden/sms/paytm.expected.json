@@ -1,0 +1,18 @@
+{
+  "amount_paise": 35000,
+  "direction": "debit",
+  "type": "upi",
+  "booked_at": "2026-08-02T00:00:00.000Z",
+  "bank_code": "PAYTM",
+  "account_hint": "7788",
+  "raw_merchant": "uber@axisbank",
+  "raw_description": "Paid Rs.350.00 from Paytm Payments Bank A/c XX7788 to uber@axisbank on 02-08-2026. UPI Ref: 718901234567. -Paytm Payments Bank",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": "uber@axisbank",
+  "upi_ref": "718901234567",
+  "remarks": null,
+  "external_ref": "718901234567",
+  "balance_after_paise": null,
+  "dedupe_key": "PAYTM|35000|718901234567",
+  "direction_inferred": false
+}

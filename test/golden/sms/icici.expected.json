@@ -1,0 +1,18 @@
+{
+  "amount_paise": 249900,
+  "direction": "debit",
+  "type": "imps",
+  "booked_at": "2026-08-01T00:00:00.000Z",
+  "bank_code": "ICICI",
+  "account_hint": "9012",
+  "raw_merchant": "AMAZON PAY INDIA PRI",
+  "raw_description": "ICICI Bank Acct XX9012 is debited with INR 2,499.00 on 01-Aug-26. Info: IMPS/P2A/637890123456/AMAZON PAY INDIA PRI. Available Bal: INR 45,678.90",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": "637890123456",
+  "balance_after_paise": 4567890,
+  "dedupe_key": "ICICI|249900|637890123456",
+  "direction_inferred": false
+}

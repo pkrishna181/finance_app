@@ -1,0 +1,18 @@
+{
+  "amount_paise": 500000,
+  "direction": "debit",
+  "type": "upi",
+  "booked_at": "2026-08-03T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "5678",
+  "raw_merchant": "SWIGGY",
+  "raw_description": "Dear SBI User, your A/c X5678 debited by Rs.5,000.00 on 03/08/26 by UPI Ref No 526789012345 -SWIGGY. Avl Bal Rs.12,345.67",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": "526789012345",
+  "remarks": "SWIGGY",
+  "external_ref": "526789012345",
+  "balance_after_paise": 1234567,
+  "dedupe_key": "SBI|500000|526789012345",
+  "direction_inferred": false
+}

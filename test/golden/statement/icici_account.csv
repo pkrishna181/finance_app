@@ -1,0 +1,8 @@
+ICICI Bank
+Account Statement
+Customer ID: 998877
+
+Transaction Date,Transaction Remarks,Cheque Number,Amount,Type,Balance
+01-Aug-2026,UPI/599988877766/coffee@ybl,,199.00,DR,"10,000.00"
+01-Aug-2026,NEFT/ACME CORP/SBIN123456789012/SALARY,,85000.00,CR,"95,000.00"
+02-Aug-2026,IMPS/P2A/637890123456/AMAZON,,2499.00,DR,"92,501.00"

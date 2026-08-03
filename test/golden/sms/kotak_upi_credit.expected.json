@@ -1,0 +1,18 @@
+{
+  "amount_paise": 250000,
+  "direction": "credit",
+  "type": "upi",
+  "booked_at": "2026-08-03T00:00:00.000Z",
+  "bank_code": "KOTAK",
+  "account_hint": "2211",
+  "raw_merchant": "friend@oksbi",
+  "raw_description": "Kotak Bank A/c XX2211 credited with Rs.2,500.00 on 03-08-26 from friend@oksbi UPI Ref 701122334466. -Kotak Mahindra Bank",
+  "upi_payer_vpa": "friend@oksbi",
+  "upi_payee_vpa": "friend@oksbi",
+  "upi_ref": "701122334466",
+  "remarks": null,
+  "external_ref": "701122334466",
+  "balance_after_paise": null,
+  "dedupe_key": "KOTAK|250000|701122334466",
+  "direction_inferred": false
+}

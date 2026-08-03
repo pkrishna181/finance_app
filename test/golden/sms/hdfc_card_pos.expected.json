@@ -1,0 +1,18 @@
+{
+  "amount_paise": 149900,
+  "direction": "debit",
+  "type": "pos",
+  "booked_at": "2026-07-10T14:30:00.000Z",
+  "bank_code": "HDFC",
+  "account_hint": "9876",
+  "raw_merchant": "FLIPKART INDIA",
+  "raw_description": "Thank you for using your HDFC Bank Card XX9876 for Rs.1,499.00 at FLIPKART INDIA on 10-07-26 14:30",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": "HDFC-9876-2026-07-10-149900",
+  "balance_after_paise": null,
+  "dedupe_key": "HDFC|2026-07-10|149900|HDFC-9876-2026-07-10-149900",
+  "direction_inferred": false
+}

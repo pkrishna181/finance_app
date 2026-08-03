@@ -1,0 +1,18 @@
+{
+  "amount_paise": 1200000,
+  "direction": "debit",
+  "type": "neft",
+  "booked_at": "2026-07-28T00:00:00.000Z",
+  "bank_code": "UNKNOWN",
+  "account_hint": null,
+  "raw_merchant": "Unknown",
+  "raw_description": "Rs.12,000.00 debited by NEFT UTR SBIN987654321098 on 28-07-26 towards RENT PAYMENT.",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": "SBIN987654321098",
+  "balance_after_paise": null,
+  "dedupe_key": "UNKNOWN|1200000|SBIN987654321098",
+  "direction_inferred": false
+}

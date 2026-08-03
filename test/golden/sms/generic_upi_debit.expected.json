@@ -1,0 +1,18 @@
+{
+  "amount_paise": 27500,
+  "direction": "debit",
+  "type": "upi",
+  "booked_at": "2026-08-01T00:00:00.000Z",
+  "bank_code": "UNKNOWN",
+  "account_hint": null,
+  "raw_merchant": "shop@ybl",
+  "raw_description": "Rs.275.00 debited for UPI Ref 812233445566 to shop@ybl on 01-08-26. Thank you.",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": "shop@ybl",
+  "upi_ref": "812233445566",
+  "remarks": null,
+  "external_ref": "812233445566",
+  "balance_after_paise": null,
+  "dedupe_key": "UNKNOWN|27500|812233445566",
+  "direction_inferred": false
+}

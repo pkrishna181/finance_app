@@ -1,0 +1,18 @@
+{
+  "amount_paise": 400000,
+  "direction": "debit",
+  "type": "atm",
+  "booked_at": "2026-07-12T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "5678",
+  "raw_merchant": "SBI CONNAUGHT PLACE",
+  "raw_description": "Rs.4,000.00 withdrawn from A/c XX5678 on 12/07/26. ATM SBI CONNAUGHT PLACE. Avl Bal Rs.9,000.00",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": null,
+  "balance_after_paise": 900000,
+  "dedupe_key": "SBI|2026-07-12|400000|00:00|Rs.4,000.00 withdrawn from A/c XX5678 on 12/07/26. ATM SBI CONNAUGHT PLACE. Avl Bal Rs.9,000.00",
+  "direction_inferred": false
+}

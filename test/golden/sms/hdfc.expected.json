@@ -1,0 +1,18 @@
+{
+  "amount_paise": 125000,
+  "direction": "debit",
+  "type": "upi",
+  "booked_at": "2026-07-15T00:00:00.000Z",
+  "bank_code": "HDFC",
+  "account_hint": "1234",
+  "raw_merchant": "merchant@okhdfcbank",
+  "raw_description": "HDFC Bank: Rs.1,250.00 debited from a/c **1234 on 15-07-26 to VPA merchant@okhdfcbank (UPI Ref 412345678901). Not you? Call 18002586161",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": "merchant@okhdfcbank",
+  "upi_ref": "412345678901",
+  "remarks": null,
+  "external_ref": "412345678901",
+  "balance_after_paise": null,
+  "dedupe_key": "HDFC|125000|412345678901",
+  "direction_inferred": false
+}

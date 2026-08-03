@@ -1,0 +1,18 @@
+{
+  "amount_paise": 120000,
+  "direction": "credit",
+  "type": "upi",
+  "booked_at": "2026-08-02T00:00:00.000Z",
+  "bank_code": "PAYTM",
+  "account_hint": "7788",
+  "raw_merchant": "roommate@paytm",
+  "raw_description": "Received Rs.1,200.00 in Paytm Payments Bank A/c XX7788 from roommate@paytm on 02-08-2026. UPI Ref: 718900011122. -Paytm Payments Bank",
+  "upi_payer_vpa": "roommate@paytm",
+  "upi_payee_vpa": "roommate@paytm",
+  "upi_ref": "718900011122",
+  "remarks": null,
+  "external_ref": "718900011122",
+  "balance_after_paise": null,
+  "dedupe_key": "PAYTM|120000|718900011122",
+  "direction_inferred": false
+}

@@ -1,0 +1,18 @@
+{
+  "amount_paise": 500000,
+  "direction": "debit",
+  "type": "atm",
+  "booked_at": "2026-07-08T00:00:00.000Z",
+  "bank_code": "KOTAK",
+  "account_hint": "2211",
+  "raw_merchant": "KOTAK POWAI",
+  "raw_description": "Rs.5,000.00 withdrawn from Kotak A/c XX2211 at ATM KOTAK POWAI on 08-07-26. -Kotak Mahindra Bank",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": null,
+  "balance_after_paise": null,
+  "dedupe_key": "KOTAK|2026-07-08|500000|00:00|Rs.5,000.00 withdrawn from Kotak A/c XX2211 at ATM KOTAK POWAI on 08-07-26. -Kotak Mahindra Bank",
+  "direction_inferred": false
+}

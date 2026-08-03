@@ -1,0 +1,18 @@
+{
+  "amount_paise": 75000,
+  "direction": "debit",
+  "type": "card",
+  "booked_at": "2026-07-18T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "4321",
+  "raw_merchant": "BIGBASKET",
+  "raw_description": "Rs.750.00 spent on SBI Card XX4321 at BIGBASKET on 18-07-26. Not you? Call 1800112211",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": "SBI-4321-2026-07-18-75000",
+  "balance_after_paise": null,
+  "dedupe_key": "SBI|2026-07-18|75000|SBI-4321-2026-07-18-75000",
+  "direction_inferred": false
+}

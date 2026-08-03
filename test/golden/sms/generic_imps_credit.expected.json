@@ -1,0 +1,18 @@
+{
+  "amount_paise": 750000,
+  "direction": "credit",
+  "type": "imps",
+  "booked_at": "2026-08-02T00:00:00.000Z",
+  "bank_code": "UNKNOWN",
+  "account_hint": null,
+  "raw_merchant": "Unknown",
+  "raw_description": "INR 7,500.00 credited via IMPS 923344556677 on 02-08-26. Avl Bal INR 30,000.00",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": "923344556677",
+  "balance_after_paise": 3000000,
+  "dedupe_key": "UNKNOWN|750000|923344556677",
+  "direction_inferred": false
+}

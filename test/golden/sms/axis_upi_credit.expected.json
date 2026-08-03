@@ -1,0 +1,18 @@
+{
+  "amount_paise": 220000,
+  "direction": "credit",
+  "type": "upi",
+  "booked_at": "2026-07-29T00:00:00.000Z",
+  "bank_code": "AXIS",
+  "account_hint": "4455",
+  "raw_merchant": "client@oksbi",
+  "raw_description": "AXIS BANK: INR 2,200.00 credited to A/c XX4455 on 29-07-26. UPI Ref No 698800011122 from client@oksbi.",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": "client@oksbi",
+  "upi_ref": "698800011122",
+  "remarks": null,
+  "external_ref": "698800011122",
+  "balance_after_paise": null,
+  "dedupe_key": "AXIS|220000|698800011122",
+  "direction_inferred": false
+}

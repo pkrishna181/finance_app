@@ -1,0 +1,18 @@
+{
+  "amount_paise": 350000,
+  "direction": "credit",
+  "type": "upi",
+  "booked_at": "2026-07-20T00:00:00.000Z",
+  "bank_code": "HDFC",
+  "account_hint": "1234",
+  "raw_merchant": "friend@oksbi",
+  "raw_description": "HDFC Bank: Rs.3,500.00 credited to a/c **1234 on 20-07-26 from VPA friend@oksbi (UPI Ref 412399988877)",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": "friend@oksbi",
+  "upi_ref": "412399988877",
+  "remarks": null,
+  "external_ref": "412399988877",
+  "balance_after_paise": null,
+  "dedupe_key": "HDFC|350000|412399988877",
+  "direction_inferred": false
+}

@@ -1,0 +1,18 @@
+{
+  "amount_paise": 19900,
+  "direction": "debit",
+  "type": "upi",
+  "booked_at": "2026-08-05T00:00:00.000Z",
+  "bank_code": "ICICI",
+  "account_hint": "9012",
+  "raw_merchant": "coffee@ybl",
+  "raw_description": "ICICI Bank Acct XX9012 is debited with INR 199.00 on 05-Aug-26. Info: UPI/599988877766/VPA coffee@ybl. Available Bal: INR 10,000.00",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": "coffee@ybl",
+  "upi_ref": "599988877766",
+  "remarks": null,
+  "external_ref": "599988877766",
+  "balance_after_paise": 1000000,
+  "dedupe_key": "ICICI|19900|599988877766",
+  "direction_inferred": false
+}

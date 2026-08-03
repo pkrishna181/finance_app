@@ -1,0 +1,18 @@
+{
+  "amount_paise": 108000,
+  "direction": "debit",
+  "type": "card",
+  "booked_at": "2026-07-25T20:15:00.000Z",
+  "bank_code": "KOTAK",
+  "account_hint": "5566",
+  "raw_merchant": "BOOKMYSHOW",
+  "raw_description": "INR 1,080.00 spent on Kotak Card XX5566 at BOOKMYSHOW on 25-07-26 20:15. -Kotak Mahindra Bank",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": "KOTAK-5566-2026-07-25-108000",
+  "balance_after_paise": null,
+  "dedupe_key": "KOTAK|2026-07-25|108000|KOTAK-5566-2026-07-25-108000",
+  "direction_inferred": false
+}

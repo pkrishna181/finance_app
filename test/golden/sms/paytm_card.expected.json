@@ -1,0 +1,18 @@
+{
+  "amount_paise": 59900,
+  "direction": "debit",
+  "type": "card",
+  "booked_at": "2026-07-11T00:00:00.000Z",
+  "bank_code": "PAYTM",
+  "account_hint": "3344",
+  "raw_merchant": "NETFLIX",
+  "raw_description": "Rs.599.00 spent on Paytm Postpaid XX3344 at NETFLIX on 11-07-2026. -Paytm",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": "PAYTM-3344-2026-07-11-59900",
+  "balance_after_paise": null,
+  "dedupe_key": "PAYTM|2026-07-11|59900|PAYTM-3344-2026-07-11-59900",
+  "direction_inferred": false
+}

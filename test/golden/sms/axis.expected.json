@@ -1,0 +1,18 @@
+{
+  "amount_paise": 89900,
+  "direction": "debit",
+  "type": "pos",
+  "booked_at": "2026-07-28T19:42:00.000Z",
+  "bank_code": "AXIS",
+  "account_hint": "4455",
+  "raw_merchant": "ZOMATO MEDIA PVT LTD",
+  "raw_description": "AXIS BANK: INR 899.00 spent on AXIS Card XX4455 at ZOMATO MEDIA PVT LTD on 28-07-26 19:42 IST. Avl Limit: INR 1,20,000.00",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": "AXIS-4455-2026-07-28-89900",
+  "balance_after_paise": null,
+  "dedupe_key": "AXIS|2026-07-28|89900|AXIS-4455-2026-07-28-89900",
+  "direction_inferred": false
+}

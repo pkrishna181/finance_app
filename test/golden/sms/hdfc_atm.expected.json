@@ -1,0 +1,18 @@
+{
+  "amount_paise": 200000,
+  "direction": "debit",
+  "type": "atm",
+  "booked_at": "2026-07-05T00:00:00.000Z",
+  "bank_code": "HDFC",
+  "account_hint": "1234",
+  "raw_merchant": "MG ROAD BLR",
+  "raw_description": "Rs.2,000.00 withdrawn using HDFC Bank Debit Card XX1234 at ATM MG ROAD BLR on 05-07-26. Not you? Call 18002586161",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": null,
+  "balance_after_paise": null,
+  "dedupe_key": "HDFC|2026-07-05|200000|00:00|Rs.2,000.00 withdrawn using HDFC Bank Debit Card XX1234 at ATM MG ROAD BLR on 05-07-26. Not you? Call 18002586161",
+  "direction_inferred": false
+}
