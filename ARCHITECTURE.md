@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: 2026-08-03 (Phase 4 — on-device LLM)
+Last updated: 2026-08-05 (Phase 5 — hybrid LLM integration)
 
 ---
 
@@ -20,7 +20,7 @@ Last updated: 2026-08-03 (Phase 4 — on-device LLM)
   lib/parsing
     common/          shared extractors (amount/date/refs/vpa)
     sms/             regex cascade + templates
-  lib/llm            LlmEngine, FakeLlmEngine, LlamaCppEngine, download, GBNF
+  lib/llm            LlmEngine, FakeLlmEngine, LlamaCppEngine, job queue, anchoring
   lib/insights       (later)
   lib/ui
 /native/llama        arth_llm shim + llama.cpp b4531 (pinned)
@@ -69,7 +69,7 @@ never logged.
 
 ---
 
-## Data model (schema v4)
+## Data model (schema v5)
 
 ### Imports
 
@@ -182,8 +182,8 @@ first use → ModelDownloadManager (resumable, sha256, Wi‑Fi default)
 
 | Field | Value |
 |---|---|
-| Tag | `b4531` |
-| Date | 2026-01-18 |
+| Tag | `b4875` |
+| Date | 2026-02-19 (Gemma 3 support; was b4532 — too old for Gemma 3) |
 | Android | arm64-v8a CPU, dotprod/i8mm compile flags |
 | iOS | xcframework + Metal (`GGML_METAL=ON`) |
 
@@ -192,7 +192,8 @@ Build: `/native/llama/build_android.sh`, `build_ios.sh`. Dart binds **only**
 
 ### Shim API
 
-`arth_llm_load`, `arth_llm_generate` (+ GBNF), `arth_llm_cancel`,
+`arth_llm_load`, `arth_llm_prefill`, `arth_llm_save_state`, `arth_llm_restore_state`,
+`arth_llm_generate` / `arth_llm_generate_ex` (+ GBNF), `arth_llm_cancel`,
 `arth_llm_unload`, `arth_llm_mem_usage`. Temperature fixed at 0.2 in shim v1.
 
 ### Grammar
@@ -209,7 +210,118 @@ for all CI/unit tests.
 
 `LlmDebugSettingsScreen` (download, load, n_threads display) and
 `LlmBenchmarkScreen` (prefill/decode tok/s, grammar vs unconstrained, RSS,
-standard-task wall time). Routes gated by `kDebugMode`.
+per-SMS wall time with/without prefix cache, standard-task wall time).
+Routes gated by `kDebugMode`.
+
+---
+
+## Hybrid LLM (Phase 5)
+
+The on-device LLM is a **suggester**, never an authority. All LLM output passes
+schema validation + anchor-checks before surfacing in a review queue; ledger
+inserts require explicit user confirm.
+
+### Job queue (`lib/llm/jobs/`)
+
+```
+llm_jobs (Drift)
+  type: sms_extract | stmt_row_extract | merchant_normalize | categorize
+  payload_json, status, attempts (max 2), result_json, last_error
+
+Runner (LlmJobRunner)
+  → opportunistic while app alive (no WorkManager v1 — future step)
+  → one job at a time, model kept loaded across batch
+  → jobs sorted by type (prefix cache locality)
+  → battery guard: skip if <20% and not charging
+  → poison messages: failed after 2 attempts, never retry-loop
+```
+
+Trigger: Import tab **“N unrecognized — resolve”** (enqueue + run when engine
+loaded) or manual debug run.
+
+### Prefix cache (KV state)
+
+Shim: `arth_llm_prefill`, `arth_llm_save_state`, `arth_llm_restore_state`,
+`arth_llm_generate_ex` (append suffix without clearing KV).
+
+SMS extract batch: prefill static few-shot prefix once → save state → per SMS
+restore + append item suffix → GBNF decode.
+
+**Device measurements (Samsung SM-S928U1, Gemma 3 1B Q4, 2026-08-05):**
+
+| SMS | Full prompt (`no_prefix`) | Prefix reuse (`prefix_reuse`) |
+|---|---:|---:|
+| 1 | 37,730 ms | 45,854 ms |
+| 2 | 40,176 ms | 39,992 ms |
+| 3 | 42,735 ms | 36,835 ms |
+| **3-SMS total** | **120,641 ms** | **122,681 ms** |
+
+Items 2–3 save ~4–6 s each (~10% vs full prompt) because decode dominates (~40 s/item)
+and prefill is only ~2–3 s of wall time. Item 1 pays one-time `prefill + save_state`
+overhead (+8 s). **Batch breakeven:** prefix path wins from item 2 onward; a 10-SMS
+batch projects ~6 s × 9 ≈ **54 s saved** vs 10 full prefills (first item amortizes setup).
+
+Microbench same session: grammar decode 5.4 tok/s, ~800 MB RSS.
+
+### Anchor-check (`lib/llm/anchoring.dart`)
+
+`validateAgainstSource(rawText, llmJson)` per field:
+
+| Field | Rule |
+|---|---|
+| amount_paise | Must match `extractSoleTxnAmount` |
+| direction | Corroborated by keyword sets; no cue → `directionInferred=true` |
+| booked_at | Must parse from raw text (LLM normalizes only) |
+| bank_code | **Never from LLM** — sender/body guess overrides |
+| raw_merchant | Token overlap or substring; balance-adjacent phrases demoted |
+| refs / dedupe refs | Must appear in raw text |
+
+Outputs `(cleanedJson, anchorReport)`. Critical failures →
+`unresolvable_v1` (no retry).
+
+### Feature 1 — unparsed queue
+
+Source: `unparsed_sms_rows` (+ statement rows stub). Pipeline: LLM JSON →
+validator → anchor-check → `llm_review_items` (pending) → user confirm →
+`upsertTransactionWithProvenance`.
+
+UI: `LlmResolveScreen` — raw SMS beside fields, per-field anchor icons.
+
+### Feature 2 — merchant normalization
+
+Precedence: **user alias > seed catalog > LLM**. Deterministic seed lookup
+(`lib/llm/data/merchant_seeds.json`, ~200 brands). Unseen raw strings enqueue
+one `merchant_normalize` job (deduped). Short prompt + `merchant_normalize.gbnf`.
+Anchor: canonical name shares token with raw **or** is a seed brand.
+
+### Feature 3 — categorization
+
+Precedence: **user_correction > merchant map > keyword rules > LLM**.
+Seed files: `category_rules.json` (merchant→slug + keyword rules). LLM fallback
+uses `category_suggest.gbnf` (fixed enum). Stored as `suggested_category_slug`
+until user confirms; corrections feed `user_corrections`.
+
+### Seed data
+
+| File | Entries |
+|---|---|
+| `merchant_seeds.json` | ~200 canonical Indian merchants + aliases |
+| `category_rules.json` | ~30 merchant→category + ~11 keyword rules |
+
+### Tests (CI uses FakeLlmEngine)
+
+- `test/llm/anchoring_test.dart` — Phase 4 bad outputs caught
+- `test/llm/llm_job_runner_test.dart` — ordering, battery, dedupe, poison cap
+- `test/llm/hybrid_parse_e2e_test.dart` — unparsed → review → confirm → dedupe
+- `test/llm/category_enum_test.dart` — invalid type/category rejected
+
+### Phase 5 fragile spots
+
+- **Prefix cache size**: full state serialize per SMS type; monitor RSS on device.
+- **stmt_row_extract**: job type defined; processor stubbed v1.
+- **WorkManager**: not wired — batch only while app process alive.
+- **Battery guard**: injectable `BatteryGuard`; permissive default on desktop/tests.
+- **1B model quality**: anchoring catches hallucinations; field accuracy still weak.
 
 ---
 

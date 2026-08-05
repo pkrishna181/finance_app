@@ -1,0 +1,18 @@
+root ::= object
+
+object ::=
+  "{" ws (
+    "\"category\"" ws ":" ws category ","
+    ws "\"confidence\"" ws ":" ws number
+  ) "}" ws
+
+category ::=
+  ("\"groceries\"" | "\"food_delivery\"" | "\"transport\"" | "\"fuel\"" |
+   "\"utilities\"" | "\"rent\"" | "\"emi\"" | "\"investments_sip\"" |
+   "\"recharge\"" | "\"healthcare\"" | "\"shopping\"" | "\"entertainment\"" |
+   "\"transfers_self\"" | "\"transfers_others\"" | "\"salary\"" |
+   "\"interest\"" | "\"charges\"" | "\"uncategorized\"") ws
+
+number ::= [0-9]+ ("." [0-9]+)? ws
+
+ws ::= | " " | "\n" [ \t]{0,20}

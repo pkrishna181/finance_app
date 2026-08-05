@@ -12,6 +12,9 @@ import '../../ingestion/sms/sms_source.dart';
 import '../../ingestion/source.dart';
 import '../../ingestion/statement/file_source.dart';
 import '../../ingestion/statement/pdf/password_hints.dart';
+import '../../llm/jobs/llm_job_service.dart';
+import '../../llm/llm_review_service.dart';
+import 'llm_resolve_screen.dart';
 import 'statement_preview_screen.dart';
 
 class ImportScreen extends StatefulWidget {
@@ -25,11 +28,61 @@ class ImportScreen extends StatefulWidget {
 }
 
 class _ImportScreenState extends State<ImportScreen> {
+  ArthDatabase? _db;
+
+  @override
+  void initState() {
+    super.initState();
+    _openDb();
+  }
+
+  Future<void> _openDb() async {
+    if (widget.database != null) {
+      setState(() => _db = widget.database);
+      return;
+    }
+    try {
+      final db = await ArthDatabase.openEncrypted();
+      if (mounted) setState(() => _db = db);
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     final registry = IngestionRegistry();
     return Scaffold(
-      appBar: AppBar(title: const Text('Import')),
+      appBar: AppBar(
+        title: const Text('Import'),
+        actions: [
+          if (_db != null)
+            StreamBuilder<int>(
+              stream: _db!.watchUnresolvedUnparsedSmsCount(),
+              builder: (context, snap) {
+                final n = snap.data ?? 0;
+                if (n == 0) return const SizedBox.shrink();
+                return TextButton(
+                  onPressed: () async {
+                    final rows = await _db!.listUnresolvedUnparsedSms();
+                    final jobs = LlmJobService(_db!);
+                    for (final row in rows) {
+                      await jobs.enqueueSmsExtract(row.id);
+                    }
+                    if (!context.mounted) return;
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => LlmResolveScreen(
+                          db: _db!,
+                          reviewService: LlmReviewService(db: _db!),
+                        ),
+                      ),
+                    );
+                  },
+                  child: Text('$n unrecognized — resolve'),
+                );
+              },
+            ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

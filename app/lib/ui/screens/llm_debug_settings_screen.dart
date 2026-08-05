@@ -95,7 +95,9 @@ class _LlmDebugSettingsScreenState extends State<LlmDebugSettingsScreen> {
           ListTile(
             title: const Text('Native library'),
             subtitle: Text(
-              widget.engine.isNativeAvailable ? 'available' : 'not loaded',
+              widget.engine.isNativeAvailable
+                  ? 'available'
+                  : 'not loaded${widget.engine.nativeLoadError != null ? ': ${widget.engine.nativeLoadError}' : ''}',
             ),
           ),
         ],
@@ -120,9 +122,27 @@ class _LlmDebugSettingsScreenState extends State<LlmDebugSettingsScreen> {
       setState(() => _status = 'Model file missing — download first.');
       return;
     }
+    final sizeMb = (file.lengthSync() / (1024 * 1024)).toStringAsFixed(1);
+    setState(() => _status = 'Loading ${sizeMb}MB model…');
     final r = await widget.engine.load(modelPath: file.path);
     setState(() {
-      _status = r.isOk ? 'Model loaded.' : 'Load failed: ${r.errorOrNull}';
+      if (r.isOk) {
+        _status = 'Model loaded ($sizeMb MB).';
+      } else if (r.errorOrNull == 'native_library_unavailable') {
+        final detail = (widget.engine.nativeLoadError ??
+                r.when(ok: (_) => '', err: (_, cause) => cause?.toString() ?? '') ??
+                '')
+            .trim();
+        _status = 'Load failed: native library unavailable.\n'
+            '${detail.isNotEmpty ? 'Detail: $detail\n' : ''}'
+            'Reinstall the latest APK (includes libarth_llm.so).\n'
+            'If you built from source, run native/llama/build_android.sh first.';
+      } else {
+        _status = 'Load failed: ${r.errorOrNull}\n'
+            'File: ${file.path}\n'
+            'Size: ${sizeMb}MB\n'
+            'Tip: Gemma 3 needs llama.cpp b4875+ (reinstall latest APK).';
+      }
     });
   }
 }

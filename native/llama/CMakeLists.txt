@@ -21,18 +21,24 @@ add_subdirectory(${LLAMA_CPP_DIR} llama_cpp EXCLUDE_FROM_ALL)
 
 add_library(arth_llm SHARED
     shim/arth_llm.c
+    shim/arth_grammar_check.cpp
 )
 
 target_include_directories(arth_llm PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/shim
     ${LLAMA_CPP_DIR}/include
     ${LLAMA_CPP_DIR}/ggml/include
+    ${LLAMA_CPP_DIR}/src
 )
 
 target_link_libraries(arth_llm PRIVATE llama)
 
 if(ANDROID)
     target_compile_options(arth_llm PRIVATE -O3)
+    find_library(ANDROID_LOG_LIB log)
+    if(ANDROID_LOG_LIB)
+        target_link_libraries(arth_llm PRIVATE ${ANDROID_LOG_LIB})
+    endif()
     # arm64-v8a: enable dotprod / i8mm when available (runtime detection in ggml).
     if(ANDROID_ABI STREQUAL "arm64-v8a")
         target_compile_options(arth_llm PRIVATE -march=armv8.2-a+dotprod+i8mm)
@@ -48,3 +54,13 @@ if(APPLE AND CMAKE_SYSTEM_NAME STREQUAL "iOS")
 endif()
 
 install(TARGETS arth_llm LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
+
+if(NOT ANDROID AND NOT (APPLE AND CMAKE_SYSTEM_NAME STREQUAL "iOS"))
+    add_executable(grammar_validate tools/grammar_validate.cpp)
+    target_include_directories(grammar_validate PRIVATE
+        ${LLAMA_CPP_DIR}/include
+        ${LLAMA_CPP_DIR}/ggml/include
+        ${LLAMA_CPP_DIR}/src
+    )
+    target_link_libraries(grammar_validate PRIVATE llama)
+endif()

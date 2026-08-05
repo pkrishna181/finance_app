@@ -1,15 +1,35 @@
 root ::= object
-object ::= "{" ws pair (ws "," ws pair)* ws "}"
-pair ::= string ws ":" ws value
-string ::= "\"" char* "\""
-char ::= [^"\\] | "\\" ["\\/bfnrt]
-value ::= number | direction | txn_type | bool | iso_date | null | string
-number ::= [0-9]+
+
+object ::=
+  "{" (
+    "\"a\"" ":" span ","
+    "\"d\"" ":" span ","
+    "\"t\"" ":" timenull ","
+    "\"y\"" ":" txntype ","
+    "\"r\"" ":" direction ","
+    "\"m\"" ":" strnull ","
+    "\"f\"" ":" strnull ","
+    "\"v\"" ":" strnull
+  ) "}"
+
+span ::= "\"" spanchar{1,48} "\""
+
+spanchar ::=
+  [^"\\\x7F\x00-\x1F] |
+  "\\" (["\\/bfnrt] | "u" [0-9a-fA-F]{4})
+
+timenull ::= "null" | span
+
+txntype ::=
+  ("\"upi\"" | "\"imps\"" | "\"neft\"" | "\"rtgs\"" | "\"atm\"" |
+   "\"card\"" | "\"salary\"" | "\"other\"")
+
 direction ::= "\"debit\"" | "\"credit\""
-txn_type ::= "\"upi\"" | "\"imps\"" | "\"neft\"" | "\"rtgs\"" | "\"atm\"" | "\"card\"" | "\"salary\"" | "\"other\""
-bool ::= "true" | "false"
-null ::= "null"
-iso_date ::= "\"" date "T" time "Z\""
-date ::= [0-9][0-9][0-9][0-9] "-" [0-9][0-9] "-" [0-9][0-9]
-time ::= [0-9][0-9] ":" [0-9][0-9] ":" [0-9][0-9]
-ws ::= [ \t\n\r]*
+
+strnull ::= "null" | string
+
+string ::=
+  "\"" (
+    [^"\\\x7F\x00-\x1F] |
+    "\\" (["\\/bfnrt] | "u" [0-9a-fA-F]{4})
+  )* "\""

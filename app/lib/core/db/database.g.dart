@@ -763,6 +763,17 @@ class $MerchantAliasesTable extends MerchantAliases
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _confidenceMeta = const VerificationMeta(
+    'confidence',
+  );
+  @override
+  late final GeneratedColumn<double> confidence = GeneratedColumn<double>(
+    'confidence',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -781,6 +792,7 @@ class $MerchantAliasesTable extends MerchantAliases
     rawName,
     merchantId,
     source,
+    confidence,
     createdAt,
   ];
   @override
@@ -822,6 +834,12 @@ class $MerchantAliasesTable extends MerchantAliases
     } else if (isInserting) {
       context.missing(_sourceMeta);
     }
+    if (data.containsKey('confidence')) {
+      context.handle(
+        _confidenceMeta,
+        confidence.isAcceptableOrUnknown(data['confidence']!, _confidenceMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -857,6 +875,10 @@ class $MerchantAliasesTable extends MerchantAliases
         DriftSqlType.string,
         data['${effectivePrefix}source'],
       )!,
+      confidence: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}confidence'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -877,12 +899,16 @@ class MerchantAliase extends DataClass implements Insertable<MerchantAliase> {
 
   /// Origin of the mapping: system | llm | user.
   final String source;
+
+  /// LLM confidence 0–1 when [source] is llm.
+  final double? confidence;
   final DateTime createdAt;
   const MerchantAliase({
     required this.id,
     required this.rawName,
     required this.merchantId,
     required this.source,
+    this.confidence,
     required this.createdAt,
   });
   @override
@@ -892,6 +918,9 @@ class MerchantAliase extends DataClass implements Insertable<MerchantAliase> {
     map['raw_name'] = Variable<String>(rawName);
     map['merchant_id'] = Variable<int>(merchantId);
     map['source'] = Variable<String>(source);
+    if (!nullToAbsent || confidence != null) {
+      map['confidence'] = Variable<double>(confidence);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -902,6 +931,9 @@ class MerchantAliase extends DataClass implements Insertable<MerchantAliase> {
       rawName: Value(rawName),
       merchantId: Value(merchantId),
       source: Value(source),
+      confidence: confidence == null && nullToAbsent
+          ? const Value.absent()
+          : Value(confidence),
       createdAt: Value(createdAt),
     );
   }
@@ -916,6 +948,7 @@ class MerchantAliase extends DataClass implements Insertable<MerchantAliase> {
       rawName: serializer.fromJson<String>(json['rawName']),
       merchantId: serializer.fromJson<int>(json['merchantId']),
       source: serializer.fromJson<String>(json['source']),
+      confidence: serializer.fromJson<double?>(json['confidence']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -927,6 +960,7 @@ class MerchantAliase extends DataClass implements Insertable<MerchantAliase> {
       'rawName': serializer.toJson<String>(rawName),
       'merchantId': serializer.toJson<int>(merchantId),
       'source': serializer.toJson<String>(source),
+      'confidence': serializer.toJson<double?>(confidence),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -936,12 +970,14 @@ class MerchantAliase extends DataClass implements Insertable<MerchantAliase> {
     String? rawName,
     int? merchantId,
     String? source,
+    Value<double?> confidence = const Value.absent(),
     DateTime? createdAt,
   }) => MerchantAliase(
     id: id ?? this.id,
     rawName: rawName ?? this.rawName,
     merchantId: merchantId ?? this.merchantId,
     source: source ?? this.source,
+    confidence: confidence.present ? confidence.value : this.confidence,
     createdAt: createdAt ?? this.createdAt,
   );
   MerchantAliase copyWithCompanion(MerchantAliasesCompanion data) {
@@ -952,6 +988,9 @@ class MerchantAliase extends DataClass implements Insertable<MerchantAliase> {
           ? data.merchantId.value
           : this.merchantId,
       source: data.source.present ? data.source.value : this.source,
+      confidence: data.confidence.present
+          ? data.confidence.value
+          : this.confidence,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -963,13 +1002,15 @@ class MerchantAliase extends DataClass implements Insertable<MerchantAliase> {
           ..write('rawName: $rawName, ')
           ..write('merchantId: $merchantId, ')
           ..write('source: $source, ')
+          ..write('confidence: $confidence, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, rawName, merchantId, source, createdAt);
+  int get hashCode =>
+      Object.hash(id, rawName, merchantId, source, confidence, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -978,6 +1019,7 @@ class MerchantAliase extends DataClass implements Insertable<MerchantAliase> {
           other.rawName == this.rawName &&
           other.merchantId == this.merchantId &&
           other.source == this.source &&
+          other.confidence == this.confidence &&
           other.createdAt == this.createdAt);
 }
 
@@ -986,12 +1028,14 @@ class MerchantAliasesCompanion extends UpdateCompanion<MerchantAliase> {
   final Value<String> rawName;
   final Value<int> merchantId;
   final Value<String> source;
+  final Value<double?> confidence;
   final Value<DateTime> createdAt;
   const MerchantAliasesCompanion({
     this.id = const Value.absent(),
     this.rawName = const Value.absent(),
     this.merchantId = const Value.absent(),
     this.source = const Value.absent(),
+    this.confidence = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   MerchantAliasesCompanion.insert({
@@ -999,6 +1043,7 @@ class MerchantAliasesCompanion extends UpdateCompanion<MerchantAliase> {
     required String rawName,
     required int merchantId,
     required String source,
+    this.confidence = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : rawName = Value(rawName),
        merchantId = Value(merchantId),
@@ -1008,6 +1053,7 @@ class MerchantAliasesCompanion extends UpdateCompanion<MerchantAliase> {
     Expression<String>? rawName,
     Expression<int>? merchantId,
     Expression<String>? source,
+    Expression<double>? confidence,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -1015,6 +1061,7 @@ class MerchantAliasesCompanion extends UpdateCompanion<MerchantAliase> {
       if (rawName != null) 'raw_name': rawName,
       if (merchantId != null) 'merchant_id': merchantId,
       if (source != null) 'source': source,
+      if (confidence != null) 'confidence': confidence,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -1024,6 +1071,7 @@ class MerchantAliasesCompanion extends UpdateCompanion<MerchantAliase> {
     Value<String>? rawName,
     Value<int>? merchantId,
     Value<String>? source,
+    Value<double?>? confidence,
     Value<DateTime>? createdAt,
   }) {
     return MerchantAliasesCompanion(
@@ -1031,6 +1079,7 @@ class MerchantAliasesCompanion extends UpdateCompanion<MerchantAliase> {
       rawName: rawName ?? this.rawName,
       merchantId: merchantId ?? this.merchantId,
       source: source ?? this.source,
+      confidence: confidence ?? this.confidence,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -1050,6 +1099,9 @@ class MerchantAliasesCompanion extends UpdateCompanion<MerchantAliase> {
     if (source.present) {
       map['source'] = Variable<String>(source.value);
     }
+    if (confidence.present) {
+      map['confidence'] = Variable<double>(confidence.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1063,6 +1115,7 @@ class MerchantAliasesCompanion extends UpdateCompanion<MerchantAliase> {
           ..write('rawName: $rawName, ')
           ..write('merchantId: $merchantId, ')
           ..write('source: $source, ')
+          ..write('confidence: $confidence, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -1870,6 +1923,28 @@ class $TransactionsTable extends Transactions
       'REFERENCES categories (id)',
     ),
   );
+  static const VerificationMeta _suggestedCategorySlugMeta =
+      const VerificationMeta('suggestedCategorySlug');
+  @override
+  late final GeneratedColumn<String> suggestedCategorySlug =
+      GeneratedColumn<String>(
+        'suggested_category_slug',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _categorySourceMeta = const VerificationMeta(
+    'categorySource',
+  );
+  @override
+  late final GeneratedColumn<String> categorySource = GeneratedColumn<String>(
+    'category_source',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _rawMerchantMeta = const VerificationMeta(
     'rawMerchant',
   );
@@ -2044,6 +2119,8 @@ class $TransactionsTable extends Transactions
     accountHint,
     merchantId,
     categoryId,
+    suggestedCategorySlug,
+    categorySource,
     rawMerchant,
     rawDescription,
     upiPayerVpa,
@@ -2148,6 +2225,24 @@ class $TransactionsTable extends Transactions
       context.handle(
         _categoryIdMeta,
         categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    }
+    if (data.containsKey('suggested_category_slug')) {
+      context.handle(
+        _suggestedCategorySlugMeta,
+        suggestedCategorySlug.isAcceptableOrUnknown(
+          data['suggested_category_slug']!,
+          _suggestedCategorySlugMeta,
+        ),
+      );
+    }
+    if (data.containsKey('category_source')) {
+      context.handle(
+        _categorySourceMeta,
+        categorySource.isAcceptableOrUnknown(
+          data['category_source']!,
+          _categorySourceMeta,
+        ),
       );
     }
     if (data.containsKey('raw_merchant')) {
@@ -2317,6 +2412,14 @@ class $TransactionsTable extends Transactions
         DriftSqlType.int,
         data['${effectivePrefix}category_id'],
       ),
+      suggestedCategorySlug: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}suggested_category_slug'],
+      ),
+      categorySource: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category_source'],
+      ),
       rawMerchant: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}raw_merchant'],
@@ -2400,6 +2503,12 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final String? accountHint;
   final int? merchantId;
   final int? categoryId;
+
+  /// LLM/rule suggestion before user confirms (slug from [Categories]).
+  final String? suggestedCategorySlug;
+
+  /// rule | llm | user — how [categoryId] was assigned.
+  final String? categorySource;
   final String rawMerchant;
   final String rawDescription;
   final String? upiPayerVpa;
@@ -2430,6 +2539,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     this.accountHint,
     this.merchantId,
     this.categoryId,
+    this.suggestedCategorySlug,
+    this.categorySource,
     required this.rawMerchant,
     required this.rawDescription,
     this.upiPayerVpa,
@@ -2466,6 +2577,12 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     }
     if (!nullToAbsent || categoryId != null) {
       map['category_id'] = Variable<int>(categoryId);
+    }
+    if (!nullToAbsent || suggestedCategorySlug != null) {
+      map['suggested_category_slug'] = Variable<String>(suggestedCategorySlug);
+    }
+    if (!nullToAbsent || categorySource != null) {
+      map['category_source'] = Variable<String>(categorySource);
     }
     map['raw_merchant'] = Variable<String>(rawMerchant);
     map['raw_description'] = Variable<String>(rawDescription);
@@ -2521,6 +2638,12 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       categoryId: categoryId == null && nullToAbsent
           ? const Value.absent()
           : Value(categoryId),
+      suggestedCategorySlug: suggestedCategorySlug == null && nullToAbsent
+          ? const Value.absent()
+          : Value(suggestedCategorySlug),
+      categorySource: categorySource == null && nullToAbsent
+          ? const Value.absent()
+          : Value(categorySource),
       rawMerchant: Value(rawMerchant),
       rawDescription: Value(rawDescription),
       upiPayerVpa: upiPayerVpa == null && nullToAbsent
@@ -2571,6 +2694,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       accountHint: serializer.fromJson<String?>(json['accountHint']),
       merchantId: serializer.fromJson<int?>(json['merchantId']),
       categoryId: serializer.fromJson<int?>(json['categoryId']),
+      suggestedCategorySlug: serializer.fromJson<String?>(
+        json['suggestedCategorySlug'],
+      ),
+      categorySource: serializer.fromJson<String?>(json['categorySource']),
       rawMerchant: serializer.fromJson<String>(json['rawMerchant']),
       rawDescription: serializer.fromJson<String>(json['rawDescription']),
       upiPayerVpa: serializer.fromJson<String?>(json['upiPayerVpa']),
@@ -2604,6 +2731,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'accountHint': serializer.toJson<String?>(accountHint),
       'merchantId': serializer.toJson<int?>(merchantId),
       'categoryId': serializer.toJson<int?>(categoryId),
+      'suggestedCategorySlug': serializer.toJson<String?>(
+        suggestedCategorySlug,
+      ),
+      'categorySource': serializer.toJson<String?>(categorySource),
       'rawMerchant': serializer.toJson<String>(rawMerchant),
       'rawDescription': serializer.toJson<String>(rawDescription),
       'upiPayerVpa': serializer.toJson<String?>(upiPayerVpa),
@@ -2633,6 +2764,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     Value<String?> accountHint = const Value.absent(),
     Value<int?> merchantId = const Value.absent(),
     Value<int?> categoryId = const Value.absent(),
+    Value<String?> suggestedCategorySlug = const Value.absent(),
+    Value<String?> categorySource = const Value.absent(),
     String? rawMerchant,
     String? rawDescription,
     Value<String?> upiPayerVpa = const Value.absent(),
@@ -2659,6 +2792,12 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     accountHint: accountHint.present ? accountHint.value : this.accountHint,
     merchantId: merchantId.present ? merchantId.value : this.merchantId,
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
+    suggestedCategorySlug: suggestedCategorySlug.present
+        ? suggestedCategorySlug.value
+        : this.suggestedCategorySlug,
+    categorySource: categorySource.present
+        ? categorySource.value
+        : this.categorySource,
     rawMerchant: rawMerchant ?? this.rawMerchant,
     rawDescription: rawDescription ?? this.rawDescription,
     upiPayerVpa: upiPayerVpa.present ? upiPayerVpa.value : this.upiPayerVpa,
@@ -2699,6 +2838,12 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       categoryId: data.categoryId.present
           ? data.categoryId.value
           : this.categoryId,
+      suggestedCategorySlug: data.suggestedCategorySlug.present
+          ? data.suggestedCategorySlug.value
+          : this.suggestedCategorySlug,
+      categorySource: data.categorySource.present
+          ? data.categorySource.value
+          : this.categorySource,
       rawMerchant: data.rawMerchant.present
           ? data.rawMerchant.value
           : this.rawMerchant,
@@ -2748,6 +2893,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('accountHint: $accountHint, ')
           ..write('merchantId: $merchantId, ')
           ..write('categoryId: $categoryId, ')
+          ..write('suggestedCategorySlug: $suggestedCategorySlug, ')
+          ..write('categorySource: $categorySource, ')
           ..write('rawMerchant: $rawMerchant, ')
           ..write('rawDescription: $rawDescription, ')
           ..write('upiPayerVpa: $upiPayerVpa, ')
@@ -2779,6 +2926,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     accountHint,
     merchantId,
     categoryId,
+    suggestedCategorySlug,
+    categorySource,
     rawMerchant,
     rawDescription,
     upiPayerVpa,
@@ -2809,6 +2958,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.accountHint == this.accountHint &&
           other.merchantId == this.merchantId &&
           other.categoryId == this.categoryId &&
+          other.suggestedCategorySlug == this.suggestedCategorySlug &&
+          other.categorySource == this.categorySource &&
           other.rawMerchant == this.rawMerchant &&
           other.rawDescription == this.rawDescription &&
           other.upiPayerVpa == this.upiPayerVpa &&
@@ -2837,6 +2988,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String?> accountHint;
   final Value<int?> merchantId;
   final Value<int?> categoryId;
+  final Value<String?> suggestedCategorySlug;
+  final Value<String?> categorySource;
   final Value<String> rawMerchant;
   final Value<String> rawDescription;
   final Value<String?> upiPayerVpa;
@@ -2863,6 +3016,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.accountHint = const Value.absent(),
     this.merchantId = const Value.absent(),
     this.categoryId = const Value.absent(),
+    this.suggestedCategorySlug = const Value.absent(),
+    this.categorySource = const Value.absent(),
     this.rawMerchant = const Value.absent(),
     this.rawDescription = const Value.absent(),
     this.upiPayerVpa = const Value.absent(),
@@ -2890,6 +3045,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.accountHint = const Value.absent(),
     this.merchantId = const Value.absent(),
     this.categoryId = const Value.absent(),
+    this.suggestedCategorySlug = const Value.absent(),
+    this.categorySource = const Value.absent(),
     required String rawMerchant,
     required String rawDescription,
     this.upiPayerVpa = const Value.absent(),
@@ -2924,6 +3081,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<String>? accountHint,
     Expression<int>? merchantId,
     Expression<int>? categoryId,
+    Expression<String>? suggestedCategorySlug,
+    Expression<String>? categorySource,
     Expression<String>? rawMerchant,
     Expression<String>? rawDescription,
     Expression<String>? upiPayerVpa,
@@ -2951,6 +3110,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (accountHint != null) 'account_hint': accountHint,
       if (merchantId != null) 'merchant_id': merchantId,
       if (categoryId != null) 'category_id': categoryId,
+      if (suggestedCategorySlug != null)
+        'suggested_category_slug': suggestedCategorySlug,
+      if (categorySource != null) 'category_source': categorySource,
       if (rawMerchant != null) 'raw_merchant': rawMerchant,
       if (rawDescription != null) 'raw_description': rawDescription,
       if (upiPayerVpa != null) 'upi_payer_vpa': upiPayerVpa,
@@ -2981,6 +3143,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Value<String?>? accountHint,
     Value<int?>? merchantId,
     Value<int?>? categoryId,
+    Value<String?>? suggestedCategorySlug,
+    Value<String?>? categorySource,
     Value<String>? rawMerchant,
     Value<String>? rawDescription,
     Value<String?>? upiPayerVpa,
@@ -3008,6 +3172,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       accountHint: accountHint ?? this.accountHint,
       merchantId: merchantId ?? this.merchantId,
       categoryId: categoryId ?? this.categoryId,
+      suggestedCategorySlug:
+          suggestedCategorySlug ?? this.suggestedCategorySlug,
+      categorySource: categorySource ?? this.categorySource,
       rawMerchant: rawMerchant ?? this.rawMerchant,
       rawDescription: rawDescription ?? this.rawDescription,
       upiPayerVpa: upiPayerVpa ?? this.upiPayerVpa,
@@ -3060,6 +3227,14 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     }
     if (categoryId.present) {
       map['category_id'] = Variable<int>(categoryId.value);
+    }
+    if (suggestedCategorySlug.present) {
+      map['suggested_category_slug'] = Variable<String>(
+        suggestedCategorySlug.value,
+      );
+    }
+    if (categorySource.present) {
+      map['category_source'] = Variable<String>(categorySource.value);
     }
     if (rawMerchant.present) {
       map['raw_merchant'] = Variable<String>(rawMerchant.value);
@@ -3122,6 +3297,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('accountHint: $accountHint, ')
           ..write('merchantId: $merchantId, ')
           ..write('categoryId: $categoryId, ')
+          ..write('suggestedCategorySlug: $suggestedCategorySlug, ')
+          ..write('categorySource: $categorySource, ')
           ..write('rawMerchant: $rawMerchant, ')
           ..write('rawDescription: $rawDescription, ')
           ..write('upiPayerVpa: $upiPayerVpa, ')
@@ -5969,6 +6146,1154 @@ class UnparsedStatementRowsCompanion
   }
 }
 
+class $LlmJobsTable extends LlmJobs with TableInfo<$LlmJobsTable, LlmJob> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LlmJobsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _jobTypeMeta = const VerificationMeta(
+    'jobType',
+  );
+  @override
+  late final GeneratedColumn<String> jobType = GeneratedColumn<String>(
+    'job_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadJsonMeta = const VerificationMeta(
+    'payloadJson',
+  );
+  @override
+  late final GeneratedColumn<String> payloadJson = GeneratedColumn<String>(
+    'payload_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _attemptsMeta = const VerificationMeta(
+    'attempts',
+  );
+  @override
+  late final GeneratedColumn<int> attempts = GeneratedColumn<int>(
+    'attempts',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _resultJsonMeta = const VerificationMeta(
+    'resultJson',
+  );
+  @override
+  late final GeneratedColumn<String> resultJson = GeneratedColumn<String>(
+    'result_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastErrorMeta = const VerificationMeta(
+    'lastError',
+  );
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+    'last_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    jobType,
+    payloadJson,
+    status,
+    attempts,
+    resultJson,
+    lastError,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'llm_jobs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LlmJob> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('job_type')) {
+      context.handle(
+        _jobTypeMeta,
+        jobType.isAcceptableOrUnknown(data['job_type']!, _jobTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_jobTypeMeta);
+    }
+    if (data.containsKey('payload_json')) {
+      context.handle(
+        _payloadJsonMeta,
+        payloadJson.isAcceptableOrUnknown(
+          data['payload_json']!,
+          _payloadJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadJsonMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('attempts')) {
+      context.handle(
+        _attemptsMeta,
+        attempts.isAcceptableOrUnknown(data['attempts']!, _attemptsMeta),
+      );
+    }
+    if (data.containsKey('result_json')) {
+      context.handle(
+        _resultJsonMeta,
+        resultJson.isAcceptableOrUnknown(data['result_json']!, _resultJsonMeta),
+      );
+    }
+    if (data.containsKey('last_error')) {
+      context.handle(
+        _lastErrorMeta,
+        lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LlmJob map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LlmJob(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      jobType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}job_type'],
+      )!,
+      payloadJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload_json'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      attempts: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}attempts'],
+      )!,
+      resultJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}result_json'],
+      ),
+      lastError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_error'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $LlmJobsTable createAlias(String alias) {
+    return $LlmJobsTable(attachedDatabase, alias);
+  }
+}
+
+class LlmJob extends DataClass implements Insertable<LlmJob> {
+  final int id;
+
+  /// sms_extract | stmt_row_extract | merchant_normalize | categorize
+  final String jobType;
+
+  /// JSON payload (row ids, raw strings, txn id, etc.).
+  final String payloadJson;
+
+  /// pending | running | done | failed
+  final String status;
+  final int attempts;
+  final String? resultJson;
+  final String? lastError;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const LlmJob({
+    required this.id,
+    required this.jobType,
+    required this.payloadJson,
+    required this.status,
+    required this.attempts,
+    this.resultJson,
+    this.lastError,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['job_type'] = Variable<String>(jobType);
+    map['payload_json'] = Variable<String>(payloadJson);
+    map['status'] = Variable<String>(status);
+    map['attempts'] = Variable<int>(attempts);
+    if (!nullToAbsent || resultJson != null) {
+      map['result_json'] = Variable<String>(resultJson);
+    }
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  LlmJobsCompanion toCompanion(bool nullToAbsent) {
+    return LlmJobsCompanion(
+      id: Value(id),
+      jobType: Value(jobType),
+      payloadJson: Value(payloadJson),
+      status: Value(status),
+      attempts: Value(attempts),
+      resultJson: resultJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resultJson),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory LlmJob.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LlmJob(
+      id: serializer.fromJson<int>(json['id']),
+      jobType: serializer.fromJson<String>(json['jobType']),
+      payloadJson: serializer.fromJson<String>(json['payloadJson']),
+      status: serializer.fromJson<String>(json['status']),
+      attempts: serializer.fromJson<int>(json['attempts']),
+      resultJson: serializer.fromJson<String?>(json['resultJson']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'jobType': serializer.toJson<String>(jobType),
+      'payloadJson': serializer.toJson<String>(payloadJson),
+      'status': serializer.toJson<String>(status),
+      'attempts': serializer.toJson<int>(attempts),
+      'resultJson': serializer.toJson<String?>(resultJson),
+      'lastError': serializer.toJson<String?>(lastError),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  LlmJob copyWith({
+    int? id,
+    String? jobType,
+    String? payloadJson,
+    String? status,
+    int? attempts,
+    Value<String?> resultJson = const Value.absent(),
+    Value<String?> lastError = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => LlmJob(
+    id: id ?? this.id,
+    jobType: jobType ?? this.jobType,
+    payloadJson: payloadJson ?? this.payloadJson,
+    status: status ?? this.status,
+    attempts: attempts ?? this.attempts,
+    resultJson: resultJson.present ? resultJson.value : this.resultJson,
+    lastError: lastError.present ? lastError.value : this.lastError,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  LlmJob copyWithCompanion(LlmJobsCompanion data) {
+    return LlmJob(
+      id: data.id.present ? data.id.value : this.id,
+      jobType: data.jobType.present ? data.jobType.value : this.jobType,
+      payloadJson: data.payloadJson.present
+          ? data.payloadJson.value
+          : this.payloadJson,
+      status: data.status.present ? data.status.value : this.status,
+      attempts: data.attempts.present ? data.attempts.value : this.attempts,
+      resultJson: data.resultJson.present
+          ? data.resultJson.value
+          : this.resultJson,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LlmJob(')
+          ..write('id: $id, ')
+          ..write('jobType: $jobType, ')
+          ..write('payloadJson: $payloadJson, ')
+          ..write('status: $status, ')
+          ..write('attempts: $attempts, ')
+          ..write('resultJson: $resultJson, ')
+          ..write('lastError: $lastError, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    jobType,
+    payloadJson,
+    status,
+    attempts,
+    resultJson,
+    lastError,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LlmJob &&
+          other.id == this.id &&
+          other.jobType == this.jobType &&
+          other.payloadJson == this.payloadJson &&
+          other.status == this.status &&
+          other.attempts == this.attempts &&
+          other.resultJson == this.resultJson &&
+          other.lastError == this.lastError &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class LlmJobsCompanion extends UpdateCompanion<LlmJob> {
+  final Value<int> id;
+  final Value<String> jobType;
+  final Value<String> payloadJson;
+  final Value<String> status;
+  final Value<int> attempts;
+  final Value<String?> resultJson;
+  final Value<String?> lastError;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const LlmJobsCompanion({
+    this.id = const Value.absent(),
+    this.jobType = const Value.absent(),
+    this.payloadJson = const Value.absent(),
+    this.status = const Value.absent(),
+    this.attempts = const Value.absent(),
+    this.resultJson = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  LlmJobsCompanion.insert({
+    this.id = const Value.absent(),
+    required String jobType,
+    required String payloadJson,
+    this.status = const Value.absent(),
+    this.attempts = const Value.absent(),
+    this.resultJson = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : jobType = Value(jobType),
+       payloadJson = Value(payloadJson);
+  static Insertable<LlmJob> custom({
+    Expression<int>? id,
+    Expression<String>? jobType,
+    Expression<String>? payloadJson,
+    Expression<String>? status,
+    Expression<int>? attempts,
+    Expression<String>? resultJson,
+    Expression<String>? lastError,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (jobType != null) 'job_type': jobType,
+      if (payloadJson != null) 'payload_json': payloadJson,
+      if (status != null) 'status': status,
+      if (attempts != null) 'attempts': attempts,
+      if (resultJson != null) 'result_json': resultJson,
+      if (lastError != null) 'last_error': lastError,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  LlmJobsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? jobType,
+    Value<String>? payloadJson,
+    Value<String>? status,
+    Value<int>? attempts,
+    Value<String?>? resultJson,
+    Value<String?>? lastError,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return LlmJobsCompanion(
+      id: id ?? this.id,
+      jobType: jobType ?? this.jobType,
+      payloadJson: payloadJson ?? this.payloadJson,
+      status: status ?? this.status,
+      attempts: attempts ?? this.attempts,
+      resultJson: resultJson ?? this.resultJson,
+      lastError: lastError ?? this.lastError,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (jobType.present) {
+      map['job_type'] = Variable<String>(jobType.value);
+    }
+    if (payloadJson.present) {
+      map['payload_json'] = Variable<String>(payloadJson.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (attempts.present) {
+      map['attempts'] = Variable<int>(attempts.value);
+    }
+    if (resultJson.present) {
+      map['result_json'] = Variable<String>(resultJson.value);
+    }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LlmJobsCompanion(')
+          ..write('id: $id, ')
+          ..write('jobType: $jobType, ')
+          ..write('payloadJson: $payloadJson, ')
+          ..write('status: $status, ')
+          ..write('attempts: $attempts, ')
+          ..write('resultJson: $resultJson, ')
+          ..write('lastError: $lastError, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LlmReviewItemsTable extends LlmReviewItems
+    with TableInfo<$LlmReviewItemsTable, LlmReviewItem> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LlmReviewItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _unparsedSmsIdMeta = const VerificationMeta(
+    'unparsedSmsId',
+  );
+  @override
+  late final GeneratedColumn<int> unparsedSmsId = GeneratedColumn<int>(
+    'unparsed_sms_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES unparsed_sms_rows (id)',
+    ),
+  );
+  static const VerificationMeta _unparsedStatementRowIdMeta =
+      const VerificationMeta('unparsedStatementRowId');
+  @override
+  late final GeneratedColumn<int> unparsedStatementRowId = GeneratedColumn<int>(
+    'unparsed_statement_row_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES unparsed_statement_rows (id)',
+    ),
+  );
+  static const VerificationMeta _rawTextMeta = const VerificationMeta(
+    'rawText',
+  );
+  @override
+  late final GeneratedColumn<String> rawText = GeneratedColumn<String>(
+    'raw_text',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _suggestedJsonMeta = const VerificationMeta(
+    'suggestedJson',
+  );
+  @override
+  late final GeneratedColumn<String> suggestedJson = GeneratedColumn<String>(
+    'suggested_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _anchorReportJsonMeta = const VerificationMeta(
+    'anchorReportJson',
+  );
+  @override
+  late final GeneratedColumn<String> anchorReportJson = GeneratedColumn<String>(
+    'anchor_report_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _transactionIdMeta = const VerificationMeta(
+    'transactionId',
+  );
+  @override
+  late final GeneratedColumn<int> transactionId = GeneratedColumn<int>(
+    'transaction_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES transactions (id)',
+    ),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    unparsedSmsId,
+    unparsedStatementRowId,
+    rawText,
+    suggestedJson,
+    anchorReportJson,
+    status,
+    transactionId,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'llm_review_items';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LlmReviewItem> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('unparsed_sms_id')) {
+      context.handle(
+        _unparsedSmsIdMeta,
+        unparsedSmsId.isAcceptableOrUnknown(
+          data['unparsed_sms_id']!,
+          _unparsedSmsIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('unparsed_statement_row_id')) {
+      context.handle(
+        _unparsedStatementRowIdMeta,
+        unparsedStatementRowId.isAcceptableOrUnknown(
+          data['unparsed_statement_row_id']!,
+          _unparsedStatementRowIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('raw_text')) {
+      context.handle(
+        _rawTextMeta,
+        rawText.isAcceptableOrUnknown(data['raw_text']!, _rawTextMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_rawTextMeta);
+    }
+    if (data.containsKey('suggested_json')) {
+      context.handle(
+        _suggestedJsonMeta,
+        suggestedJson.isAcceptableOrUnknown(
+          data['suggested_json']!,
+          _suggestedJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_suggestedJsonMeta);
+    }
+    if (data.containsKey('anchor_report_json')) {
+      context.handle(
+        _anchorReportJsonMeta,
+        anchorReportJson.isAcceptableOrUnknown(
+          data['anchor_report_json']!,
+          _anchorReportJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_anchorReportJsonMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('transaction_id')) {
+      context.handle(
+        _transactionIdMeta,
+        transactionId.isAcceptableOrUnknown(
+          data['transaction_id']!,
+          _transactionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LlmReviewItem map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LlmReviewItem(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      unparsedSmsId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}unparsed_sms_id'],
+      ),
+      unparsedStatementRowId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}unparsed_statement_row_id'],
+      ),
+      rawText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}raw_text'],
+      )!,
+      suggestedJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}suggested_json'],
+      )!,
+      anchorReportJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}anchor_report_json'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      transactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}transaction_id'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $LlmReviewItemsTable createAlias(String alias) {
+    return $LlmReviewItemsTable(attachedDatabase, alias);
+  }
+}
+
+class LlmReviewItem extends DataClass implements Insertable<LlmReviewItem> {
+  final int id;
+  final int? unparsedSmsId;
+  final int? unparsedStatementRowId;
+  final String rawText;
+  final String suggestedJson;
+  final String anchorReportJson;
+
+  /// pending | confirmed | discarded | unresolvable_v1
+  final String status;
+  final int? transactionId;
+  final DateTime createdAt;
+  const LlmReviewItem({
+    required this.id,
+    this.unparsedSmsId,
+    this.unparsedStatementRowId,
+    required this.rawText,
+    required this.suggestedJson,
+    required this.anchorReportJson,
+    required this.status,
+    this.transactionId,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    if (!nullToAbsent || unparsedSmsId != null) {
+      map['unparsed_sms_id'] = Variable<int>(unparsedSmsId);
+    }
+    if (!nullToAbsent || unparsedStatementRowId != null) {
+      map['unparsed_statement_row_id'] = Variable<int>(unparsedStatementRowId);
+    }
+    map['raw_text'] = Variable<String>(rawText);
+    map['suggested_json'] = Variable<String>(suggestedJson);
+    map['anchor_report_json'] = Variable<String>(anchorReportJson);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || transactionId != null) {
+      map['transaction_id'] = Variable<int>(transactionId);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  LlmReviewItemsCompanion toCompanion(bool nullToAbsent) {
+    return LlmReviewItemsCompanion(
+      id: Value(id),
+      unparsedSmsId: unparsedSmsId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(unparsedSmsId),
+      unparsedStatementRowId: unparsedStatementRowId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(unparsedStatementRowId),
+      rawText: Value(rawText),
+      suggestedJson: Value(suggestedJson),
+      anchorReportJson: Value(anchorReportJson),
+      status: Value(status),
+      transactionId: transactionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(transactionId),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory LlmReviewItem.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LlmReviewItem(
+      id: serializer.fromJson<int>(json['id']),
+      unparsedSmsId: serializer.fromJson<int?>(json['unparsedSmsId']),
+      unparsedStatementRowId: serializer.fromJson<int?>(
+        json['unparsedStatementRowId'],
+      ),
+      rawText: serializer.fromJson<String>(json['rawText']),
+      suggestedJson: serializer.fromJson<String>(json['suggestedJson']),
+      anchorReportJson: serializer.fromJson<String>(json['anchorReportJson']),
+      status: serializer.fromJson<String>(json['status']),
+      transactionId: serializer.fromJson<int?>(json['transactionId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'unparsedSmsId': serializer.toJson<int?>(unparsedSmsId),
+      'unparsedStatementRowId': serializer.toJson<int?>(unparsedStatementRowId),
+      'rawText': serializer.toJson<String>(rawText),
+      'suggestedJson': serializer.toJson<String>(suggestedJson),
+      'anchorReportJson': serializer.toJson<String>(anchorReportJson),
+      'status': serializer.toJson<String>(status),
+      'transactionId': serializer.toJson<int?>(transactionId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  LlmReviewItem copyWith({
+    int? id,
+    Value<int?> unparsedSmsId = const Value.absent(),
+    Value<int?> unparsedStatementRowId = const Value.absent(),
+    String? rawText,
+    String? suggestedJson,
+    String? anchorReportJson,
+    String? status,
+    Value<int?> transactionId = const Value.absent(),
+    DateTime? createdAt,
+  }) => LlmReviewItem(
+    id: id ?? this.id,
+    unparsedSmsId: unparsedSmsId.present
+        ? unparsedSmsId.value
+        : this.unparsedSmsId,
+    unparsedStatementRowId: unparsedStatementRowId.present
+        ? unparsedStatementRowId.value
+        : this.unparsedStatementRowId,
+    rawText: rawText ?? this.rawText,
+    suggestedJson: suggestedJson ?? this.suggestedJson,
+    anchorReportJson: anchorReportJson ?? this.anchorReportJson,
+    status: status ?? this.status,
+    transactionId: transactionId.present
+        ? transactionId.value
+        : this.transactionId,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  LlmReviewItem copyWithCompanion(LlmReviewItemsCompanion data) {
+    return LlmReviewItem(
+      id: data.id.present ? data.id.value : this.id,
+      unparsedSmsId: data.unparsedSmsId.present
+          ? data.unparsedSmsId.value
+          : this.unparsedSmsId,
+      unparsedStatementRowId: data.unparsedStatementRowId.present
+          ? data.unparsedStatementRowId.value
+          : this.unparsedStatementRowId,
+      rawText: data.rawText.present ? data.rawText.value : this.rawText,
+      suggestedJson: data.suggestedJson.present
+          ? data.suggestedJson.value
+          : this.suggestedJson,
+      anchorReportJson: data.anchorReportJson.present
+          ? data.anchorReportJson.value
+          : this.anchorReportJson,
+      status: data.status.present ? data.status.value : this.status,
+      transactionId: data.transactionId.present
+          ? data.transactionId.value
+          : this.transactionId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LlmReviewItem(')
+          ..write('id: $id, ')
+          ..write('unparsedSmsId: $unparsedSmsId, ')
+          ..write('unparsedStatementRowId: $unparsedStatementRowId, ')
+          ..write('rawText: $rawText, ')
+          ..write('suggestedJson: $suggestedJson, ')
+          ..write('anchorReportJson: $anchorReportJson, ')
+          ..write('status: $status, ')
+          ..write('transactionId: $transactionId, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    unparsedSmsId,
+    unparsedStatementRowId,
+    rawText,
+    suggestedJson,
+    anchorReportJson,
+    status,
+    transactionId,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LlmReviewItem &&
+          other.id == this.id &&
+          other.unparsedSmsId == this.unparsedSmsId &&
+          other.unparsedStatementRowId == this.unparsedStatementRowId &&
+          other.rawText == this.rawText &&
+          other.suggestedJson == this.suggestedJson &&
+          other.anchorReportJson == this.anchorReportJson &&
+          other.status == this.status &&
+          other.transactionId == this.transactionId &&
+          other.createdAt == this.createdAt);
+}
+
+class LlmReviewItemsCompanion extends UpdateCompanion<LlmReviewItem> {
+  final Value<int> id;
+  final Value<int?> unparsedSmsId;
+  final Value<int?> unparsedStatementRowId;
+  final Value<String> rawText;
+  final Value<String> suggestedJson;
+  final Value<String> anchorReportJson;
+  final Value<String> status;
+  final Value<int?> transactionId;
+  final Value<DateTime> createdAt;
+  const LlmReviewItemsCompanion({
+    this.id = const Value.absent(),
+    this.unparsedSmsId = const Value.absent(),
+    this.unparsedStatementRowId = const Value.absent(),
+    this.rawText = const Value.absent(),
+    this.suggestedJson = const Value.absent(),
+    this.anchorReportJson = const Value.absent(),
+    this.status = const Value.absent(),
+    this.transactionId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  LlmReviewItemsCompanion.insert({
+    this.id = const Value.absent(),
+    this.unparsedSmsId = const Value.absent(),
+    this.unparsedStatementRowId = const Value.absent(),
+    required String rawText,
+    required String suggestedJson,
+    required String anchorReportJson,
+    this.status = const Value.absent(),
+    this.transactionId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : rawText = Value(rawText),
+       suggestedJson = Value(suggestedJson),
+       anchorReportJson = Value(anchorReportJson);
+  static Insertable<LlmReviewItem> custom({
+    Expression<int>? id,
+    Expression<int>? unparsedSmsId,
+    Expression<int>? unparsedStatementRowId,
+    Expression<String>? rawText,
+    Expression<String>? suggestedJson,
+    Expression<String>? anchorReportJson,
+    Expression<String>? status,
+    Expression<int>? transactionId,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (unparsedSmsId != null) 'unparsed_sms_id': unparsedSmsId,
+      if (unparsedStatementRowId != null)
+        'unparsed_statement_row_id': unparsedStatementRowId,
+      if (rawText != null) 'raw_text': rawText,
+      if (suggestedJson != null) 'suggested_json': suggestedJson,
+      if (anchorReportJson != null) 'anchor_report_json': anchorReportJson,
+      if (status != null) 'status': status,
+      if (transactionId != null) 'transaction_id': transactionId,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  LlmReviewItemsCompanion copyWith({
+    Value<int>? id,
+    Value<int?>? unparsedSmsId,
+    Value<int?>? unparsedStatementRowId,
+    Value<String>? rawText,
+    Value<String>? suggestedJson,
+    Value<String>? anchorReportJson,
+    Value<String>? status,
+    Value<int?>? transactionId,
+    Value<DateTime>? createdAt,
+  }) {
+    return LlmReviewItemsCompanion(
+      id: id ?? this.id,
+      unparsedSmsId: unparsedSmsId ?? this.unparsedSmsId,
+      unparsedStatementRowId:
+          unparsedStatementRowId ?? this.unparsedStatementRowId,
+      rawText: rawText ?? this.rawText,
+      suggestedJson: suggestedJson ?? this.suggestedJson,
+      anchorReportJson: anchorReportJson ?? this.anchorReportJson,
+      status: status ?? this.status,
+      transactionId: transactionId ?? this.transactionId,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (unparsedSmsId.present) {
+      map['unparsed_sms_id'] = Variable<int>(unparsedSmsId.value);
+    }
+    if (unparsedStatementRowId.present) {
+      map['unparsed_statement_row_id'] = Variable<int>(
+        unparsedStatementRowId.value,
+      );
+    }
+    if (rawText.present) {
+      map['raw_text'] = Variable<String>(rawText.value);
+    }
+    if (suggestedJson.present) {
+      map['suggested_json'] = Variable<String>(suggestedJson.value);
+    }
+    if (anchorReportJson.present) {
+      map['anchor_report_json'] = Variable<String>(anchorReportJson.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (transactionId.present) {
+      map['transaction_id'] = Variable<int>(transactionId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LlmReviewItemsCompanion(')
+          ..write('id: $id, ')
+          ..write('unparsedSmsId: $unparsedSmsId, ')
+          ..write('unparsedStatementRowId: $unparsedStatementRowId, ')
+          ..write('rawText: $rawText, ')
+          ..write('suggestedJson: $suggestedJson, ')
+          ..write('anchorReportJson: $anchorReportJson, ')
+          ..write('status: $status, ')
+          ..write('transactionId: $transactionId, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$ArthDatabase extends GeneratedDatabase {
   _$ArthDatabase(QueryExecutor e) : super(e);
   $ArthDatabaseManager get managers => $ArthDatabaseManager(this);
@@ -5991,6 +7316,8 @@ abstract class _$ArthDatabase extends GeneratedDatabase {
   late final $ModelInfoTable modelInfo = $ModelInfoTable(this);
   late final $UnparsedStatementRowsTable unparsedStatementRows =
       $UnparsedStatementRowsTable(this);
+  late final $LlmJobsTable llmJobs = $LlmJobsTable(this);
+  late final $LlmReviewItemsTable llmReviewItems = $LlmReviewItemsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6007,6 +7334,8 @@ abstract class _$ArthDatabase extends GeneratedDatabase {
     mandateNotices,
     modelInfo,
     unparsedStatementRows,
+    llmJobs,
+    llmReviewItems,
   ];
 }
 
@@ -6917,6 +8246,7 @@ typedef $$MerchantAliasesTableCreateCompanionBuilder =
       required String rawName,
       required int merchantId,
       required String source,
+      Value<double?> confidence,
       Value<DateTime> createdAt,
     });
 typedef $$MerchantAliasesTableUpdateCompanionBuilder =
@@ -6925,6 +8255,7 @@ typedef $$MerchantAliasesTableUpdateCompanionBuilder =
       Value<String> rawName,
       Value<int> merchantId,
       Value<String> source,
+      Value<double?> confidence,
       Value<DateTime> createdAt,
     });
 
@@ -6976,6 +8307,11 @@ class $$MerchantAliasesTableFilterComposer
 
   ColumnFilters<String> get source => $composableBuilder(
     column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get confidence => $composableBuilder(
+    column: $table.confidence,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7032,6 +8368,11 @@ class $$MerchantAliasesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get confidence => $composableBuilder(
+    column: $table.confidence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -7078,6 +8419,11 @@ class $$MerchantAliasesTableAnnotationComposer
 
   GeneratedColumn<String> get source =>
       $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<double> get confidence => $composableBuilder(
+    column: $table.confidence,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -7140,12 +8486,14 @@ class $$MerchantAliasesTableTableManager
                 Value<String> rawName = const Value.absent(),
                 Value<int> merchantId = const Value.absent(),
                 Value<String> source = const Value.absent(),
+                Value<double?> confidence = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => MerchantAliasesCompanion(
                 id: id,
                 rawName: rawName,
                 merchantId: merchantId,
                 source: source,
+                confidence: confidence,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -7154,12 +8502,14 @@ class $$MerchantAliasesTableTableManager
                 required String rawName,
                 required int merchantId,
                 required String source,
+                Value<double?> confidence = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => MerchantAliasesCompanion.insert(
                 id: id,
                 rawName: rawName,
                 merchantId: merchantId,
                 source: source,
+                confidence: confidence,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
@@ -7877,6 +9227,8 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<String?> accountHint,
       Value<int?> merchantId,
       Value<int?> categoryId,
+      Value<String?> suggestedCategorySlug,
+      Value<String?> categorySource,
       required String rawMerchant,
       required String rawDescription,
       Value<String?> upiPayerVpa,
@@ -7905,6 +9257,8 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<String?> accountHint,
       Value<int?> merchantId,
       Value<int?> categoryId,
+      Value<String?> suggestedCategorySlug,
+      Value<String?> categorySource,
       Value<String> rawMerchant,
       Value<String> rawDescription,
       Value<String?> upiPayerVpa,
@@ -8016,6 +9370,24 @@ final class $$TransactionsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$LlmReviewItemsTable, List<LlmReviewItem>>
+  _llmReviewItemsRefsTable(_$ArthDatabase db) => MultiTypedResultKey.fromTable(
+    db.llmReviewItems,
+    aliasName: 'transactions__id__llm_review_items__transaction_id',
+  );
+
+  $$LlmReviewItemsTableProcessedTableManager get llmReviewItemsRefs {
+    final manager = $$LlmReviewItemsTableTableManager(
+      $_db,
+      $_db.llmReviewItems,
+    ).filter((f) => f.transactionId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_llmReviewItemsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$TransactionsTableFilterComposer
@@ -8069,6 +9441,16 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get accountHint => $composableBuilder(
     column: $table.accountHint,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get suggestedCategorySlug => $composableBuilder(
+    column: $table.suggestedCategorySlug,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categorySource => $composableBuilder(
+    column: $table.categorySource,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8255,6 +9637,31 @@ class $$TransactionsTableFilterComposer
     );
     return f(composer);
   }
+
+  Expression<bool> llmReviewItemsRefs(
+    Expression<bool> Function($$LlmReviewItemsTableFilterComposer f) f,
+  ) {
+    final $$LlmReviewItemsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.llmReviewItems,
+      getReferencedColumn: (t) => t.transactionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LlmReviewItemsTableFilterComposer(
+            $db: $db,
+            $table: $db.llmReviewItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$TransactionsTableOrderingComposer
@@ -8308,6 +9715,16 @@ class $$TransactionsTableOrderingComposer
 
   ColumnOrderings<String> get accountHint => $composableBuilder(
     column: $table.accountHint,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get suggestedCategorySlug => $composableBuilder(
+    column: $table.suggestedCategorySlug,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get categorySource => $composableBuilder(
+    column: $table.categorySource,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -8483,6 +9900,16 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<String> get accountHint => $composableBuilder(
     column: $table.accountHint,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get suggestedCategorySlug => $composableBuilder(
+    column: $table.suggestedCategorySlug,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get categorySource => $composableBuilder(
+    column: $table.categorySource,
     builder: (column) => column,
   );
 
@@ -8662,6 +10089,31 @@ class $$TransactionsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> llmReviewItemsRefs<T extends Object>(
+    Expression<T> Function($$LlmReviewItemsTableAnnotationComposer a) f,
+  ) {
+    final $$LlmReviewItemsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.llmReviewItems,
+      getReferencedColumn: (t) => t.transactionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LlmReviewItemsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.llmReviewItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$TransactionsTableTableManager
@@ -8683,6 +10135,7 @@ class $$TransactionsTableTableManager
             bool importId,
             bool transactionImportsRefs,
             bool userCorrectionsRefs,
+            bool llmReviewItemsRefs,
           })
         > {
   $$TransactionsTableTableManager(_$ArthDatabase db, $TransactionsTable table)
@@ -8709,6 +10162,8 @@ class $$TransactionsTableTableManager
                 Value<String?> accountHint = const Value.absent(),
                 Value<int?> merchantId = const Value.absent(),
                 Value<int?> categoryId = const Value.absent(),
+                Value<String?> suggestedCategorySlug = const Value.absent(),
+                Value<String?> categorySource = const Value.absent(),
                 Value<String> rawMerchant = const Value.absent(),
                 Value<String> rawDescription = const Value.absent(),
                 Value<String?> upiPayerVpa = const Value.absent(),
@@ -8735,6 +10190,8 @@ class $$TransactionsTableTableManager
                 accountHint: accountHint,
                 merchantId: merchantId,
                 categoryId: categoryId,
+                suggestedCategorySlug: suggestedCategorySlug,
+                categorySource: categorySource,
                 rawMerchant: rawMerchant,
                 rawDescription: rawDescription,
                 upiPayerVpa: upiPayerVpa,
@@ -8763,6 +10220,8 @@ class $$TransactionsTableTableManager
                 Value<String?> accountHint = const Value.absent(),
                 Value<int?> merchantId = const Value.absent(),
                 Value<int?> categoryId = const Value.absent(),
+                Value<String?> suggestedCategorySlug = const Value.absent(),
+                Value<String?> categorySource = const Value.absent(),
                 required String rawMerchant,
                 required String rawDescription,
                 Value<String?> upiPayerVpa = const Value.absent(),
@@ -8789,6 +10248,8 @@ class $$TransactionsTableTableManager
                 accountHint: accountHint,
                 merchantId: merchantId,
                 categoryId: categoryId,
+                suggestedCategorySlug: suggestedCategorySlug,
+                categorySource: categorySource,
                 rawMerchant: rawMerchant,
                 rawDescription: rawDescription,
                 upiPayerVpa: upiPayerVpa,
@@ -8819,12 +10280,14 @@ class $$TransactionsTableTableManager
                 importId = false,
                 transactionImportsRefs = false,
                 userCorrectionsRefs = false,
+                llmReviewItemsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (transactionImportsRefs) db.transactionImports,
                     if (userCorrectionsRefs) db.userCorrections,
+                    if (llmReviewItemsRefs) db.llmReviewItems,
                   ],
                   addJoins:
                       <
@@ -8934,6 +10397,27 @@ class $$TransactionsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (llmReviewItemsRefs)
+                        await $_getPrefetchedData<
+                          Transaction,
+                          $TransactionsTable,
+                          LlmReviewItem
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TransactionsTableReferences
+                              ._llmReviewItemsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TransactionsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).llmReviewItemsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.transactionId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -8960,6 +10444,7 @@ typedef $$TransactionsTableProcessedTableManager =
         bool importId,
         bool transactionImportsRefs,
         bool userCorrectionsRefs,
+        bool llmReviewItemsRefs,
       })
     >;
 typedef $$TransactionImportsTableCreateCompanionBuilder =
@@ -9724,6 +11209,34 @@ typedef $$UnparsedSmsRowsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
     });
 
+final class $$UnparsedSmsRowsTableReferences
+    extends
+        BaseReferences<_$ArthDatabase, $UnparsedSmsRowsTable, UnparsedSmsRow> {
+  $$UnparsedSmsRowsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$LlmReviewItemsTable, List<LlmReviewItem>>
+  _llmReviewItemsRefsTable(_$ArthDatabase db) => MultiTypedResultKey.fromTable(
+    db.llmReviewItems,
+    aliasName: 'unparsed_sms_rows__id__llm_review_items__unparsed_sms_id',
+  );
+
+  $$LlmReviewItemsTableProcessedTableManager get llmReviewItemsRefs {
+    final manager = $$LlmReviewItemsTableTableManager(
+      $_db,
+      $_db.llmReviewItems,
+    ).filter((f) => f.unparsedSmsId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_llmReviewItemsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
 class $$UnparsedSmsRowsTableFilterComposer
     extends Composer<_$ArthDatabase, $UnparsedSmsRowsTable> {
   $$UnparsedSmsRowsTableFilterComposer({
@@ -9772,6 +11285,31 @@ class $$UnparsedSmsRowsTableFilterComposer
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
   );
+
+  Expression<bool> llmReviewItemsRefs(
+    Expression<bool> Function($$LlmReviewItemsTableFilterComposer f) f,
+  ) {
+    final $$LlmReviewItemsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.llmReviewItems,
+      getReferencedColumn: (t) => t.unparsedSmsId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LlmReviewItemsTableFilterComposer(
+            $db: $db,
+            $table: $db.llmReviewItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$UnparsedSmsRowsTableOrderingComposer
@@ -9858,6 +11396,31 @@ class $$UnparsedSmsRowsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> llmReviewItemsRefs<T extends Object>(
+    Expression<T> Function($$LlmReviewItemsTableAnnotationComposer a) f,
+  ) {
+    final $$LlmReviewItemsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.llmReviewItems,
+      getReferencedColumn: (t) => t.unparsedSmsId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LlmReviewItemsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.llmReviewItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$UnparsedSmsRowsTableTableManager
@@ -9871,16 +11434,9 @@ class $$UnparsedSmsRowsTableTableManager
           $$UnparsedSmsRowsTableAnnotationComposer,
           $$UnparsedSmsRowsTableCreateCompanionBuilder,
           $$UnparsedSmsRowsTableUpdateCompanionBuilder,
-          (
-            UnparsedSmsRow,
-            BaseReferences<
-              _$ArthDatabase,
-              $UnparsedSmsRowsTable,
-              UnparsedSmsRow
-            >,
-          ),
+          (UnparsedSmsRow, $$UnparsedSmsRowsTableReferences),
           UnparsedSmsRow,
-          PrefetchHooks Function()
+          PrefetchHooks Function({bool llmReviewItemsRefs})
         > {
   $$UnparsedSmsRowsTableTableManager(
     _$ArthDatabase db,
@@ -9936,9 +11492,47 @@ class $$UnparsedSmsRowsTableTableManager
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$UnparsedSmsRowsTableReferences(db, table, e),
+                ),
+              )
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({llmReviewItemsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (llmReviewItemsRefs) db.llmReviewItems,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (llmReviewItemsRefs)
+                    await $_getPrefetchedData<
+                      UnparsedSmsRow,
+                      $UnparsedSmsRowsTable,
+                      LlmReviewItem
+                    >(
+                      currentTable: table,
+                      referencedTable: $$UnparsedSmsRowsTableReferences
+                          ._llmReviewItemsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$UnparsedSmsRowsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).llmReviewItemsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where(
+                            (e) => e.unparsedSmsId == item.id,
+                          ),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
         ),
       );
 }
@@ -9953,12 +11547,9 @@ typedef $$UnparsedSmsRowsTableProcessedTableManager =
       $$UnparsedSmsRowsTableAnnotationComposer,
       $$UnparsedSmsRowsTableCreateCompanionBuilder,
       $$UnparsedSmsRowsTableUpdateCompanionBuilder,
-      (
-        UnparsedSmsRow,
-        BaseReferences<_$ArthDatabase, $UnparsedSmsRowsTable, UnparsedSmsRow>,
-      ),
+      (UnparsedSmsRow, $$UnparsedSmsRowsTableReferences),
       UnparsedSmsRow,
-      PrefetchHooks Function()
+      PrefetchHooks Function({bool llmReviewItemsRefs})
     >;
 typedef $$MandateNoticesTableCreateCompanionBuilder =
     MandateNoticesCompanion Function({
@@ -10564,6 +12155,26 @@ final class $$UnparsedStatementRowsTableReferences
       manager.$state.copyWith(prefetchedData: [item]),
     );
   }
+
+  static MultiTypedResultKey<$LlmReviewItemsTable, List<LlmReviewItem>>
+  _llmReviewItemsRefsTable(_$ArthDatabase db) => MultiTypedResultKey.fromTable(
+    db.llmReviewItems,
+    aliasName:
+        'unparsed_statement_rows__id__llm_review_items__unparsed_statement_row_id',
+  );
+
+  $$LlmReviewItemsTableProcessedTableManager get llmReviewItemsRefs {
+    final manager = $$LlmReviewItemsTableTableManager($_db, $_db.llmReviewItems)
+        .filter(
+          (f) =>
+              f.unparsedStatementRowId.id.sqlEquals($_itemColumn<int>('id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(_llmReviewItemsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$UnparsedStatementRowsTableFilterComposer
@@ -10626,6 +12237,31 @@ class $$UnparsedStatementRowsTableFilterComposer
           ),
     );
     return composer;
+  }
+
+  Expression<bool> llmReviewItemsRefs(
+    Expression<bool> Function($$LlmReviewItemsTableFilterComposer f) f,
+  ) {
+    final $$LlmReviewItemsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.llmReviewItems,
+      getReferencedColumn: (t) => t.unparsedStatementRowId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LlmReviewItemsTableFilterComposer(
+            $db: $db,
+            $table: $db.llmReviewItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
   }
 }
 
@@ -10743,6 +12379,31 @@ class $$UnparsedStatementRowsTableAnnotationComposer
     );
     return composer;
   }
+
+  Expression<T> llmReviewItemsRefs<T extends Object>(
+    Expression<T> Function($$LlmReviewItemsTableAnnotationComposer a) f,
+  ) {
+    final $$LlmReviewItemsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.llmReviewItems,
+      getReferencedColumn: (t) => t.unparsedStatementRowId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LlmReviewItemsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.llmReviewItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$UnparsedStatementRowsTableTableManager
@@ -10758,7 +12419,7 @@ class $$UnparsedStatementRowsTableTableManager
           $$UnparsedStatementRowsTableUpdateCompanionBuilder,
           (UnparsedStatementRow, $$UnparsedStatementRowsTableReferences),
           UnparsedStatementRow,
-          PrefetchHooks Function({bool importId})
+          PrefetchHooks Function({bool importId, bool llmReviewItemsRefs})
         > {
   $$UnparsedStatementRowsTableTableManager(
     _$ArthDatabase db,
@@ -10826,49 +12487,75 @@ class $$UnparsedStatementRowsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({importId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (importId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.importId,
-                                referencedTable:
-                                    $$UnparsedStatementRowsTableReferences
-                                        ._importIdTable(db),
-                                referencedColumn:
-                                    $$UnparsedStatementRowsTableReferences
-                                        ._importIdTable(db)
-                                        .id,
-                              )
-                              as T;
-                    }
+          prefetchHooksCallback:
+              ({importId = false, llmReviewItemsRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (llmReviewItemsRefs) db.llmReviewItems,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (importId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.importId,
+                                    referencedTable:
+                                        $$UnparsedStatementRowsTableReferences
+                                            ._importIdTable(db),
+                                    referencedColumn:
+                                        $$UnparsedStatementRowsTableReferences
+                                            ._importIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (llmReviewItemsRefs)
+                        await $_getPrefetchedData<
+                          UnparsedStatementRow,
+                          $UnparsedStatementRowsTable,
+                          LlmReviewItem
+                        >(
+                          currentTable: table,
+                          referencedTable:
+                              $$UnparsedStatementRowsTableReferences
+                                  ._llmReviewItemsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$UnparsedStatementRowsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).llmReviewItemsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.unparsedStatementRowId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -10885,7 +12572,875 @@ typedef $$UnparsedStatementRowsTableProcessedTableManager =
       $$UnparsedStatementRowsTableUpdateCompanionBuilder,
       (UnparsedStatementRow, $$UnparsedStatementRowsTableReferences),
       UnparsedStatementRow,
-      PrefetchHooks Function({bool importId})
+      PrefetchHooks Function({bool importId, bool llmReviewItemsRefs})
+    >;
+typedef $$LlmJobsTableCreateCompanionBuilder =
+    LlmJobsCompanion Function({
+      Value<int> id,
+      required String jobType,
+      required String payloadJson,
+      Value<String> status,
+      Value<int> attempts,
+      Value<String?> resultJson,
+      Value<String?> lastError,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+typedef $$LlmJobsTableUpdateCompanionBuilder =
+    LlmJobsCompanion Function({
+      Value<int> id,
+      Value<String> jobType,
+      Value<String> payloadJson,
+      Value<String> status,
+      Value<int> attempts,
+      Value<String?> resultJson,
+      Value<String?> lastError,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+class $$LlmJobsTableFilterComposer
+    extends Composer<_$ArthDatabase, $LlmJobsTable> {
+  $$LlmJobsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get jobType => $composableBuilder(
+    column: $table.jobType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payloadJson => $composableBuilder(
+    column: $table.payloadJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get attempts => $composableBuilder(
+    column: $table.attempts,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resultJson => $composableBuilder(
+    column: $table.resultJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LlmJobsTableOrderingComposer
+    extends Composer<_$ArthDatabase, $LlmJobsTable> {
+  $$LlmJobsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get jobType => $composableBuilder(
+    column: $table.jobType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payloadJson => $composableBuilder(
+    column: $table.payloadJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get attempts => $composableBuilder(
+    column: $table.attempts,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get resultJson => $composableBuilder(
+    column: $table.resultJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LlmJobsTableAnnotationComposer
+    extends Composer<_$ArthDatabase, $LlmJobsTable> {
+  $$LlmJobsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get jobType =>
+      $composableBuilder(column: $table.jobType, builder: (column) => column);
+
+  GeneratedColumn<String> get payloadJson => $composableBuilder(
+    column: $table.payloadJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get attempts =>
+      $composableBuilder(column: $table.attempts, builder: (column) => column);
+
+  GeneratedColumn<String> get resultJson => $composableBuilder(
+    column: $table.resultJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$LlmJobsTableTableManager
+    extends
+        RootTableManager<
+          _$ArthDatabase,
+          $LlmJobsTable,
+          LlmJob,
+          $$LlmJobsTableFilterComposer,
+          $$LlmJobsTableOrderingComposer,
+          $$LlmJobsTableAnnotationComposer,
+          $$LlmJobsTableCreateCompanionBuilder,
+          $$LlmJobsTableUpdateCompanionBuilder,
+          (LlmJob, BaseReferences<_$ArthDatabase, $LlmJobsTable, LlmJob>),
+          LlmJob,
+          PrefetchHooks Function()
+        > {
+  $$LlmJobsTableTableManager(_$ArthDatabase db, $LlmJobsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LlmJobsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LlmJobsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LlmJobsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> jobType = const Value.absent(),
+                Value<String> payloadJson = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> attempts = const Value.absent(),
+                Value<String?> resultJson = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => LlmJobsCompanion(
+                id: id,
+                jobType: jobType,
+                payloadJson: payloadJson,
+                status: status,
+                attempts: attempts,
+                resultJson: resultJson,
+                lastError: lastError,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String jobType,
+                required String payloadJson,
+                Value<String> status = const Value.absent(),
+                Value<int> attempts = const Value.absent(),
+                Value<String?> resultJson = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => LlmJobsCompanion.insert(
+                id: id,
+                jobType: jobType,
+                payloadJson: payloadJson,
+                status: status,
+                attempts: attempts,
+                resultJson: resultJson,
+                lastError: lastError,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LlmJobsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$ArthDatabase,
+      $LlmJobsTable,
+      LlmJob,
+      $$LlmJobsTableFilterComposer,
+      $$LlmJobsTableOrderingComposer,
+      $$LlmJobsTableAnnotationComposer,
+      $$LlmJobsTableCreateCompanionBuilder,
+      $$LlmJobsTableUpdateCompanionBuilder,
+      (LlmJob, BaseReferences<_$ArthDatabase, $LlmJobsTable, LlmJob>),
+      LlmJob,
+      PrefetchHooks Function()
+    >;
+typedef $$LlmReviewItemsTableCreateCompanionBuilder =
+    LlmReviewItemsCompanion Function({
+      Value<int> id,
+      Value<int?> unparsedSmsId,
+      Value<int?> unparsedStatementRowId,
+      required String rawText,
+      required String suggestedJson,
+      required String anchorReportJson,
+      Value<String> status,
+      Value<int?> transactionId,
+      Value<DateTime> createdAt,
+    });
+typedef $$LlmReviewItemsTableUpdateCompanionBuilder =
+    LlmReviewItemsCompanion Function({
+      Value<int> id,
+      Value<int?> unparsedSmsId,
+      Value<int?> unparsedStatementRowId,
+      Value<String> rawText,
+      Value<String> suggestedJson,
+      Value<String> anchorReportJson,
+      Value<String> status,
+      Value<int?> transactionId,
+      Value<DateTime> createdAt,
+    });
+
+final class $$LlmReviewItemsTableReferences
+    extends
+        BaseReferences<_$ArthDatabase, $LlmReviewItemsTable, LlmReviewItem> {
+  $$LlmReviewItemsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $UnparsedSmsRowsTable _unparsedSmsIdTable(_$ArthDatabase db) => db
+      .unparsedSmsRows
+      .createAlias('llm_review_items__unparsed_sms_id__unparsed_sms_rows__id');
+
+  $$UnparsedSmsRowsTableProcessedTableManager? get unparsedSmsId {
+    final $_column = $_itemColumn<int>('unparsed_sms_id');
+    if ($_column == null) return null;
+    final manager = $$UnparsedSmsRowsTableTableManager(
+      $_db,
+      $_db.unparsedSmsRows,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_unparsedSmsIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $UnparsedStatementRowsTable _unparsedStatementRowIdTable(
+    _$ArthDatabase db,
+  ) => db.unparsedStatementRows.createAlias(
+    'llm_review_items__unparsed_statement_row_id__unparsed_statement_rows__id',
+  );
+
+  $$UnparsedStatementRowsTableProcessedTableManager?
+  get unparsedStatementRowId {
+    final $_column = $_itemColumn<int>('unparsed_statement_row_id');
+    if ($_column == null) return null;
+    final manager = $$UnparsedStatementRowsTableTableManager(
+      $_db,
+      $_db.unparsedStatementRows,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(
+      _unparsedStatementRowIdTable($_db),
+    );
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $TransactionsTable _transactionIdTable(_$ArthDatabase db) => db
+      .transactions
+      .createAlias('llm_review_items__transaction_id__transactions__id');
+
+  $$TransactionsTableProcessedTableManager? get transactionId {
+    final $_column = $_itemColumn<int>('transaction_id');
+    if ($_column == null) return null;
+    final manager = $$TransactionsTableTableManager(
+      $_db,
+      $_db.transactions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_transactionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$LlmReviewItemsTableFilterComposer
+    extends Composer<_$ArthDatabase, $LlmReviewItemsTable> {
+  $$LlmReviewItemsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rawText => $composableBuilder(
+    column: $table.rawText,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get suggestedJson => $composableBuilder(
+    column: $table.suggestedJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get anchorReportJson => $composableBuilder(
+    column: $table.anchorReportJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$UnparsedSmsRowsTableFilterComposer get unparsedSmsId {
+    final $$UnparsedSmsRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.unparsedSmsId,
+      referencedTable: $db.unparsedSmsRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UnparsedSmsRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.unparsedSmsRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$UnparsedStatementRowsTableFilterComposer get unparsedStatementRowId {
+    final $$UnparsedStatementRowsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.unparsedStatementRowId,
+          referencedTable: $db.unparsedStatementRows,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$UnparsedStatementRowsTableFilterComposer(
+                $db: $db,
+                $table: $db.unparsedStatementRows,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$TransactionsTableFilterComposer get transactionId {
+    final $$TransactionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.transactionId,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableFilterComposer(
+            $db: $db,
+            $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LlmReviewItemsTableOrderingComposer
+    extends Composer<_$ArthDatabase, $LlmReviewItemsTable> {
+  $$LlmReviewItemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rawText => $composableBuilder(
+    column: $table.rawText,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get suggestedJson => $composableBuilder(
+    column: $table.suggestedJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get anchorReportJson => $composableBuilder(
+    column: $table.anchorReportJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$UnparsedSmsRowsTableOrderingComposer get unparsedSmsId {
+    final $$UnparsedSmsRowsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.unparsedSmsId,
+      referencedTable: $db.unparsedSmsRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UnparsedSmsRowsTableOrderingComposer(
+            $db: $db,
+            $table: $db.unparsedSmsRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$UnparsedStatementRowsTableOrderingComposer get unparsedStatementRowId {
+    final $$UnparsedStatementRowsTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.unparsedStatementRowId,
+          referencedTable: $db.unparsedStatementRows,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$UnparsedStatementRowsTableOrderingComposer(
+                $db: $db,
+                $table: $db.unparsedStatementRows,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$TransactionsTableOrderingComposer get transactionId {
+    final $$TransactionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.transactionId,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LlmReviewItemsTableAnnotationComposer
+    extends Composer<_$ArthDatabase, $LlmReviewItemsTable> {
+  $$LlmReviewItemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get rawText =>
+      $composableBuilder(column: $table.rawText, builder: (column) => column);
+
+  GeneratedColumn<String> get suggestedJson => $composableBuilder(
+    column: $table.suggestedJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get anchorReportJson => $composableBuilder(
+    column: $table.anchorReportJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$UnparsedSmsRowsTableAnnotationComposer get unparsedSmsId {
+    final $$UnparsedSmsRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.unparsedSmsId,
+      referencedTable: $db.unparsedSmsRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UnparsedSmsRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.unparsedSmsRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$UnparsedStatementRowsTableAnnotationComposer get unparsedStatementRowId {
+    final $$UnparsedStatementRowsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.unparsedStatementRowId,
+          referencedTable: $db.unparsedStatementRows,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$UnparsedStatementRowsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.unparsedStatementRows,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$TransactionsTableAnnotationComposer get transactionId {
+    final $$TransactionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.transactionId,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LlmReviewItemsTableTableManager
+    extends
+        RootTableManager<
+          _$ArthDatabase,
+          $LlmReviewItemsTable,
+          LlmReviewItem,
+          $$LlmReviewItemsTableFilterComposer,
+          $$LlmReviewItemsTableOrderingComposer,
+          $$LlmReviewItemsTableAnnotationComposer,
+          $$LlmReviewItemsTableCreateCompanionBuilder,
+          $$LlmReviewItemsTableUpdateCompanionBuilder,
+          (LlmReviewItem, $$LlmReviewItemsTableReferences),
+          LlmReviewItem,
+          PrefetchHooks Function({
+            bool unparsedSmsId,
+            bool unparsedStatementRowId,
+            bool transactionId,
+          })
+        > {
+  $$LlmReviewItemsTableTableManager(
+    _$ArthDatabase db,
+    $LlmReviewItemsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LlmReviewItemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LlmReviewItemsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LlmReviewItemsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int?> unparsedSmsId = const Value.absent(),
+                Value<int?> unparsedStatementRowId = const Value.absent(),
+                Value<String> rawText = const Value.absent(),
+                Value<String> suggestedJson = const Value.absent(),
+                Value<String> anchorReportJson = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int?> transactionId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => LlmReviewItemsCompanion(
+                id: id,
+                unparsedSmsId: unparsedSmsId,
+                unparsedStatementRowId: unparsedStatementRowId,
+                rawText: rawText,
+                suggestedJson: suggestedJson,
+                anchorReportJson: anchorReportJson,
+                status: status,
+                transactionId: transactionId,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int?> unparsedSmsId = const Value.absent(),
+                Value<int?> unparsedStatementRowId = const Value.absent(),
+                required String rawText,
+                required String suggestedJson,
+                required String anchorReportJson,
+                Value<String> status = const Value.absent(),
+                Value<int?> transactionId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => LlmReviewItemsCompanion.insert(
+                id: id,
+                unparsedSmsId: unparsedSmsId,
+                unparsedStatementRowId: unparsedStatementRowId,
+                rawText: rawText,
+                suggestedJson: suggestedJson,
+                anchorReportJson: anchorReportJson,
+                status: status,
+                transactionId: transactionId,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$LlmReviewItemsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                unparsedSmsId = false,
+                unparsedStatementRowId = false,
+                transactionId = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (unparsedSmsId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.unparsedSmsId,
+                                    referencedTable:
+                                        $$LlmReviewItemsTableReferences
+                                            ._unparsedSmsIdTable(db),
+                                    referencedColumn:
+                                        $$LlmReviewItemsTableReferences
+                                            ._unparsedSmsIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (unparsedStatementRowId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.unparsedStatementRowId,
+                                    referencedTable:
+                                        $$LlmReviewItemsTableReferences
+                                            ._unparsedStatementRowIdTable(db),
+                                    referencedColumn:
+                                        $$LlmReviewItemsTableReferences
+                                            ._unparsedStatementRowIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (transactionId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.transactionId,
+                                    referencedTable:
+                                        $$LlmReviewItemsTableReferences
+                                            ._transactionIdTable(db),
+                                    referencedColumn:
+                                        $$LlmReviewItemsTableReferences
+                                            ._transactionIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$LlmReviewItemsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$ArthDatabase,
+      $LlmReviewItemsTable,
+      LlmReviewItem,
+      $$LlmReviewItemsTableFilterComposer,
+      $$LlmReviewItemsTableOrderingComposer,
+      $$LlmReviewItemsTableAnnotationComposer,
+      $$LlmReviewItemsTableCreateCompanionBuilder,
+      $$LlmReviewItemsTableUpdateCompanionBuilder,
+      (LlmReviewItem, $$LlmReviewItemsTableReferences),
+      LlmReviewItem,
+      PrefetchHooks Function({
+        bool unparsedSmsId,
+        bool unparsedStatementRowId,
+        bool transactionId,
+      })
     >;
 
 class $ArthDatabaseManager {
@@ -10913,4 +13468,8 @@ class $ArthDatabaseManager {
       $$ModelInfoTableTableManager(_db, _db.modelInfo);
   $$UnparsedStatementRowsTableTableManager get unparsedStatementRows =>
       $$UnparsedStatementRowsTableTableManager(_db, _db.unparsedStatementRows);
+  $$LlmJobsTableTableManager get llmJobs =>
+      $$LlmJobsTableTableManager(_db, _db.llmJobs);
+  $$LlmReviewItemsTableTableManager get llmReviewItems =>
+      $$LlmReviewItemsTableTableManager(_db, _db.llmReviewItems);
 }

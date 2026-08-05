@@ -7,8 +7,8 @@ VENDOR="${ROOT}/vendor/llama.cpp"
 OUT="${ROOT}/build/ios"
 XCFRAMEWORK="${ROOT}/../../app/ios/Frameworks/arth_llm.xcframework"
 
-LLAMA_TAG="b4531"
-LLAMA_DATE="2026-01-18"
+LLAMA_TAG="b4875"
+LLAMA_DATE="2026-02-19"
 
 if [[ ! -d "${VENDOR}/.git" ]]; then
   git clone --depth 1 --branch "${LLAMA_TAG}" \

@@ -61,12 +61,24 @@ export LD_LIBRARY_PATH=build/desktop
 ./build/desktop/smoke_test path/to/model.gguf   # see tests/smoke_test.c
 ```
 
+### GBNF parse check (run before every device LLM test)
+
+Every `.gbnf` under `app/lib/llm/gbnf/` must parse through llama.cpp **on
+desktop** — broken grammars fail at runtime on device with
+`grammar_parse_failed` and zero decode tokens.
+
+```bash
+./build_desktop.sh          # builds grammar_validate + runs validate_grammars.sh
+./validate_grammars.sh      # re-check after editing any .gbnf
+```
+
 If no GGUF is available, run the **manual device checklist**:
 
 1. Install debug APK on arm64 Android device.
-2. Open **Settings → LLM (debug)** → download model on Wi‑Fi.
-3. Open **LLM Benchmark** → Run → copy results text.
-4. Confirm standard task prints schema-valid JSON for 3 held-out SMS.
+2. **`./validate_grammars.sh` must pass on desktop.**
+3. Open **Settings → LLM (debug)** → download model on Wi‑Fi.
+4. Open **LLM Benchmark** → Run → copy results text.
+5. Confirm standard task prints schema-valid JSON for 3 held-out SMS.
 
 ## CI
 

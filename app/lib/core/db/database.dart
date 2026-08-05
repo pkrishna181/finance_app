@@ -11,6 +11,7 @@ import 'package:sqlite3/common.dart' show CommonDatabase;
 
 import '../crypto/db_key_store.dart';
 import '../models/category_defaults.dart';
+import '../../llm/jobs/llm_job_types.dart';
 import '../../parsing/sms/template.dart' show buildDedupeKey;
 import 'tables.dart';
 
@@ -35,6 +36,8 @@ class UpsertResult {
     MandateNotices,
     ModelInfo,
     UnparsedStatementRows,
+    LlmJobs,
+    LlmReviewItems,
   ],
 )
 class ArthDatabase extends _$ArthDatabase {
@@ -63,7 +66,7 @@ class ArthDatabase extends _$ArthDatabase {
   }
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -85,6 +88,13 @@ class ArthDatabase extends _$ArthDatabase {
           }
           if (from < 4) {
             await m.createTable(modelInfo);
+          }
+          if (from < 5) {
+            await m.addColumn(merchantAliases, merchantAliases.confidence);
+            await m.addColumn(transactions, transactions.suggestedCategorySlug);
+            await m.addColumn(transactions, transactions.categorySource);
+            await m.createTable(llmJobs);
+            await m.createTable(llmReviewItems);
           }
         },
         beforeOpen: (details) async {
@@ -172,6 +182,144 @@ class ArthDatabase extends _$ArthDatabase {
     } else {
       await (update(modelInfo)..where((t) => t.id.equals(existing.id))).write(row);
     }
+  }
+
+  // --- Phase 5: unparsed + LLM queue ---
+
+  Future<int> countUnresolvedUnparsedSms() async {
+    final q = selectOnly(unparsedSmsRows)
+      ..addColumns([unparsedSmsRows.id.count()])
+      ..where(unparsedSmsRows.resolved.equals(false));
+    final row = await q.getSingle();
+    return row.read(unparsedSmsRows.id.count()) ?? 0;
+  }
+
+  Stream<int> watchUnresolvedUnparsedSmsCount() {
+    final q = selectOnly(unparsedSmsRows)
+      ..addColumns([unparsedSmsRows.id.count()])
+      ..where(unparsedSmsRows.resolved.equals(false));
+    return q.watchSingle().map((row) => row.read(unparsedSmsRows.id.count()) ?? 0);
+  }
+
+  Future<List<UnparsedSmsRow>> listUnresolvedUnparsedSms({int limit = 100}) {
+    return (select(unparsedSmsRows)
+          ..where((t) => t.resolved.equals(false))
+          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)])
+          ..limit(limit))
+        .get();
+  }
+
+  Future<UnparsedSmsRow?> getUnparsedSms(int id) {
+    return (select(unparsedSmsRows)..where((t) => t.id.equals(id))).getSingleOrNull();
+  }
+
+  Future<void> markUnparsedSmsResolved(int id) {
+    return (update(unparsedSmsRows)..where((t) => t.id.equals(id)))
+        .write(const UnparsedSmsRowsCompanion(resolved: Value(true)));
+  }
+
+  Future<int> insertLlmJob(LlmJobsCompanion row) {
+    return into(llmJobs).insert(row);
+  }
+
+  Future<bool> hasPendingMerchantJob(String rawMerchant) async {
+    final key = rawMerchant.trim().toLowerCase();
+    final pending = await (select(llmJobs)
+          ..where((t) => t.jobType.equals('merchant_normalize'))
+          ..where((t) => t.status.isIn(['pending', 'running'])))
+        .get();
+    for (final job in pending) {
+      if (job.payloadJson.toLowerCase().contains(key)) return true;
+    }
+    final alias = await (select(merchantAliases)
+          ..where((t) => t.rawName.equals(rawMerchant.trim())))
+        .getSingleOrNull();
+    return alias != null;
+  }
+
+  Future<List<LlmJob>> fetchPendingJobs({int limit = 50}) async {
+    final rows = await (select(llmJobs)
+          ..where((t) => t.status.equals('pending'))
+          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)])
+          ..limit(limit))
+        .get();
+    rows.sort((a, b) {
+      final ta = LlmJobType.fromWire(a.jobType);
+      final tb = LlmJobType.fromWire(b.jobType);
+      if (ta == null || tb == null) return a.id.compareTo(b.id);
+      return llmJobTypeSortOrder(ta).compareTo(llmJobTypeSortOrder(tb));
+    });
+    return rows;
+  }
+
+  Future<void> updateLlmJob(int id, LlmJobsCompanion patch) {
+    return (update(llmJobs)..where((t) => t.id.equals(id))).write(patch);
+  }
+
+  Future<int> insertReviewItem(LlmReviewItemsCompanion row) {
+    return into(llmReviewItems).insert(row);
+  }
+
+  Future<List<LlmReviewItem>> listPendingReviewItems() {
+    return (select(llmReviewItems)
+          ..where((t) => t.status.equals('pending'))
+          ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+        .get();
+  }
+
+  Future<LlmReviewItem?> getReviewItem(int id) {
+    return (select(llmReviewItems)..where((t) => t.id.equals(id))).getSingleOrNull();
+  }
+
+  Future<void> updateReviewItem(int id, LlmReviewItemsCompanion patch) {
+    return (update(llmReviewItems)..where((t) => t.id.equals(id))).write(patch);
+  }
+
+  Future<MerchantAliase?> findMerchantAlias(String rawName) {
+    return (select(merchantAliases)..where((t) => t.rawName.equals(rawName.trim())))
+        .getSingleOrNull();
+  }
+
+  Future<int> upsertMerchantAlias({
+    required String rawName,
+    required int merchantId,
+    required String source,
+    double? confidence,
+  }) async {
+    final existing = await findMerchantAlias(rawName);
+    if (existing != null) {
+      if (existing.source == 'user' && source != 'user') return existing.id;
+      await (update(merchantAliases)..where((t) => t.id.equals(existing.id))).write(
+        MerchantAliasesCompanion(
+          merchantId: Value(merchantId),
+          source: Value(source),
+          confidence: Value(confidence),
+        ),
+      );
+      return existing.id;
+    }
+    return into(merchantAliases).insert(
+      MerchantAliasesCompanion.insert(
+        rawName: rawName.trim(),
+        merchantId: merchantId,
+        source: source,
+        confidence: Value(confidence),
+      ),
+    );
+  }
+
+  Future<int> findOrCreateMerchant(String canonicalName) async {
+    final existing = await (select(merchants)
+          ..where((t) => t.canonicalName.equals(canonicalName)))
+        .getSingleOrNull();
+    if (existing != null) return existing.id;
+    return into(merchants).insert(
+      MerchantsCompanion.insert(canonicalName: canonicalName),
+    );
+  }
+
+  Future<Category?> categoryBySlug(String slug) {
+    return (select(categories)..where((t) => t.slug.equals(slug))).getSingleOrNull();
   }
 }
 

@@ -27,6 +27,10 @@ class MerchantAliases extends Table {
 
   /// Origin of the mapping: system | llm | user.
   TextColumn get source => text()();
+
+  /// LLM confidence 0–1 when [source] is llm.
+  RealColumn get confidence => real().nullable()();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
@@ -80,6 +84,12 @@ class Transactions extends Table {
       integer().nullable().references(Merchants, #id)();
   IntColumn get categoryId =>
       integer().nullable().references(Categories, #id)();
+
+  /// LLM/rule suggestion before user confirms (slug from [Categories]).
+  TextColumn get suggestedCategorySlug => text().nullable()();
+
+  /// rule | llm | user — how [categoryId] was assigned.
+  TextColumn get categorySource => text().nullable()();
 
   TextColumn get rawMerchant => text()();
   TextColumn get rawDescription => text()();
@@ -179,5 +189,44 @@ class UnparsedStatementRows extends Table {
   TextColumn get rawRowJson => text()();
   TextColumn get reason => text()();
   BoolColumn get resolved => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Background LLM work queue (Phase 5).
+class LlmJobs extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  /// sms_extract | stmt_row_extract | merchant_normalize | categorize
+  TextColumn get jobType => text()();
+
+  /// JSON payload (row ids, raw strings, txn id, etc.).
+  TextColumn get payloadJson => text()();
+
+  /// pending | running | done | failed
+  TextColumn get status => text().withDefault(const Constant('pending'))();
+
+  IntColumn get attempts => integer().withDefault(const Constant(0))();
+  TextColumn get resultJson => text().nullable()();
+  TextColumn get lastError => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// LLM-suggested transactions awaiting user review.
+class LlmReviewItems extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get unparsedSmsId =>
+      integer().nullable().references(UnparsedSmsRows, #id)();
+  IntColumn get unparsedStatementRowId =>
+      integer().nullable().references(UnparsedStatementRows, #id)();
+  TextColumn get rawText => text()();
+  TextColumn get suggestedJson => text()();
+  TextColumn get anchorReportJson => text()();
+
+  /// pending | confirmed | discarded | unresolvable_v1
+  TextColumn get status => text().withDefault(const Constant('pending'))();
+
+  IntColumn get transactionId =>
+      integer().nullable().references(Transactions, #id)();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
