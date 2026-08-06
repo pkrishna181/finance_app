@@ -230,3 +230,15 @@ class LlmReviewItems extends Table {
       integer().nullable().references(Transactions, #id)();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
+
+/// Local model-quality ledger — disagreements between LLM output and anchor resolution.
+class LlmDisagreements extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get jobId => integer().nullable().references(LlmJobs, #id)();
+
+  /// direction | merchant_demoted | vpa_dropped | ref_dropped | amount_rejected | date_rejected
+  TextColumn get field => text()();
+  TextColumn get llmValue => text()();
+  TextColumn get resolvedValue => text()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}

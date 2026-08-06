@@ -13,6 +13,7 @@ import '../category_rule_engine.dart';
 import '../llm_engine.dart';
 import '../llama_cpp_engine.dart';
 import '../merchant_seed_catalog.dart';
+import '../llm_disagreement_recorder.dart';
 import '../parsed_transaction_validator.dart';
 import '../prompts/categorize_prompt.dart';
 import '../prompts/gemma3_chat.dart';
@@ -87,7 +88,7 @@ class LlmJobRunner {
         );
 
         final sw = Stopwatch()..start();
-        final result = await _dispatch(type, job.payloadJson);
+        final result = await _dispatch(type, job.payloadJson, jobId: job.id);
         sw.stop();
         timings.add(LlmJobTiming(jobType: type, wallMs: sw.elapsedMilliseconds));
 
@@ -126,16 +127,16 @@ class LlmJobRunner {
     }
   }
 
-  Future<Result<String>> _dispatch(LlmJobType type, String payloadJson) async {
+  Future<Result<String>> _dispatch(LlmJobType type, String payloadJson, {int? jobId}) async {
     return switch (type) {
-      LlmJobType.smsExtract => _runSmsExtract(payloadJson),
+      LlmJobType.smsExtract => _runSmsExtract(payloadJson, jobId: jobId),
       LlmJobType.stmtRowExtract => const Err('stmt_row_extract_not_implemented_v1'),
       LlmJobType.merchantNormalize => _runMerchantNormalize(payloadJson),
       LlmJobType.categorize => _runCategorize(payloadJson),
     };
   }
 
-  Future<Result<String>> _runSmsExtract(String payloadJson) async {
+  Future<Result<String>> _runSmsExtract(String payloadJson, {int? jobId}) async {
     final payload = SmsExtractPayload.fromJson(
       Map<String, Object?>.from(jsonDecode(payloadJson) as Map),
     );
@@ -171,10 +172,20 @@ class LlmJobRunner {
     );
     if (validated.isErr) return Err(validated.errorOrNull!, validated);
 
+    final llmTxn = validated.okOrNull!;
+    final llmJson = llmTxn.toJson();
+
     final anchored = validateAgainstSource(
       row.rawBody,
-      validated.okOrNull!.toJson(),
+      llmJson,
       sender: row.sender,
+    );
+
+    await LlmDisagreementRecorder(db).recordFromAnchor(
+      report: anchored.report,
+      llmJson: llmJson,
+      cleaned: anchored.cleaned,
+      jobId: jobId,
     );
 
     if (!anchored.report.allCriticalPassed) {

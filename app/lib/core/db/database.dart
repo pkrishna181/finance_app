@@ -66,12 +66,21 @@ class ArthDatabase extends _$ArthDatabase {
   }
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
+          await customStatement('''
+CREATE TABLE IF NOT EXISTS llm_disagreements (
+  id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  job_id INTEGER REFERENCES llm_jobs(id),
+  field TEXT NOT NULL,
+  llm_value TEXT NOT NULL,
+  resolved_value TEXT NOT NULL,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+)''');
           await _seedCategories();
         },
         onUpgrade: (m, from, to) async {
@@ -95,6 +104,17 @@ class ArthDatabase extends _$ArthDatabase {
             await m.addColumn(transactions, transactions.categorySource);
             await m.createTable(llmJobs);
             await m.createTable(llmReviewItems);
+          }
+          if (from < 6) {
+            await customStatement('''
+CREATE TABLE IF NOT EXISTS llm_disagreements (
+  id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  job_id INTEGER REFERENCES llm_jobs(id),
+  field TEXT NOT NULL,
+  llm_value TEXT NOT NULL,
+  resolved_value TEXT NOT NULL,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+)''');
           }
         },
         beforeOpen: (details) async {
@@ -320,6 +340,44 @@ class ArthDatabase extends _$ArthDatabase {
 
   Future<Category?> categoryBySlug(String slug) {
     return (select(categories)..where((t) => t.slug.equals(slug))).getSingleOrNull();
+  }
+
+  Future<int> insertLlmDisagreement({
+    int? jobId,
+    required String field,
+    required String llmValue,
+    required String resolvedValue,
+  }) {
+    if (jobId == null) {
+      return customInsert(
+        'INSERT INTO llm_disagreements (field, llm_value, resolved_value) '
+        'VALUES (?, ?, ?)',
+        variables: [
+          Variable<String>(field),
+          Variable<String>(llmValue),
+          Variable<String>(resolvedValue),
+        ],
+      );
+    }
+    return customInsert(
+      'INSERT INTO llm_disagreements (job_id, field, llm_value, resolved_value) '
+      'VALUES (?, ?, ?, ?)',
+      variables: [
+        Variable<int>(jobId),
+        Variable<String>(field),
+        Variable<String>(llmValue),
+        Variable<String>(resolvedValue),
+      ],
+    );
+  }
+
+  Future<Map<String, int>> countLlmDisagreementsByField() async {
+    final rows = await customSelect(
+      'SELECT field, COUNT(*) AS c FROM llm_disagreements GROUP BY field',
+    ).get();
+    return {
+      for (final row in rows) row.read<String>('field'): row.read<int>('c'),
+    };
   }
 }
 

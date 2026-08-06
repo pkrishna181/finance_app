@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/db/database.dart';
 import '../../llm/llama_cpp_engine.dart';
+import '../../llm/llm_disagreement_recorder.dart';
 import '../../llm/model_config.dart';
 import '../../llm/model_download_manager.dart';
 import 'llm_benchmark_screen.dart';
@@ -22,11 +24,13 @@ class _LlmDebugSettingsScreenState extends State<LlmDebugSettingsScreen> {
   ModelDownloadProgress? _progress;
   String? _status;
   bool _wifiOnly = true;
+  Map<String, int> _disagreementCounts = const {};
 
   @override
   void initState() {
     super.initState();
     _loadPrefs();
+    _openDb();
     _downloader.progress.listen((p) {
       if (mounted) setState(() => _progress = p);
     });
@@ -35,6 +39,17 @@ class _LlmDebugSettingsScreenState extends State<LlmDebugSettingsScreen> {
   Future<void> _loadPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() => _wifiOnly = prefs.getBool(_wifiOnlyKey) ?? true);
+  }
+
+  Future<void> _openDb() async {
+    try {
+      final db = await ArthDatabase.openEncrypted();
+      final counts = await db.countLlmDisagreementsByField();
+      await db.close();
+      if (mounted) {
+        setState(() => _disagreementCounts = counts);
+      }
+    } catch (_) {}
   }
 
   Future<void> _saveWifiOnly(bool value) async {
@@ -87,6 +102,23 @@ class _LlmDebugSettingsScreenState extends State<LlmDebugSettingsScreen> {
               ),
             ),
           ],
+          const Divider(),
+          Text(
+            'LLM disagreements (since install)',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          if (_disagreementCounts.isEmpty)
+            const ListTile(
+              title: Text('No disagreements recorded yet'),
+            )
+          else
+            for (final field in LlmDisagreementField.values)
+              if ((_disagreementCounts[field.wireName] ?? 0) > 0)
+                ListTile(
+                  dense: true,
+                  title: Text(field.wireName),
+                  trailing: Text('${_disagreementCounts[field.wireName]}'),
+                ),
           const Divider(),
           ListTile(
             title: const Text('n_threads'),

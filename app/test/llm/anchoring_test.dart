@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:arth/core/db/database.dart';
 import 'package:arth/llm/anchoring.dart';
+import 'package:arth/llm/llm_disagreement_recorder.dart';
 import 'package:arth/llm/parsed_transaction_validator.dart';
 
 void main() {
@@ -45,7 +47,7 @@ void main() {
     expect(r.cleaned['bank_code'], isNot('BONUS'));
   });
 
-  test('SMS2 rejects contradicted credit direction', () {
+  test('SMS2 overrides contradicted credit direction via Dr cue', () {
     final llm = {
       'amount_paise': 149900,
       'direction': 'credit',
@@ -58,9 +60,93 @@ void main() {
     };
     final r = validateAgainstSource(sms2, llm);
     final dir = r.report.fields.firstWhere((f) => f.field == 'direction');
-    expect(dir.status, AnchorFieldStatus.reject);
-    expect(r.cleaned.containsKey('direction'), isFalse);
-    expect(r.report.allCriticalPassed, isFalse);
+    expect(dir.status, AnchorFieldStatus.override);
+    expect(r.cleaned['direction'], 'debit');
+    expect(r.cleaned['direction_inferred'], isFalse);
+    expect(r.report.allCriticalPassed, isTrue);
+    expect(
+      formatAnchorVerdictLine(r.report, r.cleaned),
+      'anchor: usable (direction: overridden)',
+    );
+  });
+
+  test('no direction cue accepts LLM direction with inferred flag', () {
+    const body = 'Txn INR 500.00 on 01-AUG-26 ref 998877665544';
+    final llm = {
+      'amount_paise': 50000,
+      'direction': 'debit',
+      'type': 'other',
+      'booked_at': '2026-08-01T00:00:00.000Z',
+      'bank_code': 'UNKNOWN',
+      'raw_merchant': 'ref 998877665544',
+      'raw_description': body,
+      'dedupe_key': 'unknown|50000|998877665544',
+    };
+    final r = validateAgainstSource(body, llm);
+    final dir = r.report.fields.firstWhere((f) => f.field == 'direction');
+    expect(dir.status, AnchorFieldStatus.infer);
+    expect(r.cleaned['direction'], 'debit');
+    expect(r.cleaned['direction_inferred'], isTrue);
+    expect(r.report.allCriticalPassed, isTrue);
+  });
+
+  test('conflicting direction cues keep LLM with inferred flag', () {
+    const body =
+        'Amount debited from A/c. Refund credited back Rs 200.00 on 02-AUG-26';
+    final llm = {
+      'amount_paise': 20000,
+      'direction': 'credit',
+      'type': 'other',
+      'booked_at': '2026-08-02T00:00:00.000Z',
+      'bank_code': 'UNKNOWN',
+      'raw_merchant': 'Refund',
+      'raw_description': body,
+      'dedupe_key': 'unknown|20000|',
+    };
+    final r = validateAgainstSource(body, llm);
+    final dir = r.report.fields.firstWhere((f) => f.field == 'direction');
+    expect(dir.status, AnchorFieldStatus.infer);
+    expect(dir.detail, 'conflicting_cues');
+    expect(r.cleaned['direction'], 'credit');
+    expect(r.cleaned['direction_inferred'], isTrue);
+  });
+
+  test('disagreement rows for merchant demote and vpa drop', () async {
+    final db = ArthDatabase.memory();
+    addTearDown(db.close);
+
+    const body =
+        'Rs 99.00 debited on 03-AUG-26 UPI/111122223333/shop@ybl';
+    final llm = {
+      'amount_paise': 9900,
+      'direction': 'debit',
+      'type': 'upi',
+      'booked_at': '2026-08-03T00:00:00.000Z',
+      'bank_code': 'UNKNOWN',
+      'raw_merchant': 'Avl Bal INR 9,999.00',
+      'raw_description': body,
+      'upi_payee_vpa': 'fake@vpa',
+      'upi_ref': '111122223333',
+      'dedupe_key': 'unknown|9900|111122223333',
+    };
+    final r = validateAgainstSource(body, llm);
+    expect(
+      r.report.fields.firstWhere((f) => f.field == 'raw_merchant').status,
+      AnchorFieldStatus.demote,
+    );
+    expect(
+      r.report.fields.firstWhere((f) => f.field == 'upi_payee_vpa').status,
+      AnchorFieldStatus.reject,
+    );
+    await LlmDisagreementRecorder(db).recordFromAnchor(
+      report: r.report,
+      llmJson: llm,
+      cleaned: r.cleaned,
+    );
+
+    final counts = await db.countLlmDisagreementsByField();
+    expect(counts[LlmDisagreementField.merchantDemoted.wireName], 1);
+    expect(counts[LlmDisagreementField.vpaDropped.wireName], 1);
   });
 
   group('span extraction → anchor (Phase 4 bad outputs)', () {
@@ -77,13 +163,16 @@ void main() {
       expect(merchant.status, AnchorFieldStatus.demote);
     });
 
-    test('SMS2 wrong credit rejected after span validate', () {
+    test('SMS2 wrong credit overridden after span validate', () {
       const badJson =
           '{"a":"Rs 1,499.00","d":"30Jul26","t":null,"y":"imps","r":"credit",'
           '"m":"FLIPKART INDIA","f":"637890999888","v":null}';
       final txn = v.validate(badJson, sourceSms: sms2).okOrNull!;
       final r = validateAgainstSource(sms2, txn.toJson());
-      expect(r.report.allCriticalPassed, isFalse);
+      expect(r.report.allCriticalPassed, isTrue);
+      expect(r.cleaned['direction'], 'debit');
+      final dir = r.report.fields.firstWhere((f) => f.field == 'direction');
+      expect(dir.status, AnchorFieldStatus.override);
     });
 
     test('SMS3 amount span parses to 2500000 not wrong integer', () {

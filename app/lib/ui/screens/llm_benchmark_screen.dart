@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../llm/anchoring.dart';
 import '../../llm/llama_cpp_engine.dart';
 import '../../llm/model_config.dart';
 import '../../llm/parsed_transaction_validator.dart';
@@ -178,6 +179,7 @@ class _LlmBenchmarkScreenState extends State<LlmBenchmarkScreen> {
       final taskStart = DateTime.now();
       log('\n=== Standard task (3 held-out SMS) ===');
       log('Per-item wall time (full prompt, no prefix cache):');
+      final batchTally = AnchorBatchTally();
       for (var i = 0; i < kHeldOutWeirdSms.length; i++) {
         log('SMS ${i + 1}/${kHeldOutWeirdSms.length}…');
         final sms = kHeldOutWeirdSms[i];
@@ -197,7 +199,13 @@ class _LlmBenchmarkScreenState extends State<LlmBenchmarkScreen> {
         log('output_tokens: ${widget.engine.lastGeneratedTokenCount} (cap 96)');
         final verdict = _validator.validate(raw, sourceSms: sms);
         log('validation: ${verdict.isOk ? "OK" : "FAIL ${verdict.errorOrNull}"}');
+        if (verdict.isOk) {
+          final anchored = validateAgainstSource(sms, verdict.okOrNull!.toJson());
+          log(formatAnchorVerdictLine(anchored.report, anchored.cleaned));
+          batchTally.add(anchored.report, anchored.cleaned);
+        }
       }
+      log('\n${batchTally.summaryLine()}');
 
       if (widget.engine is LlamaCppEngine) {
         final llama = widget.engine as LlamaCppEngine;

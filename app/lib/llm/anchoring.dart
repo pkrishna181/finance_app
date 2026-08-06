@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import '../core/models/money.dart';
 import '../core/models/transaction_type.dart';
 import '../parsing/common/extractors.dart';
 import '../parsing/sms/sender_matcher.dart';
@@ -92,27 +91,46 @@ class AnchorReport {
     cleaned.remove('amount_paise');
   }
 
-  // direction — corroborate with keyword sets
+  // direction — keyword precedence overrides LLM; never rejects
   final dirWire = cleaned['direction'];
   if (dirWire is String) {
-    final extracted = extractDirection(rawText);
-    if (extracted != null && extracted.name == dirWire) {
-      reports.add(const AnchorFieldReport(field: 'direction', status: AnchorFieldStatus.pass));
-      cleaned['direction_inferred'] = false;
-    } else if (extracted == null) {
-      reports.add(const AnchorFieldReport(
-        field: 'direction',
-        status: AnchorFieldStatus.infer,
-        detail: 'no_direction_cue',
-      ));
-      cleaned['direction_inferred'] = true;
-    } else {
-      reports.add(AnchorFieldReport(
-        field: 'direction',
-        status: AnchorFieldStatus.reject,
-        detail: 'contradicted_by_text',
-      ));
-      cleaned.remove('direction');
+    final cue = classifyDirectionCue(rawText);
+    final llmDir = TransactionDirection.fromWire(dirWire);
+    switch (cue) {
+      case DirectionCueKind.unambiguousDebit:
+        cleaned['direction'] = TransactionDirection.debit.wireName;
+        cleaned['direction_inferred'] = false;
+        if (llmDir != TransactionDirection.debit) {
+          reports.add(const AnchorFieldReport(
+            field: 'direction',
+            status: AnchorFieldStatus.override,
+            detail: 'keyword_override',
+          ));
+        } else {
+          reports.add(const AnchorFieldReport(field: 'direction', status: AnchorFieldStatus.pass));
+        }
+      case DirectionCueKind.unambiguousCredit:
+        cleaned['direction'] = TransactionDirection.credit.wireName;
+        cleaned['direction_inferred'] = false;
+        if (llmDir != TransactionDirection.credit) {
+          reports.add(const AnchorFieldReport(
+            field: 'direction',
+            status: AnchorFieldStatus.override,
+            detail: 'keyword_override',
+          ));
+        } else {
+          reports.add(const AnchorFieldReport(field: 'direction', status: AnchorFieldStatus.pass));
+        }
+      case DirectionCueKind.conflicting:
+      case DirectionCueKind.none:
+        reports.add(AnchorFieldReport(
+          field: 'direction',
+          status: AnchorFieldStatus.infer,
+          detail: cue == DirectionCueKind.conflicting
+              ? 'conflicting_cues'
+              : 'no_direction_cue',
+        ));
+        cleaned['direction_inferred'] = true;
     }
   }
 
@@ -149,7 +167,13 @@ class AnchorReport {
   ));
 
   // refs / VPA / account mask — if present must appear in raw text
-  for (final key in ['upi_ref', 'external_ref', 'account_hint']) {
+  for (final key in [
+    'upi_ref',
+    'external_ref',
+    'account_hint',
+    'upi_payee_vpa',
+    'upi_payer_vpa',
+  ]) {
     final val = cleaned[key];
     if (val is! String || val.isEmpty) continue;
     if (_appearsInSource(rawText, val)) {
@@ -203,7 +227,10 @@ class AnchorReport {
   final critical = {'amount_paise', 'booked_at', 'direction'};
   final criticalPassed = reports
       .where((r) => critical.contains(r.field))
-      .every((r) => r.status == AnchorFieldStatus.pass || r.status == AnchorFieldStatus.infer);
+      .every((r) =>
+          r.status == AnchorFieldStatus.pass ||
+          r.status == AnchorFieldStatus.infer ||
+          r.status == AnchorFieldStatus.override);
 
   return (
     cleaned: cleaned,
@@ -259,6 +286,74 @@ Set<String> _tokens(String text) {
       .split(RegExp(r'[^a-z0-9@]+'))
       .where((t) => t.length >= 3)
       .toSet();
+}
+
+/// Benchmark / debug one-line anchor verdict after validation.
+String formatAnchorVerdictLine(AnchorReport report, Map<String, Object?> cleaned) {
+  AnchorFieldStatus? statusFor(String field) {
+    for (final f in report.fields) {
+      if (f.field == field) return f.status;
+    }
+    return null;
+  }
+
+  if (statusFor('amount_paise') == AnchorFieldStatus.reject) {
+    return 'anchor: rejected (amount)';
+  }
+  if (statusFor('booked_at') == AnchorFieldStatus.reject) {
+    return 'anchor: rejected (date)';
+  }
+
+  final dropped = <String>[];
+  if (statusFor('raw_merchant') == AnchorFieldStatus.demote) dropped.add('m');
+  for (final key in ['upi_payee_vpa', 'upi_payer_vpa']) {
+    if (statusFor(key) == AnchorFieldStatus.reject && !dropped.contains('v')) {
+      dropped.add('v');
+    }
+  }
+  for (final key in ['upi_ref', 'external_ref']) {
+    if (statusFor(key) == AnchorFieldStatus.reject && !dropped.contains('f')) {
+      dropped.add('f');
+    }
+  }
+
+  final directionOverridden =
+      statusFor('direction') == AnchorFieldStatus.override;
+  final directionInferred = cleaned['direction_inferred'] == true;
+  final merchantOnlyDrop = dropped.length == 1 && dropped.first == 'm';
+  final label = merchantOnlyDrop ? 'partial' : 'usable';
+
+  final buf = StringBuffer('anchor: $label');
+  if (dropped.isNotEmpty) {
+    buf.write(' (dropped: ${dropped.join(', ')})');
+  }
+  if (directionOverridden) buf.write(' (direction: overridden)');
+  if (directionInferred) buf.write(' (directionInferred)');
+  return buf.toString();
+}
+
+/// Running batch tally for benchmark output.
+class AnchorBatchTally {
+  int usable = 0;
+  int rejected = 0;
+  int directionOverrides = 0;
+
+  void add(AnchorReport report, Map<String, Object?> cleaned) {
+    final line = formatAnchorVerdictLine(report, cleaned);
+    if (line.contains('rejected')) {
+      rejected++;
+    } else {
+      usable++;
+    }
+    if (report.fields.any(
+      (f) => f.field == 'direction' && f.status == AnchorFieldStatus.override,
+    )) {
+      directionOverrides++;
+    }
+  }
+
+  String summaryLine() =>
+      'batch verdict: $usable usable / $rejected rejected ($directionOverrides direction overrides)';
 }
 
 /// Convenience: parse JSON string then anchor.

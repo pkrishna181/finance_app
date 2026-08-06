@@ -263,6 +263,33 @@ TransactionDirection? extractDirection(String body) {
   return null;
 }
 
+/// How confidently [body] signals debit vs credit for anchor precedence.
+///
+/// Strong `Dr`/`Cr` abbreviations (e.g. "Dr Rs") win even when reversal
+/// phrasing also mentions the opposite keyword.
+enum DirectionCueKind { unambiguousDebit, unambiguousCredit, conflicting, none }
+
+final _strongDrCue = RegExp(r'\bDr\.?\s', caseSensitive: false);
+final _strongCrCue = RegExp(r'\bCr\.?\s', caseSensitive: false);
+
+DirectionCueKind classifyDirectionCue(String body) {
+  final hasStrongDr = _strongDrCue.hasMatch(body);
+  final hasStrongCr = _strongCrCue.hasMatch(body);
+  if (hasStrongDr && !hasStrongCr) return DirectionCueKind.unambiguousDebit;
+  if (hasStrongCr && !hasStrongDr) return DirectionCueKind.unambiguousCredit;
+  if (hasStrongDr && hasStrongCr) return DirectionCueKind.conflicting;
+
+  final hasDebit = _debitWords.hasMatch(body);
+  final hasCredit = _creditWords.hasMatch(body);
+  if (hasDebit && !hasCredit) return DirectionCueKind.unambiguousDebit;
+  if (hasCredit && !hasDebit) return DirectionCueKind.unambiguousCredit;
+  if (hasDebit && hasCredit) return DirectionCueKind.conflicting;
+  if (RegExp(r'\bpaid\b', caseSensitive: false).hasMatch(body)) {
+    return DirectionCueKind.unambiguousDebit;
+  }
+  return DirectionCueKind.none;
+}
+
 // ---------------------------------------------------------------------------
 // Refs / VPA / account
 // ---------------------------------------------------------------------------

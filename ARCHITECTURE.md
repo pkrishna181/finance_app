@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: 2026-08-05 (Phase 5 — hybrid LLM integration)
+Last updated: 2026-08-06 (Phase 5.3 — anchor verdicts + direction precedence)
 
 ---
 
@@ -69,7 +69,7 @@ never logged.
 
 ---
 
-## Data model (schema v5)
+## Data model (schema v6)
 
 ### Imports
 
@@ -269,15 +269,56 @@ Microbench same session: grammar decode 5.4 tok/s, ~800 MB RSS.
 
 | Field | Rule |
 |---|---|
-| amount_paise | Must match `extractSoleTxnAmount` |
-| direction | Corroborated by keyword sets; no cue → `directionInferred=true` |
-| booked_at | Must parse from raw text (LLM normalizes only) |
+| amount_paise | Must match `extractSoleTxnAmount` — **only hard-reject** |
+| direction | See precedence below — **never rejects** |
+| booked_at | Must parse from raw text (LLM normalizes only) — **hard-reject** |
 | bank_code | **Never from LLM** — sender/body guess overrides |
 | raw_merchant | Token overlap or substring; balance-adjacent phrases demoted |
-| refs / dedupe refs | Must appear in raw text |
+| refs / VPA | Must appear in raw text; dropped + disagreement row if not |
 
-Outputs `(cleanedJson, anchorReport)`. Critical failures →
-`unresolvable_v1` (no retry).
+**Direction precedence** (mirrors statement bank logic):
+
+| Source text | Result |
+|---|---|
+| Unambiguous debit/credit cue (keyword sets incl. `Dr`/`Cr` abbrev.) | Dart direction wins; silently overrides LLM `r`; `direction_inferred=false` |
+| No direction cue | LLM `r` kept; `direction_inferred=true` |
+| Conflicting cues (both debit and credit keywords) | LLM `r` kept; `direction_inferred=true` |
+
+`Dr Rs` / `Cr Rs` style abbreviations count as unambiguous even when reversal
+wording mentions the opposite keyword (SMS2 case).
+
+Outputs `(cleanedJson, anchorReport)`. Critical failures on amount/date →
+`unresolvable_v1` (no retry). Direction mismatch is **not** a failure.
+
+### Disagreement telemetry (`llm_disagreements`, local only)
+
+On-device model-quality ledger — never synced or logged off-device.
+Rows: `job_id` (nullable), `field`, `llm_value`, `resolved_value`, `created_at`.
+
+| `field` | When recorded |
+|---|---|
+| `direction` | Keyword override disagreed with LLM `r` |
+| `merchant_demoted` | `raw_merchant` demoted |
+| `vpa_dropped` | VPA nulled (not in source) |
+| `ref_dropped` | Ref nulled (not in source) |
+| `amount_rejected` | Amount anchor failed |
+| `date_rejected` | Date anchor failed |
+
+Debug screen shows per-field counts since install (read-only).
+
+### Benchmark anchor verdict (standard task)
+
+After `validation: OK/ERR`, runs the same `validateAgainstSource` path as
+[LlmJobRunner]. One line per SMS:
+
+```
+anchor: usable
+anchor: usable (dropped: v, f) (direction: overridden)
+anchor: partial (dropped: m) (directionInferred)
+anchor: rejected (amount)
+```
+
+Batch footer: `batch verdict: N usable / M rejected (K direction overrides)`.
 
 ### Feature 1 — unparsed queue
 
