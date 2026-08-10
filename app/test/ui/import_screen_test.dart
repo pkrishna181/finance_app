@@ -7,6 +7,8 @@ import 'package:arth/ingestion/sms/consent_screen.dart';
 import 'package:arth/ingestion/sms/sms_scan_session.dart';
 import 'package:arth/ingestion/sms/sms_source.dart';
 import 'package:arth/ingestion/source.dart';
+import 'package:arth/llm/fake_llm_engine.dart';
+import 'package:arth/llm/jobs/llm_batch_coordinator.dart';
 import 'package:arth/ui/screens/import_screen.dart';
 import 'package:arth/ui/screens/sms_historical_scan_screen.dart';
 import 'package:flutter/material.dart';
@@ -63,6 +65,7 @@ void main() {
     late ArthDatabase db;
     late SmsConsentStore consent;
     late FakeSmsIngestionSource fakeSms;
+    late LlmBatchCoordinator coordinator;
 
     setUp(() async {
       FlutterSecureStorage.setMockInitialValues({});
@@ -70,9 +73,13 @@ void main() {
       db = ArthDatabase.memory();
       consent = SmsConsentStore();
       fakeSms = FakeSmsIngestionSource(consentStore: consent);
+      final engine = FakeLlmEngine();
+      await engine.load(modelPath: 'fake');
+      coordinator = LlmBatchCoordinator(engine: engine);
     });
 
     tearDown(() async {
+      coordinator.dispose();
       await db.close();
     });
 
@@ -83,6 +90,7 @@ void main() {
             database: db,
             consentStore: consent,
             registry: IngestionRegistry(sources: [fakeSms]),
+            coordinator: coordinator,
             showUnparsedBadge: false,
           ),
         ),
@@ -117,6 +125,7 @@ void main() {
             database: db,
             consentStore: consent,
             registry: IngestionRegistry(sources: [fakeSms]),
+            coordinator: coordinator,
             showUnparsedBadge: false,
           ),
         ),

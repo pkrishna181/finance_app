@@ -14,9 +14,8 @@ import '../../ingestion/sms/sms_source.dart';
 import '../../ingestion/source.dart';
 import '../../ingestion/statement/file_source.dart';
 import '../../ingestion/statement/pdf/password_hints.dart';
-import '../../llm/jobs/llm_job_service.dart';
-import '../../llm/llm_review_service.dart';
-import 'llm_resolve_screen.dart';
+import '../../llm/jobs/llm_batch_coordinator.dart';
+import '../../llm/llm_resolve_flow.dart';
 import 'sms_historical_scan_screen.dart';
 import 'statement_preview_screen.dart';
 
@@ -26,6 +25,7 @@ class ImportScreen extends StatefulWidget {
     this.database,
     this.registry,
     this.consentStore,
+    this.coordinator,
     this.showUnparsedBadge = true,
   });
 
@@ -37,6 +37,9 @@ class ImportScreen extends StatefulWidget {
 
   /// Optional consent store override (tests).
   final SmsConsentStore? consentStore;
+
+  /// Opportunistic LLM batch runner (Phase 5.5).
+  final LlmBatchCoordinator? coordinator;
 
   /// When false, skips the unresolved-SMS badge stream (widget tests).
   final bool showUnparsedBadge;
@@ -80,19 +83,12 @@ class _ImportScreenState extends State<ImportScreen> {
                 if (n == 0) return const SizedBox.shrink();
                 return TextButton(
                   onPressed: () async {
-                    final rows = await _db!.listUnresolvedUnparsedSms();
-                    final jobs = LlmJobService(_db!);
-                    for (final row in rows) {
-                      await jobs.enqueueSmsExtract(row.id);
-                    }
-                    if (!context.mounted) return;
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => LlmResolveScreen(
-                          db: _db!,
-                          reviewService: LlmReviewService(db: _db!),
-                        ),
-                      ),
+                    final coordinator = widget.coordinator;
+                    if (coordinator == null || !context.mounted) return;
+                    await openLlmResolveFlow(
+                      context,
+                      db: _db!,
+                      coordinator: coordinator,
                     );
                   },
                   child: Text('$n unrecognized — resolve'),
@@ -258,7 +254,11 @@ class _ImportScreenState extends State<ImportScreen> {
 
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
-        builder: (_) => SmsHistoricalScanScreen(source: source, db: db),
+        builder: (_) => SmsHistoricalScanScreen(
+          source: source,
+          db: db,
+          coordinator: widget.coordinator,
+        ),
       ),
     );
   }

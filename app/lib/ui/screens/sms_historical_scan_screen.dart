@@ -4,9 +4,8 @@ import '../../core/db/database.dart';
 import '../../ingestion/sms/sms_scan_checkpoint.dart';
 import '../../ingestion/sms/sms_scan_session.dart';
 import '../../ingestion/sms/sms_source.dart';
-import '../../llm/jobs/llm_job_service.dart';
-import '../../llm/llm_review_service.dart';
-import 'llm_resolve_screen.dart';
+import '../../llm/jobs/llm_batch_coordinator.dart';
+import '../../llm/llm_resolve_flow.dart';
 
 /// Runs [SmsIngestionSource.scanHistorical] with cancel, resume, and progress UI.
 class SmsHistoricalScanScreen extends StatefulWidget {
@@ -14,11 +13,13 @@ class SmsHistoricalScanScreen extends StatefulWidget {
     super.key,
     required this.source,
     required this.db,
+    this.coordinator,
     this.restart = false,
   });
 
   final SmsIngestionSource source;
   final ArthDatabase db;
+  final LlmBatchCoordinator? coordinator;
 
   /// When true, clears any saved checkpoint before scanning.
   final bool restart;
@@ -148,19 +149,12 @@ class _SmsHistoricalScanScreenState extends State<SmsHistoricalScanScreen>
   }
 
   Future<void> _resolveUnrecognized() async {
-    final rows = await widget.db.listUnresolvedUnparsedSms();
-    final jobs = LlmJobService(widget.db);
-    for (final row in rows) {
-      await jobs.enqueueSmsExtract(row.id);
-    }
-    if (!mounted) return;
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => LlmResolveScreen(
-          db: widget.db,
-          reviewService: LlmReviewService(db: widget.db),
-        ),
-      ),
+    final coordinator = widget.coordinator;
+    if (coordinator == null || !mounted) return;
+    await openLlmResolveFlow(
+      context,
+      db: widget.db,
+      coordinator: coordinator,
     );
   }
 

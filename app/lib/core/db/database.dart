@@ -242,6 +242,33 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
     return into(llmJobs).insert(row);
   }
 
+  Future<int> countPendingLlmJobs() async {
+    final count = llmJobs.id.count();
+    final row = await (selectOnly(llmJobs)
+          ..addColumns([count])
+          ..where(llmJobs.status.equals('pending')))
+        .getSingle();
+    return row.read(count) ?? 0;
+  }
+
+  Stream<int> watchPendingLlmJobCount() {
+    final count = llmJobs.id.count();
+    final q = selectOnly(llmJobs)
+      ..addColumns([count])
+      ..where(llmJobs.status.equals('pending'));
+    return q.watchSingle().map((row) => row.read(count) ?? 0);
+  }
+
+  /// Jobs left `running` after a process kill return to `pending`.
+  Future<int> recoverStaleRunningLlmJobs() async {
+    return (update(llmJobs)..where((t) => t.status.equals('running'))).write(
+      LlmJobsCompanion(
+        status: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
   Future<bool> hasPendingMerchantJob(String rawMerchant) async {
     final key = rawMerchant.trim().toLowerCase();
     final pending = await (select(llmJobs)

@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: 2026-08-10 (Phase 5.4 — SMS historical scan + anchor shape gates)
+Last updated: 2026-08-10 (Phase 5.5 — opportunistic LLM batch runner)
 
 ---
 
@@ -368,15 +368,29 @@ until user confirms; corrections feed `user_corrections`.
 - `test/llm/hybrid_parse_e2e_test.dart` — unparsed → review → confirm → dedupe
 - `test/llm/category_enum_test.dart` — invalid type/category rejected
 - `test/ingestion/sms_scan_test.dart` — cancel/resume/restart, progressive writes
+- `test/llm/llm_batch_coordinator_test.dart` — schedule run, stale job recovery
 - `test/ui/import_screen_test.dart` — consent → scan flow, progress UI, resolve CTA
 
 ### Phase 5 fragile spots
 
 - **Prefix cache size**: full state serialize per SMS type; monitor RSS on device.
 - **stmt_row_extract**: job type defined; processor stubbed v1.
-- **WorkManager**: not wired — batch only while app process alive.
+- **WorkManager**: not wired — batch runs opportunistically while app is alive (Phase 5.5); true background deferred.
 - **Battery guard**: injectable `BatteryGuard`; permissive default on desktop/tests.
 - **1B model quality**: anchoring catches hallucinations; field accuracy still weak.
+
+### Phase 5.5 — opportunistic batch runner
+
+`LlmBatchCoordinator` (`lib/llm/jobs/llm_batch_coordinator.dart`):
+
+- Debounced `scheduleRun(db)` after enqueue (Import resolve badge, scan-complete CTA).
+- Auto-loads downloaded GGUF if engine not ready; skips with `model_not_downloaded` otherwise.
+- `onAppResumed` recovers stale `running` jobs → `pending`, then schedules a batch.
+- `LlmResolveScreen` shows processing UI while jobs are pending/running.
+
+`PrivacySettingsScreen`: revoke SMS consent, link to system READ_SMS settings.
+
+Trigger: Import tab **"N unrecognized — resolve"** (enqueue + schedule batch) or manual debug run.
 
 ---
 

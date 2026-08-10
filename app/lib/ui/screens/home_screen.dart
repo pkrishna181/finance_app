@@ -1,12 +1,22 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/db/database.dart';
+import '../../llm/jobs/llm_batch_coordinator.dart';
 import 'llm_debug_settings_screen.dart';
 import '../../llm/llama_cpp_engine.dart';
+import 'privacy_settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
-  HomeScreen({super.key}) : _engine = LlamaCppEngine();
+  HomeScreen({
+    super.key,
+    this.coordinator,
+    this.database,
+    LlamaCppEngine? engine,
+  }) : _engine = engine ?? LlamaCppEngine();
 
+  final LlmBatchCoordinator? coordinator;
+  final ArthDatabase? database;
   final LlamaCppEngine _engine;
 
   @override
@@ -15,6 +25,15 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Arth'),
         actions: [
+          IconButton(
+            tooltip: 'Privacy',
+            icon: const Icon(Icons.privacy_tip_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const PrivacySettingsScreen(),
+              ),
+            ),
+          ),
           if (kDebugMode)
             IconButton(
               tooltip: 'LLM debug',
