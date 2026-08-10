@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: 2026-08-06 (Phase 5.3 — anchor verdicts + direction precedence)
+Last updated: 2026-08-10 (Phase 5.4 — SMS historical scan + anchor shape gates)
 
 ---
 
@@ -50,9 +50,10 @@ ARCHITECTURE.md
 **Rationale:** limited pagination / sender filtering (plugin caps, coarse
 queries). Replaced with an in-house Kotlin `MethodChannel`
 (`com.arth.arth/sms_inbox`) that queries `Telephony.Sms.Inbox` directly with
-`LIMIT`/`OFFSET`, date DESC, and SQL `LIKE` filters on DLT entity tokens from
+`LIMIT`, `before_date_millis` cursor (strictly older than checkpoint), date
+DESC, and SQL `LIKE` filters on DLT entity tokens from
 `knownSenderEntities`. Returns `{sender, body, date_millis}` only — bodies
-never logged.
+never logged. `countMessages` estimates total matching rows for progress UI.
 
 ### Rejected / not used
 
@@ -273,8 +274,19 @@ Microbench same session: grammar decode 5.4 tok/s, ~800 MB RSS.
 | direction | See precedence below — **never rejects** |
 | booked_at | Must parse from raw text (LLM normalizes only) — **hard-reject** |
 | bank_code | **Never from LLM** — sender/body guess overrides |
-| raw_merchant | Token overlap or substring; balance-adjacent phrases demoted |
-| refs / VPA | Must appear in raw text; dropped + disagreement row if not |
+| raw_merchant | Token overlap or substring; balance-adjacent phrases demoted; bank+A/c phrases demoted |
+| refs / VPA | Must appear in raw text **and** pass shape gates; dropped + disagreement row if not |
+
+**Phase 5.4 shape gates** (refs / VPA / merchant):
+
+| Field | Gate |
+|---|---|
+| VPA (`v`) | Must match `user@psp` shape; bare bank names / bonus tokens dropped |
+| Ref (`f`) | Bare last-4 card digits dropped; NEFT UTR / IMPS 12-digit kept |
+| Merchant (`m`) | `HDFC A/c`, balance-adjacent phrases demoted; VPA in merchant slot routed to `v` with seed hint on local part |
+
+`MerchantSeedCatalog.merchantHintFromVpa` resolves VPA local parts against the
+seed catalog before anchoring.
 
 **Direction precedence** (mirrors statement bank logic):
 
@@ -351,10 +363,12 @@ until user confirms; corrections feed `user_corrections`.
 
 ### Tests (CI uses FakeLlmEngine)
 
-- `test/llm/anchoring_test.dart` — Phase 4 bad outputs caught
+- `test/llm/anchoring_test.dart` — Phase 4 bad outputs + Phase 5.4 shape gates
 - `test/llm/llm_job_runner_test.dart` — ordering, battery, dedupe, poison cap
 - `test/llm/hybrid_parse_e2e_test.dart` — unparsed → review → confirm → dedupe
 - `test/llm/category_enum_test.dart` — invalid type/category rejected
+- `test/ingestion/sms_scan_test.dart` — cancel/resume/restart, progressive writes
+- `test/ui/import_screen_test.dart` — consent → scan flow, progress UI, resolve CTA
 
 ### Phase 5 fragile spots
 
@@ -366,10 +380,30 @@ until user confirms; corrections feed `user_corrections`.
 
 ---
 
-## SMS (Phase 1, updated Phase 2–3)
+## SMS (Phase 1, updated Phase 2–3, historical scan 2026-08)
 
-Cascade unchanged. Historical scan paginates via native channel until a short
-page is returned.
+Regex cascade unchanged. **Historical scan** (`SmsIngestionSource.scanHistorical`):
+
+```
+Import tab → consent → READ_SMS → SmsHistoricalScanScreen
+  → paginate inbox (newest-first, known senders)
+  → parse in isolate chunks (default 50)
+  → upsert transactions + insert unparsed_sms_rows progressively
+  → checkpoint after each committed chunk (SharedPreferences)
+  → cooperative cancel between pages/chunks; resume or restart on re-entry
+```
+
+Checkpoint: `last_processed_date_millis` + counts + `import_id` +
+`estimated_total`. Resume queries strictly older than checkpoint; idempotent
+writes make overlap harmless. Import row status: `succeeded` on full scan,
+`partial` on cancel.
+
+UI: progress stream (X of ~Y, parsed/unparsed/skipped), **Stop scan**, paused /
+complete summary. **N unrecognized — resolve** on Import tab and scan complete
+(enqueues `sms_extract` jobs, opens `LlmResolveScreen`; LLM batch runs
+opportunistically — never inline during scan).
+
+Lifecycle: app backgrounding requests cooperative cancel (same as Stop).
 
 ---
 

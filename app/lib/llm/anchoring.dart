@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../core/models/transaction_type.dart';
 import '../parsing/common/extractors.dart';
 import '../parsing/sms/sender_matcher.dart';
+import 'merchant_seed_catalog.dart';
 
 /// Per-field anchor validation outcome.
 enum AnchorFieldStatus { pass, reject, infer, demote, override }
@@ -64,6 +65,7 @@ class AnchorReport {
   Map<String, Object?> llmJson, {
   String? sender,
   double merchantTokenOverlapThreshold = 0.34,
+  MerchantSeedCatalog? merchantSeeds,
 }) {
   final cleaned = Map<String, Object?>.from(llmJson);
   final reports = <AnchorFieldReport>[];
@@ -166,7 +168,53 @@ class AnchorReport {
     detail: 'from_sender_not_llm',
   ));
 
-  // refs / VPA / account mask — if present must appear in raw text
+  // merchant — balance demote; VPA-in-slot routing; fuzzy anchor + shape gate
+  final merchant = cleaned['raw_merchant'];
+  if (merchant is String && merchant.isNotEmpty) {
+    if (_isBalanceAdjacentMerchant(rawText, merchant)) {
+      reports.add(const AnchorFieldReport(
+        field: 'raw_merchant',
+        status: AnchorFieldStatus.demote,
+        detail: 'balance_adjacent_phrase',
+      ));
+      cleaned['raw_merchant'] = '';
+    } else if (_routeMerchantVpaIfApplicable(
+      cleaned,
+      merchant,
+      rawText,
+      reports,
+      merchantSeeds,
+    )) {
+      // merchant slot held a VPA — routed to v + hint from local part
+    } else if (_vpaPassesShapeGate(merchant.trim()) &&
+        _appearsInSource(rawText, merchant)) {
+      cleaned['raw_merchant'] = merchantSeeds?.merchantHintFromVpa(merchant) ??
+          MerchantSeedCatalog.vpaLocalPart(merchant);
+      reports.add(const AnchorFieldReport(
+        field: 'raw_merchant',
+        status: AnchorFieldStatus.override,
+        detail: 'from_vpa_local_part',
+      ));
+    } else if (!_merchantAnchored(rawText, merchant, merchantTokenOverlapThreshold)) {
+      reports.add(const AnchorFieldReport(
+        field: 'raw_merchant',
+        status: AnchorFieldStatus.demote,
+        detail: 'not_substring_of_source',
+      ));
+      cleaned['raw_merchant'] = '';
+    } else if (_merchantFailsShapeGate(merchant, rawText)) {
+      reports.add(const AnchorFieldReport(
+        field: 'raw_merchant',
+        status: AnchorFieldStatus.demote,
+        detail: 'bad_shape',
+      ));
+      cleaned['raw_merchant'] = '';
+    } else {
+      reports.add(const AnchorFieldReport(field: 'raw_merchant', status: AnchorFieldStatus.pass));
+    }
+  }
+
+  // refs / VPA / account mask — verbatim in source, then shape gate
   for (final key in [
     'upi_ref',
     'external_ref',
@@ -176,12 +224,28 @@ class AnchorReport {
   ]) {
     final val = cleaned[key];
     if (val is! String || val.isEmpty) continue;
-    if (_appearsInSource(rawText, val)) {
-      reports.add(AnchorFieldReport(field: key, status: AnchorFieldStatus.pass));
-    } else {
+    if (!_appearsInSource(rawText, val)) {
       reports.add(AnchorFieldReport(field: key, status: AnchorFieldStatus.reject, detail: 'not_in_source'));
       cleaned.remove(key);
+      continue;
     }
+    if (key == 'upi_payee_vpa' || key == 'upi_payer_vpa') {
+      if (!_vpaPassesShapeGate(val)) {
+        reports.removeWhere((r) => r.field == key);
+        reports.add(AnchorFieldReport(field: key, status: AnchorFieldStatus.reject, detail: 'bad_shape'));
+        cleaned.remove(key);
+        continue;
+      }
+    } else if (key == 'upi_ref' || key == 'external_ref') {
+      if (!_refPassesShapeGate(val, rawText)) {
+        reports.removeWhere((r) => r.field == key);
+        reports.add(AnchorFieldReport(field: key, status: AnchorFieldStatus.reject, detail: 'bad_shape'));
+        cleaned.remove(key);
+        continue;
+      }
+    }
+    reports.removeWhere((r) => r.field == key);
+    reports.add(AnchorFieldReport(field: key, status: AnchorFieldStatus.pass));
   }
 
   // dedupe_key is Dart-computed (never from LLM); verify ref material when present
@@ -199,28 +263,6 @@ class AnchorReport {
       } else {
         reports.add(const AnchorFieldReport(field: 'dedupe_key', status: AnchorFieldStatus.pass));
       }
-    }
-  }
-
-  // merchant — fuzzy substring; demote balance-adjacent phrases
-  final merchant = cleaned['raw_merchant'];
-  if (merchant is String && merchant.isNotEmpty) {
-    if (_isBalanceAdjacentMerchant(rawText, merchant)) {
-      reports.add(const AnchorFieldReport(
-        field: 'raw_merchant',
-        status: AnchorFieldStatus.demote,
-        detail: 'balance_adjacent_phrase',
-      ));
-      cleaned['raw_merchant'] = '';
-    } else if (_merchantAnchored(rawText, merchant, merchantTokenOverlapThreshold)) {
-      reports.add(const AnchorFieldReport(field: 'raw_merchant', status: AnchorFieldStatus.pass));
-    } else {
-      reports.add(const AnchorFieldReport(
-        field: 'raw_merchant',
-        status: AnchorFieldStatus.demote,
-        detail: 'not_substring_of_source',
-      ));
-      cleaned['raw_merchant'] = '';
     }
   }
 
@@ -269,6 +311,103 @@ bool _merchantAnchored(String rawText, String merchant, double threshold) {
   return overlap >= threshold;
 }
 
+const _bankGuessCodes = [
+  'HDFC',
+  'ICICI',
+  'SBI',
+  'AXIS',
+  'KOTAK',
+  'PNB',
+  'BOB',
+  'PAYTM',
+];
+
+const _bankProductTerms = {
+  'a',
+  'c',
+  'ac',
+  'acct',
+  'account',
+  'bank',
+  'xx',
+  'xxx',
+  'xxxx',
+  'ending',
+  'no',
+};
+
+bool _vpaPassesShapeGate(String vpa) {
+  final extracted = extractVpa(vpa.trim());
+  return extracted != null && extracted == vpa.trim();
+}
+
+bool _refPassesShapeGate(String ref, String rawText) {
+  final t = ref.trim();
+  if (!isStrongRef(t)) return false;
+  final mask = extractAccountMask(rawText);
+  if (mask != null && t == mask) return false;
+  final card4 = extractCardLast4(rawText);
+  if (card4 != null && t == card4) return false;
+  return true;
+}
+
+bool _merchantFailsShapeGate(String merchant, String rawText) {
+  final m = merchant.trim();
+  if (m.isEmpty) return false;
+  if (extractAccountMask(m) != null || extractCardLast4(m) != null) {
+    return true;
+  }
+  final mask = extractAccountMask(rawText);
+  if (mask != null && m == mask) return true;
+  return _isBankOrProductOnlyMerchant(m);
+}
+
+bool _routeMerchantVpaIfApplicable(
+  Map<String, Object?> cleaned,
+  String merchant,
+  String rawText,
+  List<AnchorFieldReport> reports,
+  MerchantSeedCatalog? merchantSeeds,
+) {
+  if (cleaned['type'] != TransactionType.upi.wireName) return false;
+  final vpa = merchant.trim();
+  if (!_vpaPassesShapeGate(vpa) || !_appearsInSource(rawText, vpa)) {
+    return false;
+  }
+
+  final dir = cleaned['direction'] as String? ?? TransactionDirection.debit.wireName;
+  final vpaKey = dir == TransactionDirection.credit.wireName
+      ? 'upi_payer_vpa'
+      : 'upi_payee_vpa';
+  final existing = (cleaned[vpaKey] as String?)?.trim() ?? '';
+  if (existing.isNotEmpty && existing != vpa) return false;
+
+  if (existing.isEmpty) {
+    cleaned[vpaKey] = vpa;
+  }
+
+  cleaned['raw_merchant'] = merchantSeeds?.merchantHintFromVpa(vpa) ??
+      MerchantSeedCatalog.vpaLocalPart(vpa);
+  reports.add(const AnchorFieldReport(
+    field: 'raw_merchant',
+    status: AnchorFieldStatus.override,
+    detail: 'from_vpa_local_part',
+  ));
+  return true;
+}
+
+bool _isBankOrProductOnlyMerchant(String merchant) {
+  final tokens = merchant
+      .toLowerCase()
+      .split(RegExp(r'[^a-z0-9@]+'))
+      .where((t) => t.isNotEmpty);
+  if (tokens.isEmpty) return true;
+  final bankLower = _bankGuessCodes.map((c) => c.toLowerCase()).toSet();
+  return tokens.every(
+    (t) => bankLower.contains(t) || _bankProductTerms.contains(t),
+  );
+}
+
 bool _isBalanceAdjacentMerchant(String rawText, String merchant) {
   final lower = rawText.toLowerCase();
   final m = merchant.toLowerCase();
@@ -291,10 +430,12 @@ Set<String> _tokens(String text) {
 /// Benchmark / debug one-line anchor verdict after validation.
 String formatAnchorVerdictLine(AnchorReport report, Map<String, Object?> cleaned) {
   AnchorFieldStatus? statusFor(String field) {
+    AnchorFieldStatus? worst;
     for (final f in report.fields) {
-      if (f.field == field) return f.status;
+      if (f.field != field) continue;
+      worst = _worstAnchorStatus(worst, f.status);
     }
-    return null;
+    return worst;
   }
 
   if (statusFor('amount_paise') == AnchorFieldStatus.reject) {
@@ -306,37 +447,52 @@ String formatAnchorVerdictLine(AnchorReport report, Map<String, Object?> cleaned
 
   final dropped = <String>[];
   if (statusFor('raw_merchant') == AnchorFieldStatus.demote) dropped.add('m');
-  for (final key in ['upi_payee_vpa', 'upi_payer_vpa']) {
-    if (statusFor(key) == AnchorFieldStatus.reject && !dropped.contains('v')) {
-      dropped.add('v');
-    }
-  }
   for (final key in ['upi_ref', 'external_ref']) {
     if (statusFor(key) == AnchorFieldStatus.reject && !dropped.contains('f')) {
       dropped.add('f');
+    }
+  }
+  for (final key in ['upi_payee_vpa', 'upi_payer_vpa']) {
+    if (statusFor(key) == AnchorFieldStatus.reject && !dropped.contains('v')) {
+      dropped.add('v');
     }
   }
 
   final directionOverridden =
       statusFor('direction') == AnchorFieldStatus.override;
   final directionInferred = cleaned['direction_inferred'] == true;
-  final merchantOnlyDrop = dropped.length == 1 && dropped.first == 'm';
-  final label = merchantOnlyDrop ? 'partial' : 'usable';
 
-  final buf = StringBuffer('anchor: $label');
+  final buf = StringBuffer('anchor: usable');
   if (dropped.isNotEmpty) {
     buf.write(' (dropped: ${dropped.join(', ')})');
   }
   if (directionOverridden) buf.write(' (direction: overridden)');
-  if (directionInferred) buf.write(' (directionInferred)');
+  if (directionInferred) buf.write(' (direction: inferred)');
   return buf.toString();
 }
+
+AnchorFieldStatus _worstAnchorStatus(
+  AnchorFieldStatus? current,
+  AnchorFieldStatus next,
+) {
+  if (current == null) return next;
+  return _anchorStatusRank(next) < _anchorStatusRank(current) ? next : current;
+}
+
+int _anchorStatusRank(AnchorFieldStatus status) => switch (status) {
+      AnchorFieldStatus.reject => 0,
+      AnchorFieldStatus.demote => 1,
+      AnchorFieldStatus.override => 2,
+      AnchorFieldStatus.infer => 3,
+      AnchorFieldStatus.pass => 4,
+    };
 
 /// Running batch tally for benchmark output.
 class AnchorBatchTally {
   int usable = 0;
   int rejected = 0;
   int directionOverrides = 0;
+  int directionInferred = 0;
 
   void add(AnchorReport report, Map<String, Object?> cleaned) {
     final line = formatAnchorVerdictLine(report, cleaned);
@@ -350,10 +506,14 @@ class AnchorBatchTally {
     )) {
       directionOverrides++;
     }
+    if (cleaned['direction_inferred'] == true) {
+      directionInferred++;
+    }
   }
 
   String summaryLine() =>
-      'batch verdict: $usable usable / $rejected rejected ($directionOverrides direction overrides)';
+      'batch verdict: $usable usable / $rejected rejected '
+      '($directionOverrides overridden, $directionInferred inferred)';
 }
 
 /// Convenience: parse JSON string then anchor.
@@ -361,6 +521,7 @@ class AnchorBatchTally {
   String rawText,
   String llmJson, {
   String? sender,
+  MerchantSeedCatalog? merchantSeeds,
 }) {
   final decoded = jsonDecode(llmJson.trim());
   if (decoded is! Map) {
@@ -373,5 +534,6 @@ class AnchorBatchTally {
     rawText,
     Map<String, Object?>.from(decoded),
     sender: sender,
+    merchantSeeds: merchantSeeds,
   );
 }

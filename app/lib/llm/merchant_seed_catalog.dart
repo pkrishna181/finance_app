@@ -31,6 +31,21 @@ class MerchantSeedCatalog {
     return _cached!;
   }
 
+  /// Local part before `@` in a UPI VPA.
+  static String vpaLocalPart(String vpa) {
+    final t = vpa.trim();
+    final at = t.indexOf('@');
+    return at > 0 ? t.substring(0, at) : t;
+  }
+
+  /// Seed lookup on VPA local part, else the local part verbatim.
+  String merchantHintFromVpa(String vpa) {
+    final local = vpaLocalPart(vpa);
+    if (local.isEmpty) return local;
+    final canonical = matchCanonical(local);
+    return canonical ?? local;
+  }
+
   String? matchCanonical(String raw) {
     final norm = raw.trim().toLowerCase();
     if (norm.isEmpty) return null;

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io' show Platform;
 import 'dart:isolate';
 
@@ -15,17 +16,22 @@ import '../../parsing/sms/sender_matcher.dart';
 import '../source.dart';
 import 'consent_screen.dart';
 import 'native_sms_inbox.dart';
+import 'sms_scan_checkpoint.dart';
+import 'sms_scan_session.dart';
 
 /// Android SMS ingestion with consent + READ_SMS + paginated historical scan.
 class SmsIngestionSource implements IngestionSource {
   SmsIngestionSource({
     SmsConsentStore? consentStore,
     NativeSmsInbox? inbox,
+    SmsScanCheckpointStore? checkpointStore,
   })  : _consent = consentStore ?? SmsConsentStore(),
-        _inbox = inbox ?? NativeSmsInbox();
+        _inbox = inbox ?? NativeSmsInbox(),
+        _checkpointStore = checkpointStore ?? SmsScanCheckpointStore();
 
   final SmsConsentStore _consent;
   final NativeSmsInbox _inbox;
+  final SmsScanCheckpointStore _checkpointStore;
 
   @override
   String get id => 'sms';
@@ -38,6 +44,8 @@ class SmsIngestionSource implements IngestionSource {
     if (Platform.isAndroid) return SourceAvailability.available;
     return SourceAvailability.unsupportedOnPlatform;
   }
+
+  SmsScanCheckpointStore get checkpointStore => _checkpointStore;
 
   @override
   Future<bool> hasPermission() async {
@@ -65,12 +73,17 @@ class SmsIngestionSource implements IngestionSource {
     return const Err('sms_permission_denied');
   }
 
-  /// Paginated historical inbox scan. Does not log SMS bodies.
+  /// Paginated historical inbox scan (newest-first). Cooperative cancel via
+  /// [session]; checkpoint persisted after each committed parse chunk.
   Stream<SmsIngestProgress> scanHistorical({
     required ArthDatabase db,
     int pageSize = 100,
     int chunkSize = 50,
+    bool restart = false,
+    SmsScanSession? session,
   }) async* {
+    final scanSession = session ?? SmsScanSession();
+
     if (!await hasPermission()) {
       yield const SmsIngestProgress(
         scanned: 0,
@@ -85,38 +98,68 @@ class SmsIngestionSource implements IngestionSource {
       return;
     }
 
-    var scanned = 0;
-    var parsed = 0;
-    var inserted = 0;
-    var unparsed = 0;
-    var skipped = 0;
-    var mandates = 0;
+    if (restart) {
+      await _checkpointStore.clear();
+    }
 
-    final importHash = sha256
-        .convert(
-          utf8.encode('sms-scan-${DateTime.now().toUtc().toIso8601String()}'),
-        )
-        .toString();
-    final importId = await db.into(db.imports).insert(
-          ImportsCompanion.insert(
-            sourceType: 'sms',
-            sourceLabel: 'Historical SMS scan',
-            contentHash: importHash,
-            status: const Value('pending'),
-          ),
-        );
+    final existing = restart ? null : await _checkpointStore.load();
 
-    var offset = 0;
+    var scanned = existing?.scanned ?? 0;
+    var parsed = existing?.parsed ?? 0;
+    var inserted = existing?.inserted ?? 0;
+    var unparsed = existing?.unparsed ?? 0;
+    var skipped = existing?.skipped ?? 0;
+    var mandates = existing?.mandates ?? 0;
+    int? importId = existing?.importId;
+    int? beforeDateMillis = existing?.lastProcessedDateMillis;
+    int? scanBoundaryMillis = existing?.lastProcessedDateMillis;
+
+    final estimatedTotal = existing?.estimatedTotal ??
+        await _inbox.countMessages(entities: knownSenderEntities);
+
+    if (importId == null) {
+      final importHash = sha256
+          .convert(
+            utf8.encode('sms-scan-${DateTime.now().toUtc().toIso8601String()}'),
+          )
+          .toString();
+      importId = await db.into(db.imports).insert(
+            ImportsCompanion.insert(
+              sourceType: 'sms',
+              sourceLabel: 'Historical SMS scan',
+              contentHash: importHash,
+              status: const Value('pending'),
+            ),
+          );
+    }
+
+  var cancelled = false;
+
     while (true) {
+      if (scanSession.isCancelled) {
+        cancelled = true;
+        break;
+      }
+
+      final pageStart = DateTime.now();
       final page = await _inbox.queryPage(
         limit: pageSize,
-        offset: offset,
+        beforeDateMillis: beforeDateMillis,
         entities: knownSenderEntities,
       );
       if (page.isEmpty) break;
 
+      int? pageMinDateMillis;
       final candidates = <_SmsWire>[];
       for (final m in page) {
+        if (m.dateMillis != null) {
+          final d = m.dateMillis!;
+          pageMinDateMillis =
+              pageMinDateMillis == null ? d : (d < pageMinDateMillis! ? d : pageMinDateMillis);
+          scanBoundaryMillis = scanBoundaryMillis == null
+              ? d
+              : (d < scanBoundaryMillis! ? d : scanBoundaryMillis);
+        }
         scanned++;
         final match = matchSender(m.sender);
         if (!match.isTransactional) {
@@ -133,6 +176,12 @@ class SmsIngestionSource implements IngestionSource {
       }
 
       for (var i = 0; i < candidates.length; i += chunkSize) {
+        if (scanSession.isCancelled) {
+          cancelled = true;
+          break;
+        }
+
+        final chunkStart = DateTime.now();
         final end = (i + chunkSize < candidates.length)
             ? i + chunkSize
             : candidates.length;
@@ -203,11 +252,36 @@ class SmsIngestionSource implements IngestionSource {
                   balanceAfterPaise: Value(o.balanceAfterPaise),
                   importId: Value(importId),
                 ),
-                importId: importId,
+                importId: importId!,
               );
               if (write.inserted) inserted++;
           }
         }
+
+        final chunkMinDate = _minDateMillis(chunk);
+        final checkpointDate = scanBoundaryMillis ?? chunkMinDate ?? pageMinDateMillis;
+        if (checkpointDate != null) {
+          await _checkpointStore.save(
+            SmsScanCheckpoint(
+              lastProcessedDateMillis: checkpointDate,
+              scanned: scanned,
+              parsed: parsed,
+              inserted: inserted,
+              unparsed: unparsed,
+              skipped: skipped,
+              mandates: mandates,
+              importId: importId,
+              estimatedTotal: estimatedTotal,
+            ),
+          );
+        }
+
+        final chunkMs = DateTime.now().difference(chunkStart).inMilliseconds;
+        developer.log(
+          'sms_scan chunk: ${chunk.length} txn candidates, '
+          '${chunkMs}ms (page ${page.length} msgs, ${pageSize} cap)',
+          name: 'SmsIngestionSource',
+        );
 
         yield SmsIngestProgress(
           scanned: scanned,
@@ -217,22 +291,53 @@ class SmsIngestionSource implements IngestionSource {
           skipped: skipped,
           mandates: mandates,
           done: false,
+          estimatedTotal: estimatedTotal,
+          chunkMessageCount: chunk.length,
+          lastChunkMs: chunkMs,
         );
+
+        if (scanSession.isCancelled) {
+          cancelled = true;
+          break;
+        }
       }
 
+      if (cancelled) break;
+
+      final pageMs = DateTime.now().difference(pageStart).inMilliseconds;
+      developer.log(
+        'sms_scan page: ${page.length} inbox rows, ${pageMs}ms '
+        '(~$estimatedTotal matching senders, chunk=$chunkSize)',
+        name: 'SmsIngestionSource',
+      );
+
       if (page.length < pageSize) break;
-      offset += pageSize;
+      if (scanBoundaryMillis == null) break;
+      beforeDateMillis = scanBoundaryMillis;
     }
 
-    await (db.update(db.imports)..where((t) => t.id.equals(importId))).write(
-      ImportsCompanion(
-        status: const Value('succeeded'),
-        rowCount: Value(inserted),
-        parsedCount: Value(parsed),
-        skippedCount: Value(skipped),
-        duplicateCount: Value(parsed - inserted),
-      ),
-    );
+    if (!cancelled) {
+      await _checkpointStore.clear();
+      await (db.update(db.imports)..where((t) => t.id.equals(importId!))).write(
+        ImportsCompanion(
+          status: const Value('succeeded'),
+          rowCount: Value(inserted),
+          parsedCount: Value(parsed),
+          skippedCount: Value(skipped),
+          duplicateCount: Value(parsed - inserted),
+        ),
+      );
+    } else {
+      await (db.update(db.imports)..where((t) => t.id.equals(importId!))).write(
+        ImportsCompanion(
+          status: const Value('partial'),
+          rowCount: Value(inserted),
+          parsedCount: Value(parsed),
+          skippedCount: Value(skipped),
+          duplicateCount: Value(parsed - inserted),
+        ),
+      );
+    }
 
     yield SmsIngestProgress(
       scanned: scanned,
@@ -242,8 +347,20 @@ class SmsIngestionSource implements IngestionSource {
       skipped: skipped,
       mandates: mandates,
       done: true,
+      cancelled: cancelled,
+      estimatedTotal: estimatedTotal,
     );
   }
+}
+
+int? _minDateMillis(List<_SmsWire> chunk) {
+  int? min;
+  for (final m in chunk) {
+    final d = m.receivedAtMs;
+    if (d == null) continue;
+    min = min == null ? d : (d < min ? d : min);
+  }
+  return min;
 }
 
 class SmsIngestProgress {
@@ -256,6 +373,10 @@ class SmsIngestProgress {
     required this.mandates,
     required this.done,
     this.error,
+    this.cancelled = false,
+    this.estimatedTotal,
+    this.chunkMessageCount,
+    this.lastChunkMs,
   });
 
   final int scanned;
@@ -266,6 +387,10 @@ class SmsIngestProgress {
   final int mandates;
   final bool done;
   final String? error;
+  final bool cancelled;
+  final int? estimatedTotal;
+  final int? chunkMessageCount;
+  final int? lastChunkMs;
 }
 
 class _SmsWire {

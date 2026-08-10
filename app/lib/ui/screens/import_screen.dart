@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import 'package:permission_handler/permission_handler.dart';
+
 import '../../core/db/database.dart';
 import '../../core/result/result.dart';
 import '../../ingestion/registry.dart';
@@ -15,13 +17,29 @@ import '../../ingestion/statement/pdf/password_hints.dart';
 import '../../llm/jobs/llm_job_service.dart';
 import '../../llm/llm_review_service.dart';
 import 'llm_resolve_screen.dart';
+import 'sms_historical_scan_screen.dart';
 import 'statement_preview_screen.dart';
 
 class ImportScreen extends StatefulWidget {
-  const ImportScreen({super.key, this.database});
+  const ImportScreen({
+    super.key,
+    this.database,
+    this.registry,
+    this.consentStore,
+    this.showUnparsedBadge = true,
+  });
 
   /// Optional injected DB (tests). Production opens encrypted on demand.
   final ArthDatabase? database;
+
+  /// Optional registry override (tests).
+  final IngestionRegistry? registry;
+
+  /// Optional consent store override (tests).
+  final SmsConsentStore? consentStore;
+
+  /// When false, skips the unresolved-SMS badge stream (widget tests).
+  final bool showUnparsedBadge;
 
   @override
   State<ImportScreen> createState() => _ImportScreenState();
@@ -49,12 +67,12 @@ class _ImportScreenState extends State<ImportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final registry = IngestionRegistry();
+    final registry = widget.registry ?? IngestionRegistry();
     return Scaffold(
       appBar: AppBar(
         title: const Text('Import'),
         actions: [
-          if (_db != null)
+          if (_db != null && widget.showUnparsedBadge)
             StreamBuilder<int>(
               stream: _db!.watchUnresolvedUnparsedSmsCount(),
               builder: (context, snap) {
@@ -118,42 +136,7 @@ class _ImportScreenState extends State<ImportScreen> {
     IngestionSource source,
   ) async {
     if (source is SmsIngestionSource) {
-      final consent = SmsConsentStore();
-      if (!await consent.hasConsent()) {
-        if (!context.mounted) return;
-        await Navigator.of(context).push<void>(
-          MaterialPageRoute<void>(
-            builder: (ctx) => SmsConsentScreen(
-              onAccepted: () async {
-                Navigator.of(ctx).pop();
-                final result = await source.requestPermission();
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      result.isOk
-                          ? 'SMS permission granted.'
-                          : 'SMS permission not granted — statement import still works.',
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        );
-        return;
-      }
-      final result = await source.requestPermission();
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result.isOk
-                ? 'SMS ready for historical scan.'
-                : 'SMS permission denied — statement import still works.',
-          ),
-        ),
-      );
+      await _startSmsHistoricalScan(context, source);
       return;
     }
 
@@ -236,6 +219,83 @@ class _ImportScreenState extends State<ImportScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${source.displayName}: not available yet.'),
+      ),
+    );
+  }
+
+  Future<void> _startSmsHistoricalScan(
+    BuildContext context,
+    SmsIngestionSource source,
+  ) async {
+    final consent = widget.consentStore ?? SmsConsentStore();
+    if (!await consent.hasConsent()) {
+      if (!context.mounted) return;
+      final accepted = await Navigator.of(context).push<bool>(
+        MaterialPageRoute<bool>(
+          builder: (ctx) => SmsConsentScreen(
+            onAccepted: () => Navigator.of(ctx).pop(true),
+            onDeclined: () => Navigator.of(ctx).pop(false),
+          ),
+        ),
+      );
+      if (accepted != true) return;
+    }
+
+    final result = await source.requestPermission();
+    if (!context.mounted) return;
+    if (result.isErr) {
+      await _showSmsPermissionError(context, result.errorOrNull);
+      return;
+    }
+
+    final db = _db;
+    if (db == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Database not ready — try again.')),
+      );
+      return;
+    }
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => SmsHistoricalScanScreen(source: source, db: db),
+      ),
+    );
+  }
+
+  Future<void> _showSmsPermissionError(
+    BuildContext context,
+    String? code,
+  ) async {
+    final permanently = code == 'sms_permission_permanently_denied';
+    final consentRequired = code == 'sms_consent_required';
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('SMS access'),
+        content: Text(
+          consentRequired
+              ? 'SMS consent is required before Arth can read transaction messages.'
+              : permanently
+                  ? 'SMS read permission was denied. Open Settings to grant '
+                      'READ_SMS, or import a bank statement instead.'
+                  : 'SMS read permission is required for a historical scan. '
+                      'Statement import still works.',
+        ),
+        actions: [
+          if (permanently)
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                openAppSettings();
+              },
+              child: const Text('Open Settings'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
       ),
     );
   }

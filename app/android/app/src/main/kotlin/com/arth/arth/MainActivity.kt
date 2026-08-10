@@ -25,14 +25,29 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "querySmsPage" -> {
                         val limit = (call.argument<Number>("limit")?.toInt() ?: 100).coerceIn(1, 500)
-                        val offset = (call.argument<Number>("offset")?.toInt() ?: 0).coerceAtLeast(0)
+                        val beforeDateMillis =
+                            call.argument<Number>("before_date_millis")?.toLong()
                         @Suppress("UNCHECKED_CAST")
                         val entities =
                             (call.argument<List<String>>("entities") ?: emptyList())
                                 .map { it.uppercase() }
                                 .filter { it.isNotBlank() }
                         try {
-                            result.success(querySmsPage(limit, offset, entities))
+                            result.success(querySmsPage(limit, beforeDateMillis, entities))
+                        } catch (e: SecurityException) {
+                            result.error("PERMISSION_DENIED", e.message, null)
+                        } catch (e: Exception) {
+                            result.error("SMS_QUERY_FAILED", e.message, null)
+                        }
+                    }
+                    "countSms" -> {
+                        @Suppress("UNCHECKED_CAST")
+                        val entities =
+                            (call.argument<List<String>>("entities") ?: emptyList())
+                                .map { it.uppercase() }
+                                .filter { it.isNotBlank() }
+                        try {
+                            result.success(countSms(entities))
                         } catch (e: SecurityException) {
                             result.error("PERMISSION_DENIED", e.message, null)
                         } catch (e: Exception) {
@@ -46,7 +61,7 @@ class MainActivity : FlutterActivity() {
 
     private fun querySmsPage(
         limit: Int,
-        offset: Int,
+        beforeDateMillis: Long?,
         entities: List<String>,
     ): List<Map<String, Any?>> {
         val uri: Uri = Telephony.Sms.Inbox.CONTENT_URI
@@ -56,23 +71,29 @@ class MainActivity : FlutterActivity() {
             Telephony.Sms.DATE,
         )
 
-        val selection: String?
-        val selectionArgs: Array<String>?
+        val selectionParts = ArrayList<String>()
+        val selectionArgList = ArrayList<String>()
         if (entities.isNotEmpty()) {
-            selection = entities.joinToString(" OR ") {
-                "${Telephony.Sms.ADDRESS} LIKE ?"
-            }
-            selectionArgs = entities.map { "%$it%" }.toTypedArray()
-        } else {
-            selection = null
-            selectionArgs = null
+            selectionParts.add(
+                entities.joinToString(" OR ") {
+                    "${Telephony.Sms.ADDRESS} LIKE ?"
+                },
+            )
+            entities.forEach { selectionArgList.add("%$it%") }
         }
+        if (beforeDateMillis != null) {
+            selectionParts.add("${Telephony.Sms.DATE} < ?")
+            selectionArgList.add(beforeDateMillis.toString())
+        }
+        val selection =
+            if (selectionParts.isEmpty()) null else selectionParts.joinToString(" AND ")
+        val selectionArgs =
+            if (selectionArgList.isEmpty()) null else selectionArgList.toTypedArray()
 
         val rows = ArrayList<Map<String, Any?>>(limit)
         val cursor: Cursor? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val args = Bundle().apply {
                 putInt(ContentResolver.QUERY_ARG_LIMIT, limit)
-                putInt(ContentResolver.QUERY_ARG_OFFSET, offset)
                 putStringArray(
                     ContentResolver.QUERY_ARG_SORT_COLUMNS,
                     arrayOf(Telephony.Sms.DATE),
@@ -97,7 +118,7 @@ class MainActivity : FlutterActivity() {
                 projection,
                 selection,
                 selectionArgs,
-                "${Telephony.Sms.DATE} DESC LIMIT $limit OFFSET $offset",
+                "${Telephony.Sms.DATE} DESC LIMIT $limit",
             )
         }
 
@@ -116,5 +137,32 @@ class MainActivity : FlutterActivity() {
             }
         }
         return rows
+    }
+
+    private fun countSms(entities: List<String>): Int {
+        val uri: Uri = Telephony.Sms.Inbox.CONTENT_URI
+        val projection = arrayOf(Telephony.Sms._ID)
+
+        val selection: String?
+        val selectionArgs: Array<String>?
+        if (entities.isNotEmpty()) {
+            selection = entities.joinToString(" OR ") {
+                "${Telephony.Sms.ADDRESS} LIKE ?"
+            }
+            selectionArgs = entities.map { "%$it%" }.toTypedArray()
+        } else {
+            selection = null
+            selectionArgs = null
+        }
+
+        val cursor: Cursor? = contentResolver.query(
+            uri,
+            projection,
+            selection,
+            selectionArgs,
+            null,
+        )
+        cursor?.use { c -> return c.count }
+        return 0
     }
 }

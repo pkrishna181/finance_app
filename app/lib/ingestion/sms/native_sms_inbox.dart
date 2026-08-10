@@ -30,18 +30,18 @@ class NativeSmsInbox {
 
   final MethodChannel _channel;
 
-  /// Paginated inbox query. [entities] are DLT entity tokens (HDFCBK, …)
-  /// applied as SQL LIKE filters at the provider level.
+  /// Paginated inbox query (date DESC). Pass [beforeDateMillis] to continue
+  /// older than a checkpoint (exclusive upper bound on DATE).
   Future<List<NativeSmsMessage>> queryPage({
     required int limit,
-    required int offset,
+    int? beforeDateMillis,
     List<String>? entities,
   }) async {
     final raw = await _channel.invokeMethod<List<dynamic>>(
       'querySmsPage',
       <String, dynamic>{
         'limit': limit,
-        'offset': offset,
+        if (beforeDateMillis != null) 'before_date_millis': beforeDateMillis,
         'entities': entities ?? knownSenderEntities,
       },
     );
@@ -51,5 +51,16 @@ class NativeSmsInbox {
         .map((m) => NativeSmsMessage.fromMap(Map<dynamic, dynamic>.from(m)))
         .where((m) => m.body.isNotEmpty)
         .toList(growable: false);
+  }
+
+  /// Approximate inbox rows matching sender entity filters (for progress UI).
+  Future<int> countMessages({List<String>? entities}) async {
+    final count = await _channel.invokeMethod<int>(
+      'countSms',
+      <String, dynamic>{
+        'entities': entities ?? knownSenderEntities,
+      },
+    );
+    return count ?? 0;
   }
 }

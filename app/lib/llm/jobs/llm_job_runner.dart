@@ -175,10 +175,12 @@ class LlmJobRunner {
     final llmTxn = validated.okOrNull!;
     final llmJson = llmTxn.toJson();
 
+    final merchantSeeds = await MerchantSeedCatalog.load();
     final anchored = validateAgainstSource(
       row.rawBody,
       llmJson,
       sender: row.sender,
+      merchantSeeds: merchantSeeds,
     );
 
     await LlmDisagreementRecorder(db).recordFromAnchor(
