@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: 2026-08-10 (Phase 5.5 — opportunistic LLM batch runner)
+Last updated: Phase 6.1 — insights aggregation layer
 
 ---
 
@@ -21,7 +21,7 @@ Last updated: 2026-08-10 (Phase 5.5 — opportunistic LLM batch runner)
     common/          shared extractors (amount/date/refs/vpa)
     sms/             regex cascade + templates
   lib/llm            LlmEngine, FakeLlmEngine, LlamaCppEngine, job queue, anchoring
-  lib/insights       (later)
+  lib/insights       aggregation (Phase 6.1): pure Dart + read-only repository
   lib/ui
 /native/llama        arth_llm shim + llama.cpp b4531 (pinned)
 /model               MODEL_CARD.md (Gemma-3 1B Q4)
@@ -70,7 +70,7 @@ never logged. `countMessages` estimates total matching rows for progress UI.
 
 ---
 
-## Data model (schema v6)
+## Data model (schema v7)
 
 ### Imports
 
@@ -418,6 +418,29 @@ complete summary. **N unrecognized — resolve** on Import tab and scan complete
 opportunistically — never inline during scan).
 
 Lifecycle: app backgrounding requests cooperative cancel (same as Stop).
+
+---
+
+## Insights aggregation (Phase 6.1)
+
+`lib/insights/` — no Flutter dependency; deterministic, paise integers only.
+
+- `InsightsRepository` loads slim `InsightTxn` rows (raw SQL join to
+  categories/merchants) for a date range, padded ±7 days so transfers across a
+  month edge still pair.
+- `InsightsAggregator` (pure): `summarize(month)`, `trend`, `topMerchants`,
+  `dailySpend`, `weekdaySpend`, `monthOverMonth`, `categoryDeltas`.
+- **Spend** = debits; **income** = credits in `salary`/`interest` or
+  uncategorized; other categorized credits are **refunds** netting against that
+  category (category display floored at 0).
+- **Transfers excluded** (`TransferPairing`): category `transfers_self`, plus
+  auto-paired debit/credit of equal amount on different accounts within 3 days.
+  Both sides must be uncategorized/transfer-category; rows categorized by the
+  user elsewhere never pair. Manual override = recategorize the row
+  (`transfers_self` to force-exclude, any other category to force-include).
+- Schema v7 adds indexes `idx_transactions_booked_at` and
+  `idx_transactions_category_booked_at` (no table changes, no codegen impact).
+- Tests: `test/insights/`.
 
 ---
 
