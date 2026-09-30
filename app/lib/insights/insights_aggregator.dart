@@ -20,6 +20,12 @@ class InsightsAggregator {
 
   Set<int> get excludedIds => _excluded;
 
+  /// All counted (non-transfer) transactions, oldest first as supplied.
+  List<InsightTxn> get counted => [
+        for (final t in _txns)
+          if (_counted(t)) t,
+      ];
+
   bool _counted(InsightTxn t) => !_excluded.contains(t.id);
 
   Iterable<InsightTxn> _inMonth(MonthKey m) => _txns.where(

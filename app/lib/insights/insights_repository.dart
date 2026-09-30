@@ -1,7 +1,9 @@
-import 'package:drift/drift.dart' show Variable;
+import 'package:drift/drift.dart' show Value, Variable;
+
 
 import '../core/db/database.dart';
 import 'insight_models.dart';
+import 'anomaly_detector.dart';
 import 'insights_aggregator.dart';
 import 'recurring_detector.dart';
 
@@ -146,5 +148,24 @@ ORDER BY t.booked_at ASC, t.id ASC
         );
       }
     }
+  }
+
+  /// Keys of anomalies the user has dismissed.
+  Future<Set<String>> dismissedAnomalyKeys() async {
+    final rows = await (_db.select(_db.userCorrections)
+          ..where((t) => t.field.equals(kAnomalyDismissedField)))
+        .get();
+    return {for (final r in rows) r.newValue};
+  }
+
+  Future<void> dismissAnomaly(Anomaly a) async {
+    await _db.into(_db.userCorrections).insert(
+          UserCorrectionsCompanion.insert(
+            transactionId: Value(a.txnId),
+            rawMerchant: a.title,
+            field: kAnomalyDismissedField,
+            newValue: a.key,
+          ),
+        );
   }
 }

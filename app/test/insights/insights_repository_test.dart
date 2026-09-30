@@ -102,4 +102,21 @@ void main() {
     expect(rows.every((r) => r.isRecurringCandidate), isTrue);
     expect(rows.every((r) => r.recurringKind == 'subscription'), isTrue);
   });
+
+  test('dismissAnomaly persists and is read back', () async {
+    await insert('d1', 45000, DateTime(2026, 9, 3, 10), raw: 'ZOMATO');
+    final txnId = (await db.select(db.transactions).getSingle()).id;
+    final repo = InsightsRepository(db);
+    expect(await repo.dismissedAnomalyKeys(), isEmpty);
+
+    await repo.dismissAnomaly(Anomaly(
+      kind: AnomalyKind.duplicateCharge,
+      key: 'dup:$txnId',
+      title: 'Possible duplicate: ZOMATO',
+      detail: 'x',
+      impactPaise: 45000,
+      txnId: txnId,
+    ));
+    expect(await repo.dismissedAnomalyKeys(), {'dup:$txnId'});
+  });
 }

@@ -1,6 +1,7 @@
 /// Categorization, recurring detection, anomalies, cash-flow (Phase 6+).
 library;
 
+export 'anomaly_detector.dart';
 export 'insight_format.dart';
 export 'insight_models.dart';
 export 'insights_aggregator.dart';

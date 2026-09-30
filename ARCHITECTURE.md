@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 6.3 — recurring detection
+Last updated: Phase 6.4 — anomaly detection
 
 ---
 
@@ -464,6 +464,25 @@ still null — never overwrites) and attaches the earliest upcoming
 `mandate_notices` date whose merchant matches and amount is within 10%.
 UI: "Subscriptions & EMIs" card (monthly total, next date, "price up").
 Tests: `test/insights/recurring_detector_test.dart`.
+
+### Anomalies (Phase 6.4)
+
+`AnomalyDetector` (pure) flags unusual spending in the selected month against
+up to 6 prior months held by the aggregator. Thresholds are constructor
+parameters. One flag per transaction (duplicate > new payee > large):
+
+| Kind | Rule |
+|---|---|
+| Category spike | ≥3 prior months; z ≥ 2 (σ floored at 10% of mean); ≥1.3× mean; ≥₹1,000 above it. Uncategorized ignored. |
+| Large transaction | ≥5 prior debits in the category; > mean+3σ; ≥3× median; ≥₹2,000 |
+| New payee | ≥20 prior debits overall; never-seen merchant; ≥₹5,000 and ≥ prior 90th percentile |
+| Duplicate charge | same merchant + amount within 24h; ≥₹100 |
+
+Top 5 by money impact shown as "Unusual this month". The ✕ button stores a
+`user_corrections` row (`field = 'anomaly_dismissed'`, `new_value = key`;
+keys: `dup:<txn>`, `new:<txn>`, `large:<txn>`, `cat:<slug>:<yyyy-MM>`). The
+category rule engine only reads `field = 'category'`, so dismissals do not
+affect categorization. Tests: `test/insights/anomaly_detector_test.dart`.
 
 ### Insights UI (Phase 6.2)
 

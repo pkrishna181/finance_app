@@ -89,6 +89,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
       final recurring = await repo.loadRecurring(
         asOf: monthEnd.isAfter(now) ? now : monthEnd,
       );
+      final dismissed = await repo.dismissedAnomalyKeys();
       if (!mounted) return;
       setState(() {
         _months = months;
@@ -98,6 +99,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
           selected,
           names,
           recurring: recurring,
+          dismissedAnomalies: dismissed,
         );
         _loading = false;
       });
@@ -108,6 +110,13 @@ class _InsightsScreenState extends State<InsightsScreen> {
         _loading = false;
       });
     }
+  }
+
+  Future<void> _dismiss(Anomaly a) async {
+    final db = widget.database;
+    if (db == null) return;
+    await InsightsRepository(db).dismissAnomaly(a);
+    if (mounted) await _load();
   }
 
   void _step(int delta) {
@@ -163,6 +172,13 @@ class _InsightsScreenState extends State<InsightsScreen> {
             const _Message('Nothing recorded this month.')
           else ...[
             _SummaryTiles(snapshot: snap),
+            if (snap.anomalies.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _AnomalyCard(
+                anomalies: snap.anomalies,
+                onDismiss: _dismiss,
+              ),
+            ],
             if (snap.summary.uncategorizedCount > 0) ...[
               const SizedBox(height: 12),
               _UncategorizedBanner(snapshot: snap),
@@ -651,6 +667,51 @@ class _RecurringCard extends StatelessWidget {
                       : null,
                 ),
                 trailing: Text(inrWhole(r.lastAmountPaise)),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AnomalyCard extends StatelessWidget {
+  const _AnomalyCard({required this.anomalies, required this.onDismiss});
+  final List<Anomaly> anomalies;
+  final Future<void> Function(Anomaly) onDismiss;
+
+  static IconData _icon(AnomalyKind k) => switch (k) {
+        AnomalyKind.categorySpike => Icons.trending_up,
+        AnomalyKind.largeTransaction => Icons.priority_high,
+        AnomalyKind.newMerchant => Icons.storefront_outlined,
+        AnomalyKind.duplicateCharge => Icons.content_copy,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Card(
+      margin: EdgeInsets.zero,
+      color: Theme.of(context).colorScheme.errorContainer,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Unusual this month', style: t.titleMedium),
+            const SizedBox(height: 4),
+            for (final a in anomalies)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                leading: Icon(_icon(a.kind)),
+                title: Text(a.title),
+                subtitle: Text(a.detail),
+                trailing: IconButton(
+                  tooltip: 'Not unusual',
+                  icon: const Icon(Icons.close),
+                  onPressed: () => onDismiss(a),
+                ),
               ),
           ],
         ),

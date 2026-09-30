@@ -1,4 +1,5 @@
 import 'insight_models.dart';
+import 'anomaly_detector.dart';
 import 'insights_aggregator.dart';
 import 'recurring_detector.dart';
 
@@ -33,6 +34,7 @@ class InsightsSnapshot {
     required this.merchants,
     required this.aggregator,
     this.recurring = const [],
+    this.anomalies = const [],
   });
 
   final MonthKey month;
@@ -45,6 +47,7 @@ class InsightsSnapshot {
   final List<MerchantTotal> merchants;
   final InsightsAggregator aggregator;
   final List<RecurringSeries> recurring;
+  final List<Anomaly> anomalies;
 
   /// Active series only, for monthly-commitment totals.
   List<RecurringSeries> get activeRecurring =>
@@ -63,6 +66,7 @@ class InsightsSnapshot {
     int trendMonths = 6,
     int merchantLimit = 5,
     List<RecurringSeries> recurring = const [],
+    Set<String> dismissedAnomalies = const {},
   }) {
     final summary = agg.summarize(month);
     return InsightsSnapshot(
@@ -75,6 +79,12 @@ class InsightsSnapshot {
       merchants: agg.topMerchants(month, limit: merchantLimit),
       aggregator: agg,
       recurring: recurring,
+      anomalies: const AnomalyDetector().detect(
+        agg,
+        month,
+        categoryNames: categoryNames,
+        dismissed: dismissedAnomalies,
+      ),
     );
   }
 
