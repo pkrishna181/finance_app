@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 6.4 — anomaly detection
+Last updated: Phase 6.5 — cash-flow and forecast
 
 ---
 
@@ -483,6 +483,30 @@ Top 5 by money impact shown as "Unusual this month". The ✕ button stores a
 keys: `dup:<txn>`, `new:<txn>`, `large:<txn>`, `cat:<slug>:<yyyy-MM>`). The
 category rule engine only reads `field = 'category'`, so dismissals do not
 affect categorization. Tests: `test/insights/anomaly_detector_test.dart`.
+
+### Cash-flow and forecast (Phase 6.5)
+
+`lib/insights/cashflow.dart` (pure):
+
+- **`BalanceSeries`** — combined daily balance from `balance_after_paise`.
+  Per account the day's last transaction (time, then id) is the closing
+  balance, carried forward on quiet days; an account joins from its first known
+  balance. Accounts with < 3 balance points are ignored. **Uses all rows
+  including transfers** (balances don't care about spend semantics).
+  Caveat: credit-card statements may report outstanding/limit rather than a
+  balance and would distort the sum; not special-cased yet.
+- **`CashflowForecaster`** (current calendar month only) — projected spend =
+  spent so far + recurring charges still due (from 6.3 series; mandate date
+  wins over the estimate; weekly series can fall due repeatedly; overdue ones
+  are not projected) + non-recurring daily rate × days left. Rate = this
+  month's non-recurring spend / days elapsed once ≥ 7 days have passed, else
+  the average of up to 3 prior months. Projected balance = latest combined
+  balance − projected remaining spend, when balances are known.
+- **Category increases** — top 3 categories with ≥ ₹500 growth vs last month
+  (categories with no prior spend excluded).
+
+UI cards: "Month-end outlook", "Biggest increases vs last month", "Balance"
+(60-day line). Tests: `test/insights/cashflow_test.dart`.
 
 ### Insights UI (Phase 6.2)
 

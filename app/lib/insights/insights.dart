@@ -2,6 +2,7 @@
 library;
 
 export 'anomaly_detector.dart';
+export 'cashflow.dart';
 export 'insight_format.dart';
 export 'insight_models.dart';
 export 'insights_aggregator.dart';

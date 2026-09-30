@@ -100,6 +100,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
           names,
           recurring: recurring,
           dismissedAnomalies: dismissed,
+          now: now,
         );
         _loading = false;
       });
@@ -184,9 +185,21 @@ class _InsightsScreenState extends State<InsightsScreen> {
               _UncategorizedBanner(snapshot: snap),
             ],
             const SizedBox(height: 12),
+            if (snap.forecast != null) ...[
+              _ForecastCard(forecast: snap.forecast!),
+              const SizedBox(height: 12),
+            ],
             _CategoryCard(snapshot: snap),
+            if (snap.changes.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _ChangesCard(changes: snap.changes),
+            ],
             const SizedBox(height: 12),
             _TrendCard(snapshot: snap),
+            if (snap.balances.length >= 2) ...[
+              const SizedBox(height: 12),
+              _BalanceCard(points: snap.balances),
+            ],
             if (snap.activeRecurring.isNotEmpty) ...[
               const SizedBox(height: 12),
               _RecurringCard(snapshot: snap),
@@ -713,6 +726,180 @@ class _AnomalyCard extends StatelessWidget {
                   onPressed: () => onDismiss(a),
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ForecastCard extends StatelessWidget {
+  const _ForecastCard({required this.forecast});
+  final MonthForecast forecast;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final f = forecast;
+    final bal = f.projectedBalancePaise;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Month-end outlook', style: t.titleMedium),
+            const SizedBox(height: 8),
+            Text('${inrWhole(f.projectedSpendPaise)} projected spend',
+                style: t.headlineSmall),
+            const SizedBox(height: 4),
+            Text(
+              '${inrWhole(f.spentSoFarPaise)} so far · '
+              '${inrWhole(f.upcomingRecurringPaise)} recurring due · '
+              '~${inrWhole(f.variableDailyPaise)}/day for '
+              '${f.daysRemaining} more days',
+              style: t.bodySmall,
+            ),
+            if (bal != null) ...[
+              const SizedBox(height: 8),
+              Text('Balance could end near ${inrWhole(bal)}'),
+            ],
+            if (f.upcoming.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text('Still due this month', style: t.labelMedium),
+              for (final u in f.upcoming.take(4))
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${u.date.day} ${monthShort(u.date.month)} · ${u.label}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(inrWhole(u.paise)),
+                    ],
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChangesCard extends StatelessWidget {
+  const _ChangesCard({required this.changes});
+  final List<CategoryChange> changes;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Biggest increases vs last month', style: t.titleMedium),
+            const SizedBox(height: 8),
+            for (final c in changes)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                title: Text(c.name),
+                subtitle: Text('${inrWhole(c.delta.previous)} → '
+                    '${inrWhole(c.delta.current)}'),
+                trailing: Text(
+                  '+${inrWhole(c.delta.diffPaise)}',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BalanceCard extends StatelessWidget {
+  const _BalanceCard({required this.points});
+  final List<BalancePoint> points;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final lo = points.map((p) => p.paise).reduce((a, b) => a < b ? a : b);
+    final hi = points.map((p) => p.paise).reduce((a, b) => a > b ? a : b);
+    final first = points.first;
+    final last = points.last;
+    final summary = 'Balance from ${inrCompact(first.paise)} to '
+        '${inrCompact(last.paise)}, low ${inrCompact(lo)}, high ${inrCompact(hi)}';
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Balance', style: t.titleMedium),
+            const SizedBox(height: 4),
+            Text(
+              '${inrWhole(last.paise)} · low ${inrCompact(lo)} · '
+              'high ${inrCompact(hi)}',
+              style: t.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            Semantics(
+              label: summary,
+              child: ExcludeSemantics(
+                child: SizedBox(
+                  height: 140,
+                  child: LineChart(
+                    LineChartData(
+                      gridData: const FlGridData(show: false),
+                      borderData: FlBorderData(show: false),
+                      titlesData: const FlTitlesData(show: false),
+                      lineTouchData: const LineTouchData(enabled: false),
+                      minY: lo == hi ? lo - 1.0 : lo.toDouble(),
+                      maxY: lo == hi ? hi + 1.0 : hi.toDouble(),
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: [
+                            for (var i = 0; i < points.length; i++)
+                              FlSpot(i.toDouble(), points[i].paise.toDouble()),
+                          ],
+                          isCurved: false,
+                          barWidth: 2,
+                          color: scheme.primary,
+                          dotData: const FlDotData(show: false),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            color: scheme.primary.withValues(alpha: 0.12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('${first.day.day} ${monthShort(first.day.month)}',
+                    style: t.labelSmall),
+                Text('${last.day.day} ${monthShort(last.day.month)}',
+                    style: t.labelSmall),
+              ],
+            ),
           ],
         ),
       ),

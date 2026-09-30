@@ -28,6 +28,7 @@ SELECT t.id AS id,
        t.category_source AS category_source,
        t.merchant_id AS merchant_id,
        t.raw_merchant AS raw_merchant,
+       t.balance_after_paise AS balance_after_paise,
        c.slug AS category_slug,
        m.canonical_name AS merchant_name
 FROM transactions t
@@ -58,6 +59,7 @@ ORDER BY t.booked_at ASC, t.id ASC
           merchantId: r.readNullable<int>('merchant_id'),
           merchantName: r.readNullable<String>('merchant_name'),
           rawMerchant: r.read<String>('raw_merchant'),
+          balanceAfterPaise: r.readNullable<int>('balance_after_paise'),
         ),
     ];
   }

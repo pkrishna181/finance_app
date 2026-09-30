@@ -20,6 +20,9 @@ class InsightsAggregator {
 
   Set<int> get excludedIds => _excluded;
 
+  /// Every supplied transaction, including transfers (for balance history).
+  List<InsightTxn> get all => _txns;
+
   /// All counted (non-transfer) transactions, oldest first as supplied.
   List<InsightTxn> get counted => [
         for (final t in _txns)

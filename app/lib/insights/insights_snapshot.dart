@@ -1,9 +1,21 @@
 import 'insight_models.dart';
 import 'anomaly_detector.dart';
+import 'cashflow.dart';
 import 'insights_aggregator.dart';
 import 'recurring_detector.dart';
 
 const kOtherSliceSlug = '_other';
+
+class CategoryChange {
+  const CategoryChange({
+    required this.slug,
+    required this.name,
+    required this.delta,
+  });
+  final String slug;
+  final String name;
+  final MonthDelta delta;
+}
 
 class CategorySlice {
   const CategorySlice({
@@ -35,6 +47,9 @@ class InsightsSnapshot {
     required this.aggregator,
     this.recurring = const [],
     this.anomalies = const [],
+    this.forecast,
+    this.balances = const [],
+    this.changes = const [],
   });
 
   final MonthKey month;
@@ -48,6 +63,15 @@ class InsightsSnapshot {
   final InsightsAggregator aggregator;
   final List<RecurringSeries> recurring;
   final List<Anomaly> anomalies;
+
+  /// Only for the current calendar month.
+  final MonthForecast? forecast;
+
+  /// Combined balance, daily, last ~60 days up to the month end / today.
+  final List<BalancePoint> balances;
+
+  /// Largest category increases vs previous month.
+  final List<CategoryChange> changes;
 
   /// Active series only, for monthly-commitment totals.
   List<RecurringSeries> get activeRecurring =>
@@ -67,8 +91,28 @@ class InsightsSnapshot {
     int merchantLimit = 5,
     List<RecurringSeries> recurring = const [],
     Set<String> dismissedAnomalies = const {},
+    DateTime? now,
+    int balanceDays = 60,
   }) {
     final summary = agg.summarize(month);
+    final monthEnd = month.endExclusive.subtract(const Duration(days: 1));
+    final anchor = now != null && now.isBefore(monthEnd) ? now : monthEnd;
+    final balances = BalanceSeries.build(
+      agg.all,
+      from: anchor.subtract(Duration(days: balanceDays - 1)),
+      to: anchor,
+    );
+    final changes = [
+      for (final c in agg.categoryDeltas(month))
+        if (c.slug != kUncategorizedSlug &&
+            c.delta.previous > 0 &&
+            c.delta.diffPaise >= 50000)
+          CategoryChange(
+            slug: c.slug,
+            name: categoryNames[c.slug] ?? c.slug,
+            delta: c.delta,
+          ),
+    ].take(3).toList();
     return InsightsSnapshot(
       month: month,
       summary: summary,
@@ -85,6 +129,17 @@ class InsightsSnapshot {
         categoryNames: categoryNames,
         dismissed: dismissedAnomalies,
       ),
+      forecast: now == null
+          ? null
+          : const CashflowForecaster().forecast(
+              agg,
+              month,
+              recurring,
+              asOf: now,
+              currentBalancePaise: balances.isEmpty ? null : balances.last.paise,
+            ),
+      balances: balances,
+      changes: changes,
     );
   }
 

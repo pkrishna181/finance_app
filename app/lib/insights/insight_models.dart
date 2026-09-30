@@ -48,6 +48,7 @@ class InsightTxn {
     this.merchantId,
     this.merchantName,
     this.rawMerchant = '',
+    this.balanceAfterPaise,
   });
 
   final int id;
@@ -68,6 +69,9 @@ class InsightTxn {
   final int? merchantId;
   final String? merchantName;
   final String rawMerchant;
+
+  /// Account balance after this transaction, when the source provides it.
+  final int? balanceAfterPaise;
 
   String get accountKey => '$bankCode|${accountHint ?? ''}';
 
