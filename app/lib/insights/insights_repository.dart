@@ -3,6 +3,7 @@ import 'package:drift/drift.dart' show Variable;
 import '../core/db/database.dart';
 import 'insight_models.dart';
 import 'insights_aggregator.dart';
+import 'recurring_detector.dart';
 
 /// Loads slim transaction projections from the encrypted DB.
 class InsightsRepository {
@@ -90,5 +91,60 @@ ORDER BY t.booked_at ASC, t.id ASC
           MonthKey(int.parse(ym.substring(0, 4)), int.parse(ym.substring(5))),
     ]..sort((a, b) => b.compareTo(a));
     return out;
+  }
+
+  /// Detects recurring debits over the 13 months before [asOf], attaches
+  /// upcoming mandate dates, and flags the underlying rows
+  /// (`is_recurring_candidate`, and `recurring_kind` when still unset).
+  Future<List<RecurringSeries>> loadRecurring({
+    required DateTime asOf,
+    bool persist = true,
+  }) async {
+    final from = DateTime(asOf.year, asOf.month - 13, asOf.day);
+    final to = DateTime(asOf.year, asOf.month, asOf.day + 1);
+    final txns = await loadRange(from, to);
+    final agg = InsightsAggregator(txns);
+    final counted = [
+      for (final t in txns)
+        if (t.isDebit && !agg.excludedIds.contains(t.id)) t,
+    ];
+    final found = const RecurringDetector().detect(counted, asOf: asOf);
+    if (persist) await _persistRecurring(found);
+
+    final notices = await _db.select(_db.mandateNotices).get();
+    return RecurringDetector.matchMandates(
+      found,
+      [
+        for (final n in notices)
+          MandateHint(
+            merchant: n.merchant,
+            amountPaise: n.amountPaise,
+            scheduledDate: n.scheduledDate,
+          ),
+      ],
+      asOf: asOf,
+    );
+  }
+
+  Future<void> _persistRecurring(List<RecurringSeries> series) async {
+    for (final s in series) {
+      for (var i = 0; i < s.txnIds.length; i += 500) {
+        final chunk = s.txnIds.sublist(
+          i,
+          i + 500 > s.txnIds.length ? s.txnIds.length : i + 500,
+        );
+        final marks = List.filled(chunk.length, '?').join(',');
+        await _db.customUpdate(
+          'UPDATE transactions SET is_recurring_candidate = 1, '
+          'recurring_kind = COALESCE(recurring_kind, ?) '
+          'WHERE id IN ($marks)',
+          variables: [
+            Variable<String>(s.kind),
+            for (final id in chunk) Variable<int>(id),
+          ],
+          updates: {_db.transactions},
+        );
+      }
+    }
   }
 }

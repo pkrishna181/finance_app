@@ -78,4 +78,28 @@ void main() {
       'idx_transactions_category_booked_at',
     ]));
   });
+
+  test('loadRecurring detects, flags rows, and matches mandate notices',
+      () async {
+    for (final m in [7, 8, 9]) {
+      await insert('n$m', 64900, DateTime(2026, m, 5, 10), raw: 'NETFLIX');
+    }
+    await db.insertMandateNotice(MandateNoticesCompanion.insert(
+      bankCode: 'HDFC',
+      rawBody: 'upcoming mandate',
+      merchant: const Value('Netflix'),
+      amountPaise: const Value(64900),
+      scheduledDate: Value(DateTime(2026, 9, 25)),
+    ));
+
+    final found = await InsightsRepository(db)
+        .loadRecurring(asOf: DateTime(2026, 9, 15));
+    expect(found, hasLength(1));
+    expect(found.single.cadence, Cadence.monthly);
+    expect(found.single.mandateDate, DateTime(2026, 9, 25));
+
+    final rows = await db.select(db.transactions).get();
+    expect(rows.every((r) => r.isRecurringCandidate), isTrue);
+    expect(rows.every((r) => r.recurringKind == 'subscription'), isTrue);
+  });
 }

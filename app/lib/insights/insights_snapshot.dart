@@ -1,5 +1,6 @@
 import 'insight_models.dart';
 import 'insights_aggregator.dart';
+import 'recurring_detector.dart';
 
 const kOtherSliceSlug = '_other';
 
@@ -31,6 +32,7 @@ class InsightsSnapshot {
     required this.slices,
     required this.merchants,
     required this.aggregator,
+    this.recurring = const [],
   });
 
   final MonthKey month;
@@ -42,6 +44,14 @@ class InsightsSnapshot {
   final List<CategorySlice> slices;
   final List<MerchantTotal> merchants;
   final InsightsAggregator aggregator;
+  final List<RecurringSeries> recurring;
+
+  /// Active series only, for monthly-commitment totals.
+  List<RecurringSeries> get activeRecurring =>
+      [for (final r in recurring) if (r.active) r];
+
+  int get monthlyCommitmentPaise =>
+      activeRecurring.fold(0, (s, r) => s + r.monthlyEquivalentPaise);
 
   bool get isEmpty => summary.txnCount == 0;
 
@@ -52,6 +62,7 @@ class InsightsSnapshot {
     int maxSlices = 6,
     int trendMonths = 6,
     int merchantLimit = 5,
+    List<RecurringSeries> recurring = const [],
   }) {
     final summary = agg.summarize(month);
     return InsightsSnapshot(
@@ -63,6 +74,7 @@ class InsightsSnapshot {
           maxSlices: maxSlices),
       merchants: agg.topMerchants(month, limit: merchantLimit),
       aggregator: agg,
+      recurring: recurring,
     );
   }
 

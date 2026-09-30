@@ -78,4 +78,29 @@ void main() {
     expect(agg.transactionsIn(MonthKey(2026, 7), categorySlug: 'rent'),
         isEmpty);
   });
+
+  test('monthly commitment sums active recurring only', () {
+    RecurringSeries series(int paise, bool active) => RecurringSeries(
+          key: 'k$paise',
+          label: 'x',
+          merchantId: null,
+          cadence: Cadence.monthly,
+          kind: 'subscription',
+          lastAmountPaise: paise,
+          lastSeen: DateTime(2026, 7, 1),
+          nextExpected: DateTime(2026, 7, 31),
+          occurrences: 3,
+          txnIds: const [],
+          confidence: 1,
+          active: active,
+        );
+    final snap = InsightsSnapshot.build(
+      InsightsAggregator(const []),
+      MonthKey(2026, 7),
+      const {},
+      recurring: [series(10000, true), series(5000, true), series(9999, false)],
+    );
+    expect(snap.monthlyCommitmentPaise, 15000);
+    expect(snap.activeRecurring, hasLength(2));
+  });
 }

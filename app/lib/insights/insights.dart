@@ -6,4 +6,5 @@ export 'insight_models.dart';
 export 'insights_aggregator.dart';
 export 'insights_repository.dart';
 export 'insights_snapshot.dart';
+export 'recurring_detector.dart';
 export 'transfer_pairing.dart';

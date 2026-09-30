@@ -84,11 +84,21 @@ class _InsightsScreenState extends State<InsightsScreen> {
       final selected = want != null && months.contains(want) ? want : months.first;
       final agg = await repo.aggregatorFor(selected);
       final names = await repo.categoryNames();
+      final now = DateTime.now();
+      final monthEnd = selected.endExclusive.subtract(const Duration(days: 1));
+      final recurring = await repo.loadRecurring(
+        asOf: monthEnd.isAfter(now) ? now : monthEnd,
+      );
       if (!mounted) return;
       setState(() {
         _months = months;
         _selected = selected;
-        _snapshot = InsightsSnapshot.build(agg, selected, names);
+        _snapshot = InsightsSnapshot.build(
+          agg,
+          selected,
+          names,
+          recurring: recurring,
+        );
         _loading = false;
       });
     } catch (e) {
@@ -161,6 +171,10 @@ class _InsightsScreenState extends State<InsightsScreen> {
             _CategoryCard(snapshot: snap),
             const SizedBox(height: 12),
             _TrendCard(snapshot: snap),
+            if (snap.activeRecurring.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _RecurringCard(snapshot: snap),
+            ],
             const SizedBox(height: 12),
             _MerchantsCard(snapshot: snap),
           ],
@@ -581,6 +595,63 @@ class _MerchantsCard extends StatelessWidget {
                       '${m.count == 1 ? '' : 's'}'),
                   trailing: Text(inrWhole(m.spendPaise)),
                 ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecurringCard extends StatelessWidget {
+  const _RecurringCard({required this.snapshot});
+  final InsightsSnapshot snapshot;
+
+  static String _cadence(Cadence c) => switch (c) {
+        Cadence.weekly => 'weekly',
+        Cadence.monthly => 'monthly',
+        Cadence.quarterly => 'quarterly',
+        Cadence.annual => 'yearly',
+      };
+
+  static String _date(DateTime d) => '${d.day} ${monthShort(d.month)}';
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final items = snapshot.activeRecurring;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Subscriptions & EMIs', style: t.titleMedium),
+            const SizedBox(height: 4),
+            Text(
+              '≈ ${inrWhole(snapshot.monthlyCommitmentPaise)} / month '
+              'across ${items.length}',
+              style: t.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            for (final r in items)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                title: Text(r.label, maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                subtitle: Text(
+                  '${_cadence(r.cadence)} · next '
+                  '${_date(r.mandateDate ?? r.nextExpected)}'
+                  '${r.mandateDate != null ? ' (mandate)' : ''}'
+                  '${r.priceChange?.isIncrease == true ? ' · price up' : ''}',
+                  style: r.priceChange?.isIncrease == true
+                      ? TextStyle(color: scheme.error)
+                      : null,
+                ),
+                trailing: Text(inrWhole(r.lastAmountPaise)),
+              ),
           ],
         ),
       ),

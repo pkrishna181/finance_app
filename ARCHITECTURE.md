@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 6.2 — Insights overview UI
+Last updated: Phase 6.3 — recurring detection
 
 ---
 
@@ -442,6 +442,28 @@ Lifecycle: app backgrounding requests cooperative cancel (same as Stop).
 - Schema v7 adds indexes `idx_transactions_booked_at` and
   `idx_transactions_category_booked_at` (no table changes, no codegen impact).
 - Tests: `test/insights/`.
+
+### Recurring detection (Phase 6.3)
+
+`RecurringDetector` (pure) over counted, non-transfer debits, grouped by
+`merchantId` (else normalized raw label: lowercase, digits/punctuation
+stripped, ≥3 chars):
+
+1. Amounts form ≤ 2 consecutive levels (±5%) — one price change allowed
+   (`PriceChange`), noisy spend rejected.
+2. Min charges: weekly 4, monthly 3, quarterly 3, annual 2.
+3. ≥ 75% of intervals fit one cadence (7±2, 30±4, 91±8, 365±15 days); an
+   interval near 2× the cadence counts as one missed cycle.
+4. `active` = last charge within 2 cycles of `asOf`; lapsed series are kept
+   but excluded from the monthly-commitment total.
+
+`kind`: `sip` (category `investments_sip`), `enach` (txn type enach/mandate or
+category `emi`), else `subscription`. `InsightsRepository.loadRecurring` scans
+13 months, flags rows (`is_recurring_candidate = 1`; `recurring_kind` only when
+still null — never overwrites) and attaches the earliest upcoming
+`mandate_notices` date whose merchant matches and amount is within 10%.
+UI: "Subscriptions & EMIs" card (monthly total, next date, "price up").
+Tests: `test/insights/recurring_detector_test.dart`.
 
 ### Insights UI (Phase 6.2)
 
