@@ -26,6 +26,21 @@ class InsightsAggregator {
         (t) => _counted(t) && MonthKey.of(t.bookedAt) == m,
       );
 
+  /// Counted (non-transfer) transactions in [month], newest first. With
+  /// [categorySlug], only that category (null category = uncategorized).
+  List<InsightTxn> transactionsIn(MonthKey month, {String? categorySlug}) {
+    final out = _inMonth(month)
+        .where((t) =>
+            categorySlug == null ||
+            (t.categorySlug ?? kUncategorizedSlug) == categorySlug)
+        .toList()
+      ..sort((a, b) {
+        final c = b.bookedAt.compareTo(a.bookedAt);
+        return c != 0 ? c : b.id.compareTo(a.id);
+      });
+    return out;
+  }
+
   MonthSummary summarize(MonthKey month) {
     var income = 0;
     var spend = 0;

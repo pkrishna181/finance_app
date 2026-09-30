@@ -71,6 +71,12 @@ ORDER BY t.booked_at ASC, t.id ASC
     return InsightsAggregator(await loadRange(from, to));
   }
 
+  /// slug → display name.
+  Future<Map<String, String>> categoryNames() async {
+    final rows = await _db.select(_db.categories).get();
+    return {for (final c in rows) c.slug: c.name};
+  }
+
   /// Months that contain at least one transaction, newest first.
   Future<List<MonthKey>> availableMonths() async {
     final rows = await _db.customSelect(

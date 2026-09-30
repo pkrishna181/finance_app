@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 6.1 — insights aggregation layer
+Last updated: Phase 6.2 — Insights overview UI
 
 ---
 
@@ -43,6 +43,7 @@ ARCHITECTURE.md
 | `csv` 8.x | CSV decode | dart ecosystem, recent |
 | `file_picker` 8.x | File pick | Active |
 | `pdfrx_engine` 0.4.x + `pdfium_flutter` | PDF text + positions | **Chosen Phase 3** — PDFium-based (preferred over pure-Dart renderers for extraction fidelity); active GitHub (espresso3389/pdfrx, 2025–2026); MIT; password via `PdfPasswordProvider` |
+| `fl_chart` 1.x | Insights donut + trend bars | **Chosen Phase 6.2** — MIT, pure Dart/Flutter (no native/network), actively maintained; checked 2026-09 |
 | `pdf` 3.x | Dev fixture generation only | DavBfr/dart_pdf; BSD; used in Python/reportlab path for goldens, not runtime import |
 
 ### Removed: `flutter_sms_inbox`
@@ -441,6 +442,25 @@ Lifecycle: app backgrounding requests cooperative cancel (same as Stop).
 - Schema v7 adds indexes `idx_transactions_booked_at` and
   `idx_transactions_category_booked_at` (no table changes, no codegen impact).
 - Tests: `test/insights/`.
+
+### Insights UI (Phase 6.2)
+
+`InsightsScreen` (Insights tab) loads the selected month via
+`InsightsRepository` → `InsightsSnapshot.build` (pure view-model: summary,
+MoM spend delta, 6-month trend, category slices with tail folded into
+"Other", top 5 merchants). Reloads when the tab is re-selected
+(`reloadToken`) and on pull-to-refresh.
+
+- Summary tiles: income / spend / net / savings rate.
+- Category donut (`fl_chart`) + tappable legend → `CategoryTransactionsScreen`
+  (read-only list of the transactions behind the number).
+- Spend-trend bars with the selected month highlighted; chart is wrapped in a
+  text `Semantics` summary.
+- Uncategorized banner drills into the uncategorized list (it does **not** open
+  the SMS resolve flow, which handles unparsed SMS, not categories).
+- Category editing from these lists is Phase 6.6.
+- Tests: `test/insights/insights_snapshot_test.dart`,
+  `test/ui/insights_screen_test.dart`.
 
 ---
 

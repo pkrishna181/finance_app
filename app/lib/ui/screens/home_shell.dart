@@ -26,6 +26,7 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   int _index = 0;
+  int _insightsTick = 0;
   late final LlmBatchCoordinator _coordinator;
   ArthDatabase? _db;
 
@@ -75,7 +76,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         index: _index,
         children: [
           HomeScreen(coordinator: _coordinator, database: db),
-          InsightsScreen(),
+          InsightsScreen(database: db, reloadToken: _insightsTick),
           ImportScreen(
             database: db,
             coordinator: _coordinator,
@@ -85,7 +86,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        onDestinationSelected: (i) => setState(() {
+          _index = i;
+          if (i == 1) _insightsTick++;
+        }),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
