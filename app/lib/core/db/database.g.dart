@@ -15134,6 +15134,295 @@ class RetirementPlansCompanion extends UpdateCompanion<RetirementPlan> {
   }
 }
 
+class $SheetsTable extends Sheets with TableInfo<$SheetsTable, Sheet> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SheetsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, title, body, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sheets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Sheet> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bodyMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Sheet map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Sheet(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SheetsTable createAlias(String alias) {
+    return $SheetsTable(attachedDatabase, alias);
+  }
+}
+
+class Sheet extends DataClass implements Insertable<Sheet> {
+  final int id;
+  final String title;
+  final String body;
+  final DateTime updatedAt;
+  const Sheet({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['title'] = Variable<String>(title);
+    map['body'] = Variable<String>(body);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  SheetsCompanion toCompanion(bool nullToAbsent) {
+    return SheetsCompanion(
+      id: Value(id),
+      title: Value(title),
+      body: Value(body),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory Sheet.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Sheet(
+      id: serializer.fromJson<int>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      body: serializer.fromJson<String>(json['body']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'title': serializer.toJson<String>(title),
+      'body': serializer.toJson<String>(body),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  Sheet copyWith({int? id, String? title, String? body, DateTime? updatedAt}) =>
+      Sheet(
+        id: id ?? this.id,
+        title: title ?? this.title,
+        body: body ?? this.body,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  Sheet copyWithCompanion(SheetsCompanion data) {
+    return Sheet(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      body: data.body.present ? data.body.value : this.body,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Sheet(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, title, body, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Sheet &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.body == this.body &&
+          other.updatedAt == this.updatedAt);
+}
+
+class SheetsCompanion extends UpdateCompanion<Sheet> {
+  final Value<int> id;
+  final Value<String> title;
+  final Value<String> body;
+  final Value<DateTime> updatedAt;
+  const SheetsCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.body = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  SheetsCompanion.insert({
+    this.id = const Value.absent(),
+    required String title,
+    required String body,
+    this.updatedAt = const Value.absent(),
+  }) : title = Value(title),
+       body = Value(body);
+  static Insertable<Sheet> custom({
+    Expression<int>? id,
+    Expression<String>? title,
+    Expression<String>? body,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (body != null) 'body': body,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  SheetsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? title,
+    Value<String>? body,
+    Value<DateTime>? updatedAt,
+  }) {
+    return SheetsCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SheetsCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$ArthDatabase extends GeneratedDatabase {
   _$ArthDatabase(QueryExecutor e) : super(e);
   $ArthDatabaseManager get managers => $ArthDatabaseManager(this);
@@ -15185,6 +15474,7 @@ abstract class _$ArthDatabase extends GeneratedDatabase {
   late final $RetirementPlansTable retirementPlans = $RetirementPlansTable(
     this,
   );
+  late final $SheetsTable sheets = $SheetsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -15219,6 +15509,7 @@ abstract class _$ArthDatabase extends GeneratedDatabase {
     loanPrepayments,
     allocationTargets,
     retirementPlans,
+    sheets,
   ];
 }
 
@@ -27911,6 +28202,175 @@ typedef $$RetirementPlansTableProcessedTableManager =
       RetirementPlan,
       PrefetchHooks Function()
     >;
+typedef $$SheetsTableCreateCompanionBuilder =
+    SheetsCompanion Function({
+      Value<int> id,
+      required String title,
+      required String body,
+      Value<DateTime> updatedAt,
+    });
+typedef $$SheetsTableUpdateCompanionBuilder =
+    SheetsCompanion Function({
+      Value<int> id,
+      Value<String> title,
+      Value<String> body,
+      Value<DateTime> updatedAt,
+    });
+
+class $$SheetsTableFilterComposer
+    extends Composer<_$ArthDatabase, $SheetsTable> {
+  $$SheetsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SheetsTableOrderingComposer
+    extends Composer<_$ArthDatabase, $SheetsTable> {
+  $$SheetsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SheetsTableAnnotationComposer
+    extends Composer<_$ArthDatabase, $SheetsTable> {
+  $$SheetsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$SheetsTableTableManager
+    extends
+        RootTableManager<
+          _$ArthDatabase,
+          $SheetsTable,
+          Sheet,
+          $$SheetsTableFilterComposer,
+          $$SheetsTableOrderingComposer,
+          $$SheetsTableAnnotationComposer,
+          $$SheetsTableCreateCompanionBuilder,
+          $$SheetsTableUpdateCompanionBuilder,
+          (Sheet, BaseReferences<_$ArthDatabase, $SheetsTable, Sheet>),
+          Sheet,
+          PrefetchHooks Function()
+        > {
+  $$SheetsTableTableManager(_$ArthDatabase db, $SheetsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SheetsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SheetsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SheetsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> body = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => SheetsCompanion(
+                id: id,
+                title: title,
+                body: body,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String title,
+                required String body,
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => SheetsCompanion.insert(
+                id: id,
+                title: title,
+                body: body,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SheetsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$ArthDatabase,
+      $SheetsTable,
+      Sheet,
+      $$SheetsTableFilterComposer,
+      $$SheetsTableOrderingComposer,
+      $$SheetsTableAnnotationComposer,
+      $$SheetsTableCreateCompanionBuilder,
+      $$SheetsTableUpdateCompanionBuilder,
+      (Sheet, BaseReferences<_$ArthDatabase, $SheetsTable, Sheet>),
+      Sheet,
+      PrefetchHooks Function()
+    >;
 
 class $ArthDatabaseManager {
   final _$ArthDatabase _db;
@@ -27973,4 +28433,6 @@ class $ArthDatabaseManager {
       $$AllocationTargetsTableTableManager(_db, _db.allocationTargets);
   $$RetirementPlansTableTableManager get retirementPlans =>
       $$RetirementPlansTableTableManager(_db, _db.retirementPlans);
+  $$SheetsTableTableManager get sheets =>
+      $$SheetsTableTableManager(_db, _db.sheets);
 }

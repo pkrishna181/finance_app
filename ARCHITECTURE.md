@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 11.4 — reminders
+Last updated: Phase 11.5 — sheets (phase 11 complete)
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -26,7 +26,7 @@ reimplement from docs/ideas only, never copy code).
 | 8 ✅ | Credit cards (cycle, due date, utilization, bill vs paid); manual transactions; savings goals; data "doctor" |
 | 9 ✅ | Holdings layer: CAMS/KFintech + NSDL/CDSL CAS PDF import, manual assets (gold, FD, EPF/PPF, property); net worth; XIRR; opt-in price lists |
 | 10 ✅ | Capital gains (FIFO lots, current Indian rules — verify at build time), tax harvesting, Schedule AL, allocation targets, retirement goal, loans |
-| 11 | App lock; encrypted backup / restore; upcoming-payments calendar; reminders; notepad calculator ("sheets") |
+| 11 ✅ | App lock; encrypted backup / restore; upcoming-payments calendar; reminders; notepad calculator ("sheets") |
 
 Not adopted: plain-text journal editor, ledger/hledger/beancount backends,
 handlebars import templates (bank profiles cover this).
@@ -1141,6 +1141,27 @@ cancels and re-schedules the next 30 days; `HomeShell` calls it on start and
 resume. Groups: bills, subscriptions & SIPs, budgets. Notifications use
 private visibility (content hidden on a secure lock screen). UI: Home → bell
 → Reminders. Tests: `test/insights/reminders_test.dart` (fake scheduler).
+
+### Sheets — calculator notepad (Phase 11.5)
+
+Schema v17: `sheets` (title, body, updated). `SheetEvaluator` (pure,
+`insights/sheets.dart`) evaluates each line with a recursive-descent parser:
+`+ - * / ^` (right-assoc power), brackets, unary minus, `%` and `x% of y`,
+Indian units (`k`, `L` / `lakh`, `cr` / `crore`) and grouped numbers (Indian
+`40,00,000` or western `4,000,000`; a comma not followed by a proper group is
+an argument separator), `name = expr` variables, `sum` / `total` of the
+current block (reset by blank lines and `#` headings, not `//` comments).
+Functions: `emi(P, rate%, years)`, `sip(monthly, rate%, years)` (annuity
+due), `fv`, `pv`, `round`, `min`, `max`, `abs`, `sqrt`; user data from a
+precomputed `SheetData` (`SheetRepository.data`): `networth`, `investments`,
+`cash`, `spend("category" | "all", monthsAgo)`, `income(monthsAgo)`,
+`avg_spend(category, months)`. Errors are per line and never stop later lines.
+
+UI: Home → calculator icon → Sheets (example sheet on first use). The editor
+aligns results with each logical line by measuring wrapped heights with the
+field's own theme-merged style, strut and text scaling; headings bold,
+comments muted, tap a result to copy, autosave after 600 ms, help sheet.
+Tests: `test/insights/sheets_test.dart`, `test/ui/sheets_screen_test.dart`.
 
 ---
 

@@ -7,6 +7,7 @@ import 'llm_debug_settings_screen.dart';
 import '../../llm/llama_cpp_engine.dart';
 import 'privacy_settings_screen.dart';
 import 'reminders_screen.dart';
+import 'sheets_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   HomeScreen({
@@ -26,6 +27,19 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Arth'),
         actions: [
+          IconButton(
+            tooltip: 'Sheets',
+            icon: const Icon(Icons.calculate_outlined),
+            onPressed: () async {
+              final db = database ?? await ArthDatabase.openEncrypted();
+              if (!context.mounted) return;
+              await Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => SheetsScreen(database: db),
+                ),
+              );
+            },
+          ),
           IconButton(
             tooltip: 'Reminders',
             icon: const Icon(Icons.notifications_outlined),
