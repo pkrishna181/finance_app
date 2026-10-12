@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 7.2 — yearly view
+Last updated: Phase 7.3 — search and bulk edit
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -626,6 +626,28 @@ so these charts always show labeled legends with amounts). They replace the
 ramp is a single blue hue; in dark mode it runs from dark to light.
 
 Tests: `test/insights/yearly_test.dart`, `test/ui/insights_screen_test.dart`.
+
+### Search and bulk edit (Phase 7.3)
+
+`TxnQuery.parse` (pure, `lib/insights/txn_query.dart`) turns one line into
+filters: free words (merchant, description or canonical name contains), quoted
+phrases, `cat:<slug or name prefix>` / `cat:none`, `>`, `>=`, `<`, `<=`, `=`
+amounts in ₹, `from:` / `to:` (yyyy-mm-dd, inclusive), `in:yyyy-mm`,
+`debit` / `credit`, `bank:`. Invalid dates and unknown keys fall back to text.
+
+`InsightsRepository.search` builds one parameterized SQL query (all terms
+ANDed; `LIKE` wildcards in user text are escaped), newest first, capped at 500
+rows. It shares `_select` with `loadRange`. `recategorizeMany` sets
+`category_source = 'user'` on each row and logs one correction per row
+(no merchant-wide rule: a bulk selection isn't one merchant).
+
+`SearchScreen` (search icon on Insights): example chips, result count with
+money out/in, tap a row to recategorize it (same picker and "apply to the same
+merchant" option as the drill-down, now shared as
+`ui/widgets/category_picker.dart`), long-press to select, "Select all", then
+"Change category". Insights reloads after each change.
+
+Tests: `test/insights/search_test.dart`, `test/ui/insights_screen_test.dart`.
 
 ---
 

@@ -5,6 +5,7 @@ import 'insight_models.dart';
 import 'anomaly_detector.dart';
 import 'insights_aggregator.dart';
 import 'recurring_detector.dart';
+import 'txn_query.dart';
 import 'yearly.dart';
 
 /// Loads slim transaction projections from the encrypted DB.
@@ -15,7 +16,75 @@ class InsightsRepository {
 
   /// Rows booked in `[from, to)`. Callers that need transfer pairing across a
   /// period edge should pad the range by a few days (see [aggregatorFor]).
-  Future<List<InsightTxn>> loadRange(DateTime from, DateTime to) async {
+  Future<List<InsightTxn>> loadRange(DateTime from, DateTime to) {
+    return _select(
+      't.booked_at >= ? AND t.booked_at < ?',
+      [Variable<DateTime>(from), Variable<DateTime>(to)],
+      order: 'ASC',
+    );
+  }
+
+  /// Rows matching [q], newest first, at most [limit].
+  Future<List<InsightTxn>> search(TxnQuery q, {int limit = 500}) async {
+    final where = <String>[];
+    final vars = <Variable<Object>>[];
+    for (final term in q.terms) {
+      where.add("(LOWER(t.raw_merchant) LIKE ? ESCAPE '\\' "
+          "OR LOWER(t.raw_description) LIKE ? ESCAPE '\\' "
+          "OR LOWER(COALESCE(m.canonical_name, '')) LIKE ? ESCAPE '\\')");
+      final like = '%${_escapeLike(term)}%';
+      vars.addAll([Variable(like), Variable(like), Variable(like)]);
+    }
+    final cat = q.category;
+    if (cat == TxnQuery.kNoCategory) {
+      where.add("(c.slug IS NULL OR c.slug = 'uncategorized')");
+    } else if (cat != null) {
+      where.add("(LOWER(c.slug) = ? OR LOWER(c.name) LIKE ? ESCAPE '\\')");
+      vars.addAll([Variable(cat), Variable('${_escapeLike(cat)}%')]);
+    }
+    if (q.minPaise != null) {
+      where.add('t.amount_paise >= ?');
+      vars.add(Variable(q.minPaise!));
+    }
+    if (q.maxPaise != null) {
+      where.add('t.amount_paise <= ?');
+      vars.add(Variable(q.maxPaise!));
+    }
+    if (q.from != null) {
+      where.add('t.booked_at >= ?');
+      vars.add(Variable<DateTime>(q.from!));
+    }
+    if (q.toExclusive != null) {
+      where.add('t.booked_at < ?');
+      vars.add(Variable<DateTime>(q.toExclusive!));
+    }
+    if (q.isDebit != null) {
+      where.add('t.direction = ?');
+      vars.add(Variable(q.isDebit! ? 'debit' : 'credit'));
+    }
+    if (q.bank != null) {
+      where.add('LOWER(t.bank_code) = ?');
+      vars.add(Variable(q.bank!));
+    }
+    return _select(
+      where.isEmpty ? '1' : where.join(' AND '),
+      vars,
+      order: 'DESC',
+      limit: limit,
+    );
+  }
+
+  static String _escapeLike(String s) => s
+      .replaceAll('\\', '\\\\')
+      .replaceAll('%', '\\%')
+      .replaceAll('_', '\\_');
+
+  Future<List<InsightTxn>> _select(
+    String where,
+    List<Variable<Object>> variables, {
+    required String order,
+    int? limit,
+  }) async {
     final rows = await _db.customSelect(
       '''
 SELECT t.id AS id,
@@ -34,13 +103,11 @@ SELECT t.id AS id,
 FROM transactions t
 LEFT JOIN categories c ON c.id = t.category_id
 LEFT JOIN merchants m ON m.id = t.merchant_id
-WHERE t.booked_at >= ? AND t.booked_at < ?
-ORDER BY t.booked_at ASC, t.id ASC
+WHERE $where
+ORDER BY t.booked_at $order, t.id $order
+${limit == null ? '' : 'LIMIT $limit'}
 ''',
-      variables: [
-        Variable<DateTime>(from),
-        Variable<DateTime>(to),
-      ],
+      variables: variables,
       readsFrom: {_db.transactions, _db.categories, _db.merchants},
     ).get();
 
@@ -245,23 +312,7 @@ ORDER BY t.booked_at ASC, t.id ASC
         applyToMerchant ? await similarTransactionIds(t) : const <int>[];
     final ids = [t.id, ...similar];
     await _db.transaction(() async {
-      for (var i = 0; i < ids.length; i += 500) {
-        final chunk =
-            ids.sublist(i, i + 500 > ids.length ? ids.length : i + 500);
-        final marks = List.filled(chunk.length, '?').join(',');
-        await _db.customUpdate(
-          'UPDATE transactions SET category_id = ?, '
-          "category_source = 'user', suggested_category_slug = ?, "
-          'updated_at = ? WHERE id IN ($marks)',
-          variables: [
-            Variable<int>(cat.id),
-            Variable<String>(slug),
-            Variable<DateTime>(DateTime.now()),
-            for (final id in chunk) Variable<int>(id),
-          ],
-          updates: {_db.transactions},
-        );
-      }
+      await _setCategory(ids, cat.id, slug);
       await _db.into(_db.userCorrections).insert(
             UserCorrectionsCompanion.insert(
               transactionId: Value(t.id),
@@ -293,6 +344,50 @@ ORDER BY t.booked_at ASC, t.id ASC
       }
     });
     return ids.length;
+  }
+
+  /// Sets every row in [txns] to [slug] (`category_source = 'user'`) and
+  /// records one `user_corrections` row per transaction. No merchant-wide
+  /// rule is stored. Returns the number of rows changed.
+  Future<int> recategorizeMany(List<InsightTxn> txns, String slug) async {
+    final cat = await _db.categoryBySlug(slug);
+    if (cat == null) throw ArgumentError.value(slug, 'slug', 'unknown category');
+    if (txns.isEmpty) return 0;
+    await _db.transaction(() async {
+      await _setCategory([for (final t in txns) t.id], cat.id, slug);
+      await _db.batch((b) {
+        b.insertAll(_db.userCorrections, [
+          for (final t in txns)
+            UserCorrectionsCompanion.insert(
+              transactionId: Value(t.id),
+              rawMerchant: t.rawMerchant,
+              field: 'category',
+              oldValue: Value(t.categorySlug),
+              newValue: slug,
+            ),
+        ]);
+      });
+    });
+    return txns.length;
+  }
+
+  Future<void> _setCategory(List<int> ids, int categoryId, String slug) async {
+    for (var i = 0; i < ids.length; i += 500) {
+      final chunk = ids.sublist(i, i + 500 > ids.length ? ids.length : i + 500);
+      final marks = List.filled(chunk.length, '?').join(',');
+      await _db.customUpdate(
+        'UPDATE transactions SET category_id = ?, '
+        "category_source = 'user', suggested_category_slug = ?, "
+        'updated_at = ? WHERE id IN ($marks)',
+        variables: [
+          Variable<int>(categoryId),
+          Variable<String>(slug),
+          Variable<DateTime>(DateTime.now()),
+          for (final id in chunk) Variable<int>(id),
+        ],
+        updates: {_db.transactions},
+      );
+    }
   }
 
   static bool _isUserSource(String? s) => s == 'user' || s == 'user_correction';

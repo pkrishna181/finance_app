@@ -6,6 +6,7 @@ import '../../insights/insights.dart';
 import '../theme/chart_colors.dart';
 import 'budgets_screen.dart';
 import 'category_transactions_screen.dart';
+import 'search_screen.dart';
 import 'yearly_screen.dart';
 
 /// Donut / legend color: categorical slot by rank; gray for "Uncategorized"
@@ -138,6 +139,17 @@ class _InsightsScreenState extends State<InsightsScreen> {
     if (mounted) await _load();
   }
 
+  void _openSearch() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SearchScreen(
+          database: widget.database!,
+          onChanged: _load,
+        ),
+      ),
+    );
+  }
+
   Future<void> _openYear() async {
     final db = widget.database;
     final sel = _selected;
@@ -164,7 +176,17 @@ class _InsightsScreenState extends State<InsightsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Insights')),
+      appBar: AppBar(
+        title: const Text('Insights'),
+        actions: [
+          if (widget.database != null)
+            IconButton(
+              tooltip: 'Search transactions',
+              icon: const Icon(Icons.search),
+              onPressed: _openSearch,
+            ),
+        ],
+      ),
       body: _body(context),
     );
   }

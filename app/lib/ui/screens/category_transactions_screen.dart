@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/db/database.dart';
 import '../../insights/insights.dart';
+import '../widgets/category_picker.dart';
 
 /// The transactions behind an Insights number. With a [database], tapping a
 /// row recategorizes it (optionally every row from the same merchant).
@@ -60,15 +61,12 @@ class _CategoryTransactionsScreenState
     final repo = InsightsRepository(db);
     final similar = await repo.similarTransactionIds(t);
     if (!mounted) return;
-    final choice = await showModalBottomSheet<_Choice>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => _CategoryPicker(
-        txn: t,
-        categories: _categories,
-        similarCount: similar.length,
-      ),
+    final choice = await showCategoryPicker(
+      context,
+      title: 'Category for ${t.merchantLabel}',
+      categories: _categories,
+      current: t.categorySlug ?? kUncategorizedSlug,
+      similarCount: similar.length,
     );
     if (choice == null || !mounted) return;
     if (choice.slug == (t.categorySlug ?? kUncategorizedSlug) &&
@@ -174,73 +172,3 @@ InsightTxn _withCategory(InsightTxn t, String slug) => InsightTxn(
       rawMerchant: t.rawMerchant,
       balanceAfterPaise: t.balanceAfterPaise,
     );
-
-class _Choice {
-  const _Choice(this.slug, this.applyToMerchant);
-  final String slug;
-  final bool applyToMerchant;
-}
-
-class _CategoryPicker extends StatefulWidget {
-  const _CategoryPicker({
-    required this.txn,
-    required this.categories,
-    required this.similarCount,
-  });
-
-  final InsightTxn txn;
-  final List<Category> categories;
-  final int similarCount;
-
-  @override
-  State<_CategoryPicker> createState() => _CategoryPickerState();
-}
-
-class _CategoryPickerState extends State<_CategoryPicker> {
-  bool _applyAll = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = widget.txn;
-    final current = t.categorySlug ?? kUncategorizedSlug;
-    final n = widget.similarCount;
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.6,
-      maxChildSize: 0.9,
-      builder: (context, controller) => ListView(
-        controller: controller,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Text(
-              'Category for ${t.merchantLabel}',
-              style: Theme.of(context).textTheme.titleMedium,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          if (n > 0)
-            SwitchListTile(
-              value: _applyAll,
-              onChanged: (v) => setState(() => _applyAll = v),
-              title: Text('Also apply to $n other '
-                  '${n == 1 ? 'transaction' : 'transactions'}'),
-              subtitle: const Text(
-                'Same merchant; future imports will follow too. '
-                'Rows you set by hand are left alone.',
-              ),
-            ),
-          const Divider(height: 1),
-          for (final c in widget.categories)
-            ListTile(
-              title: Text(c.name),
-              trailing: c.slug == current ? const Icon(Icons.check) : null,
-              onTap: () =>
-                  Navigator.of(context).pop(_Choice(c.slug, _applyAll)),
-            ),
-        ],
-      ),
-    );
-  }
-}

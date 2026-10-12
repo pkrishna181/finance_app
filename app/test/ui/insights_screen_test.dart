@@ -1,4 +1,5 @@
 import 'package:arth/core/db/database.dart';
+import 'package:arth/insights/insights.dart';
 import 'package:arth/ui/screens/insights_screen.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
@@ -219,5 +220,59 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Income statement'), findsNothing);
     expect(find.text('May 2025'), findsOneWidget);
+  });
+
+  testWidgets('search finds rows and bulk-changes their category',
+      (tester) async {
+    _tallView(tester);
+    final db = ArthDatabase.memory();
+    addTearDown(() => tester.runAsync(db.close));
+
+    await tester.runAsync(() async {
+      final now = DateTime.now();
+      for (final (h, raw) in [('a', 'ZOMATO 1'), ('b', 'ZOMATO 2'), ('c', 'UBER')]) {
+        await db.into(db.transactions).insert(TransactionsCompanion.insert(
+              amountPaise: 30000,
+              direction: 'debit',
+              txnType: 'upi',
+              bookedAt: DateTime(now.year, now.month, 1, 12),
+              bankCode: 'HDFC',
+              rawMerchant: raw,
+              rawDescription: raw,
+              dedupeHash: h,
+            ));
+      }
+    });
+
+    await tester.pumpWidget(MaterialApp(home: InsightsScreen(database: db)));
+    await _settle(tester);
+    await tester.tap(find.byTooltip('Search transactions'));
+    await _settle(tester);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'zomato');
+    await tester.pump(const Duration(milliseconds: 300));
+    await _settle(tester);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('2 results'), findsOneWidget);
+
+    await tester.longPress(find.text('ZOMATO 1'));
+    await tester.pump();
+    expect(find.text('1 selected'), findsOneWidget);
+    await tester.tap(find.byTooltip('Select all'));
+    await tester.pump();
+    expect(find.text('2 selected'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Change category'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Food Delivery'));
+    await _settle(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Moved 2 transactions to Food Delivery'), findsOneWidget);
+    expect(find.textContaining('Food Delivery'), findsWidgets);
+    final rows = await tester.runAsync(() => InsightsRepository(db)
+        .search(TxnQuery.parse('cat:food_delivery')));
+    expect(rows, hasLength(2));
   });
 }
