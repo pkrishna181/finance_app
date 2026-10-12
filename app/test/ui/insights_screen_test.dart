@@ -1,5 +1,6 @@
 import 'package:arth/core/db/database.dart';
 import 'package:arth/insights/insights.dart';
+import 'package:arth/ui/screens/goals_screen.dart';
 import 'package:arth/ui/screens/insights_screen.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
@@ -297,5 +298,34 @@ void main() {
     expect(find.text('Add transaction'), findsNothing);
     expect(find.textContaining('No transactions yet'), findsNothing);
     expect(find.text('Spending by category'), findsOneWidget);
+  });
+
+  testWidgets('creates a goal and adds money to it', (tester) async {
+    _tallView(tester);
+    final db = ArthDatabase.memory();
+    addTearDown(() => tester.runAsync(db.close));
+    await tester.pumpWidget(MaterialApp(home: GoalsScreen(database: db)));
+    await _settle(tester);
+
+    await tester.tap(find.text('New goal'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Goal'), 'Trip');
+    await tester.enterText(find.widgetWithText(TextField, 'Target'), '50000');
+    await tester.pump();
+    await tester.tap(find.text('Save'));
+    await _settle(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Trip'), findsOneWidget);
+    expect(find.text('₹0 of ₹50,000 · 0%'), findsOneWidget);
+
+    await tester.tap(find.text('Add money'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '5000');
+    await tester.pump();
+    await tester.tap(find.text('Add'));
+    await _settle(tester);
+    await tester.pumpAndSettle();
+    expect(find.text('₹5,000 of ₹50,000 · 10%'), findsOneWidget);
   });
 }

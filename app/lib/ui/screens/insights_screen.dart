@@ -7,6 +7,7 @@ import '../theme/chart_colors.dart';
 import 'budgets_screen.dart';
 import 'category_transactions_screen.dart';
 import 'credit_cards_screen.dart';
+import 'goals_screen.dart';
 import 'manual_transaction_screen.dart';
 import 'search_screen.dart';
 import 'yearly_screen.dart';
@@ -39,6 +40,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
   bool _loading = true;
   Object? _error;
   List<CardStatus> _cards = const [];
+  List<GoalProgress> _goals = const [];
   int _cardSuggestions = 0;
 
   @override
@@ -93,10 +95,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
       final cardRepo = CreditCardRepository(db);
       final cards = await cardRepo.statuses(DateTime.now());
       final cardSuggestions = (await cardRepo.suggestions()).length;
+      final goals = await GoalRepository(db).progressAll(DateTime.now());
       if (!mounted) return;
       setState(() {
         _cards = cards;
         _cardSuggestions = cardSuggestions;
+        _goals = goals;
         _months = months;
         _selected = selected;
         _snapshot = InsightsSnapshot.build(
@@ -166,6 +170,15 @@ class _InsightsScreenState extends State<InsightsScreen> {
       ),
     );
     if (saved == true && mounted) await _load();
+  }
+
+  Future<void> _openGoals() async {
+    final db = widget.database;
+    if (db == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => GoalsScreen(database: db)),
+    );
+    if (mounted) await _load();
   }
 
   Future<void> _openCards() async {
@@ -287,6 +300,8 @@ class _InsightsScreenState extends State<InsightsScreen> {
               const SizedBox(height: 12),
             ],
             _BudgetCard(budgets: snap.budgets, onManage: _openBudgets),
+            const SizedBox(height: 12),
+            _GoalsCard(goals: _goals, onOpen: _openGoals),
             const SizedBox(height: 12),
             _CategoryCard(snapshot: snap, onOpen: _openTxns),
             if (snap.changes.isNotEmpty) ...[
@@ -822,6 +837,46 @@ class _AnomalyCard extends StatelessWidget {
                   onPressed: () => onDismiss(a),
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GoalsCard extends StatelessWidget {
+  const _GoalsCard({required this.goals, required this.onOpen});
+  final List<GoalProgress> goals;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 8, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text('Goals', style: t.titleMedium)),
+                TextButton(
+                  onPressed: onOpen,
+                  child: Text(goals.isEmpty ? 'Set one' : 'All goals'),
+                ),
+              ],
+            ),
+            if (goals.isEmpty)
+              Text('Save toward something and track it here.',
+                  style: t.bodySmall)
+            else
+              for (final g in goals.take(3))
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, right: 8),
+                  child: GoalTile(progress: g, compact: true),
+                ),
           ],
         ),
       ),

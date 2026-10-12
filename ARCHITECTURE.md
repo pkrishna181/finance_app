@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 8.2 — manual transactions
+Last updated: Phase 8.3 — savings goals
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -738,6 +738,34 @@ Transfers (self) to avoid double counting); the data check-up flags this too.
 
 Tests: `test/insights/manual_transactions_test.dart`,
 `test/ui/insights_screen_test.dart`.
+
+### Savings goals (Phase 8.3)
+
+Schema v10: `goals` (target, optional target date, start date, already-saved
+amount, expected yearly return in basis points, source, source ref) and
+`goal_contributions`.
+
+Progress source (no holdings until Phase 9):
+- **manual** — already saved + contributions logged in the app;
+- **account** — latest `balance_after_paise` of one bank account
+  (`BANK|last4`; cards excluded);
+- **category** — already saved + net debits in a category since the start date
+  (e.g. `investments_sip`; credits such as redemptions subtract).
+
+`GoalCalculator` (pure, `insights/goals.dart`): required monthly saving is the
+annuity payment that grows the current amount to the target by the target date
+at `return / 12` per month (straight division at 0%; never negative). Recent
+pace = last 3 months of contributions / 3 (account: balance growth over 3
+months / 3). States: reached, on track (pace ≥ required), behind, no deadline.
+Projected date = months until the target at the recent pace (capped at 100
+years).
+
+UI: `GoalsScreen` (progress, needed per month, recent pace → projected month,
+"Add money" for manual goals), `GoalEditScreen` (source picker; account list
+shows current balances; logged contributions can be removed), and a Goals card
+on Insights.
+
+Tests: `test/insights/goals_test.dart`, `test/ui/insights_screen_test.dart`.
 
 ---
 

@@ -7,6 +7,8 @@ export 'budget_repository.dart';
 export 'cashflow.dart';
 export 'credit_card_repository.dart';
 export 'credit_cards.dart';
+export 'goal_repository.dart';
+export 'goals.dart';
 export 'insight_format.dart';
 export 'insight_models.dart';
 export 'insights_aggregator.dart';

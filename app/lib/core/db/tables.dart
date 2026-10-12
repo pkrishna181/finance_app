@@ -307,3 +307,34 @@ class CreditCards extends Table {
         {bankCode, last4},
       ];
 }
+
+/// Savings goals (Phase 8.3).
+class Goals extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+  IntColumn get targetPaise => integer()();
+  DateTimeColumn get targetDate => dateTime().nullable()();
+  DateTimeColumn get startDate => dateTime()();
+  IntColumn get startPaise => integer().withDefault(const Constant(0))();
+
+  /// Expected yearly return in basis points (700 = 7%).
+  IntColumn get annualReturnBp => integer().withDefault(const Constant(0))();
+
+  /// manual | account | category
+  TextColumn get source => text().withDefault(const Constant('manual'))();
+
+  /// account: `BANK|last4`; category: slug.
+  TextColumn get sourceRef => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Money the user logs toward a manual goal.
+class GoalContributions extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get goalId => integer().references(Goals, #id)();
+  IntColumn get amountPaise => integer()();
+  DateTimeColumn get date => dateTime()();
+  TextColumn get note => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
