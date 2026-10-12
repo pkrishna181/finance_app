@@ -134,6 +134,23 @@ void main() {
       expect(later.valuePaise, 1320000);
     });
 
+    test('a reversal cancels the reversed purchase, not the oldest lot', () {
+      final p = calc.position(
+        input([
+          PositionTxn(date: DateTime(2025, 4, 1), type: 'opening',
+              amountPaise: 100000, unitsE4: 100000),
+          PositionTxn(date: DateTime(2025, 5, 1), type: 'purchase',
+              amountPaise: 60000, unitsE4: 50000),
+          PositionTxn(date: DateTime(2025, 5, 3), type: 'reversal',
+              amountPaise: -60000, unitsE4: -50000),
+        ], priceE4: 120000),
+        asOf,
+      );
+      expect(p.unitsE4, 100000);
+      expect(p.investedPaise, 100000);
+      expect(p.realisedPaise, 0);
+    });
+
     test('holding without history: value only, cost from statement', () {
       final p = calc.position(
         input(const [], priceE4: 29505000, snapUnits: 100000,

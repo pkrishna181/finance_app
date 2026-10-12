@@ -3,6 +3,8 @@ library;
 
 export 'anomaly_detector.dart';
 export 'budget.dart';
+export 'capital_gains.dart';
+export 'capital_gains_repository.dart';
 export 'budget_repository.dart';
 export 'cashflow.dart';
 export 'credit_card_repository.dart';

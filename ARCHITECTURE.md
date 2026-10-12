@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 9.4 — opt-in fund prices
+Last updated: Phase 10.1 — capital gains
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -910,6 +910,42 @@ network exception at the top of this document:
   the network.
 - Share prices are not downloaded (no bulk feed fits the policy cleanly yet);
   they refresh from the next demat CAS.
+
+### Capital gains (Phase 10.1)
+
+`insights/capital_gains.dart` (pure). Rules checked Oct 2026 (Budget 2026
+made no capital-gains changes for FY 2026-27); all dates and rates live in
+`CapitalGainsRules` — update there when the law changes.
+
+| Category | Long-term after | Short-term | Long-term |
+|---|---|---|---|
+| Equity (shares, equity-oriented funds incl. arbitrage / ELSS) | > 12 months | 20% (15% before 23 Jul 2024) | 12.5% above ₹1.25 L a year (10% / ₹1 L earlier) |
+| Debt fund bought ≥ 1 Apr 2023 (s. 50AA; > 65% debt from 1 Apr 2026) | never | slab | — |
+| Debt bought earlier, other (gold, international, hybrid) | > 24 months (36 for sales before 23 Jul 2024) | slab | 12.5% (20% earlier; indexation not computed) |
+
+- Category: `guessTaxCategory` from the fund name (arbitrage → equity;
+  gold / international / FoF → other; liquid / bond / gilt / duration … →
+  debt; otherwise equity), overridable per security
+  (`securities.tax_category`, schema v13).
+- Sales are matched FIFO against lots; a purchase **reversal** cancels the
+  newest lots instead (fixed in the portfolio calculator too). Each slice is a
+  `SaleLeg` with holding period, kind and gain; legs from `opening` lots are
+  marked estimated.
+- Grandfathering: equity bought before 1 Feb 2018 sold long-term uses
+  max(cost, min(31 Jan 2018 price, sale value)) when that price is in
+  `security_prices`; otherwise flagged.
+- Set-off within the year: short-term losses against slab, equity STCG, other
+  LTCG, equity LTCG (in that order); long-term losses against other LTCG then
+  equity LTCG. Then the equity exemption and the estimate (no cess /
+  surcharge; slab-rate gains reported separately; leftover losses shown as
+  carry-forward).
+
+UI: Investments → "Capital gains & tax": year selector (current year always
+shown for planning), gains by kind, exemption used / left, estimated tax,
+sales list, editable fund categories, and a clear "estimate, not tax advice"
+note.
+
+Tests: `test/insights/capital_gains_test.dart`, `test/ui/tax_screens_test.dart`.
 
 ---
 

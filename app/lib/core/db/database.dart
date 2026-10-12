@@ -79,7 +79,7 @@ class ArthDatabase extends _$ArthDatabase {
   }
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -155,6 +155,9 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
           if (from < 12) {
             await m.createTable(manualAssets);
             await m.createTable(manualAssetValues);
+          }
+          if (from < 13) {
+            await m.addColumn(securities, securities.taxCategory);
           }
         },
         beforeOpen: (details) async {

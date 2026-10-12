@@ -5,6 +5,7 @@ import '../../insights/insights.dart';
 import '../../ingestion/investments/amfi_nav.dart';
 import '../theme/chart_colors.dart';
 import '../widgets/price_feed_opt_in.dart';
+import 'capital_gains_screen.dart';
 
 String _pct(double f) {
   final v = f * 100;
@@ -116,7 +117,23 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                 children: [
                   PortfolioSummaryCard(summary: s),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.receipt_long_outlined),
+                    title: const Text('Capital gains & tax'),
+                    subtitle: const Text('Gains by year, exemption left, estimated tax'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => CapitalGainsScreen(
+                          database: widget.database,
+                          now: widget.now,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
                   for (final p in s.positions)
                     _PositionTile(
                       position: p,

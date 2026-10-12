@@ -255,6 +255,18 @@ class PortfolioCalculator {
       } else if (u > 0) {
         // Bonus / merger units: no cost.
         lots.add([u, 0]);
+      } else if (u < 0 && t.type == 'reversal') {
+        // Cancels the purchase it reverses: newest lots first, no gain.
+        var left = -u;
+        while (left > 0 && lots.isNotEmpty) {
+          final lot = lots.last;
+          final take = math.min(left, lot[0]);
+          lot[1] -= (lot[1] * take / lot[0]).round();
+          lot[0] -= take;
+          left -= take;
+          if (lot[0] == 0) lots.removeLast();
+        }
+        flows.add(CashFlow(t.date, amt.abs()));
       } else if (u < 0) {
         var left = -u;
         var cost = 0;
@@ -268,13 +280,8 @@ class PortfolioCalculator {
           left -= take;
           if (lot[0] == 0) lots.removeAt(0);
         }
-        if (t.type != 'reversal') {
-          realised += amt.abs() - cost;
-          flows.add(CashFlow(t.date, amt.abs()));
-        } else {
-          // A reversed purchase: undo its cash flow.
-          flows.add(CashFlow(t.date, amt.abs()));
-        }
+        realised += amt.abs() - cost;
+        flows.add(CashFlow(t.date, amt.abs()));
       } else if (t.type == 'dividendPayout' && amt > 0) {
         dividends += amt;
         flows.add(CashFlow(t.date, amt));

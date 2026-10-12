@@ -348,6 +348,9 @@ class Securities extends Table {
   /// mf | equity | other
   TextColumn get kind => text()();
   TextColumn get amc => text().nullable()();
+
+  /// User override of the tax category: equity | debt | other (Phase 10.1).
+  TextColumn get taxCategory => text().nullable()();
 }
 
 /// A mutual-fund folio or demat account (Phase 9).

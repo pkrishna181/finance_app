@@ -10225,8 +10225,26 @@ class $SecuritiesTable extends Securities
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _taxCategoryMeta = const VerificationMeta(
+    'taxCategory',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, isin, name, kind, amc];
+  late final GeneratedColumn<String> taxCategory = GeneratedColumn<String>(
+    'tax_category',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    isin,
+    name,
+    kind,
+    amc,
+    taxCategory,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -10272,6 +10290,15 @@ class $SecuritiesTable extends Securities
         amc.isAcceptableOrUnknown(data['amc']!, _amcMeta),
       );
     }
+    if (data.containsKey('tax_category')) {
+      context.handle(
+        _taxCategoryMeta,
+        taxCategory.isAcceptableOrUnknown(
+          data['tax_category']!,
+          _taxCategoryMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -10301,6 +10328,10 @@ class $SecuritiesTable extends Securities
         DriftSqlType.string,
         data['${effectivePrefix}amc'],
       ),
+      taxCategory: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tax_category'],
+      ),
     );
   }
 
@@ -10318,12 +10349,16 @@ class Security extends DataClass implements Insertable<Security> {
   /// mf | equity | other
   final String kind;
   final String? amc;
+
+  /// User override of the tax category: equity | debt | other (Phase 10.1).
+  final String? taxCategory;
   const Security({
     required this.id,
     required this.isin,
     required this.name,
     required this.kind,
     this.amc,
+    this.taxCategory,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -10335,6 +10370,9 @@ class Security extends DataClass implements Insertable<Security> {
     if (!nullToAbsent || amc != null) {
       map['amc'] = Variable<String>(amc);
     }
+    if (!nullToAbsent || taxCategory != null) {
+      map['tax_category'] = Variable<String>(taxCategory);
+    }
     return map;
   }
 
@@ -10345,6 +10383,9 @@ class Security extends DataClass implements Insertable<Security> {
       name: Value(name),
       kind: Value(kind),
       amc: amc == null && nullToAbsent ? const Value.absent() : Value(amc),
+      taxCategory: taxCategory == null && nullToAbsent
+          ? const Value.absent()
+          : Value(taxCategory),
     );
   }
 
@@ -10359,6 +10400,7 @@ class Security extends DataClass implements Insertable<Security> {
       name: serializer.fromJson<String>(json['name']),
       kind: serializer.fromJson<String>(json['kind']),
       amc: serializer.fromJson<String?>(json['amc']),
+      taxCategory: serializer.fromJson<String?>(json['taxCategory']),
     );
   }
   @override
@@ -10370,6 +10412,7 @@ class Security extends DataClass implements Insertable<Security> {
       'name': serializer.toJson<String>(name),
       'kind': serializer.toJson<String>(kind),
       'amc': serializer.toJson<String?>(amc),
+      'taxCategory': serializer.toJson<String?>(taxCategory),
     };
   }
 
@@ -10379,12 +10422,14 @@ class Security extends DataClass implements Insertable<Security> {
     String? name,
     String? kind,
     Value<String?> amc = const Value.absent(),
+    Value<String?> taxCategory = const Value.absent(),
   }) => Security(
     id: id ?? this.id,
     isin: isin ?? this.isin,
     name: name ?? this.name,
     kind: kind ?? this.kind,
     amc: amc.present ? amc.value : this.amc,
+    taxCategory: taxCategory.present ? taxCategory.value : this.taxCategory,
   );
   Security copyWithCompanion(SecuritiesCompanion data) {
     return Security(
@@ -10393,6 +10438,9 @@ class Security extends DataClass implements Insertable<Security> {
       name: data.name.present ? data.name.value : this.name,
       kind: data.kind.present ? data.kind.value : this.kind,
       amc: data.amc.present ? data.amc.value : this.amc,
+      taxCategory: data.taxCategory.present
+          ? data.taxCategory.value
+          : this.taxCategory,
     );
   }
 
@@ -10403,13 +10451,14 @@ class Security extends DataClass implements Insertable<Security> {
           ..write('isin: $isin, ')
           ..write('name: $name, ')
           ..write('kind: $kind, ')
-          ..write('amc: $amc')
+          ..write('amc: $amc, ')
+          ..write('taxCategory: $taxCategory')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, isin, name, kind, amc);
+  int get hashCode => Object.hash(id, isin, name, kind, amc, taxCategory);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -10418,7 +10467,8 @@ class Security extends DataClass implements Insertable<Security> {
           other.isin == this.isin &&
           other.name == this.name &&
           other.kind == this.kind &&
-          other.amc == this.amc);
+          other.amc == this.amc &&
+          other.taxCategory == this.taxCategory);
 }
 
 class SecuritiesCompanion extends UpdateCompanion<Security> {
@@ -10427,12 +10477,14 @@ class SecuritiesCompanion extends UpdateCompanion<Security> {
   final Value<String> name;
   final Value<String> kind;
   final Value<String?> amc;
+  final Value<String?> taxCategory;
   const SecuritiesCompanion({
     this.id = const Value.absent(),
     this.isin = const Value.absent(),
     this.name = const Value.absent(),
     this.kind = const Value.absent(),
     this.amc = const Value.absent(),
+    this.taxCategory = const Value.absent(),
   });
   SecuritiesCompanion.insert({
     this.id = const Value.absent(),
@@ -10440,6 +10492,7 @@ class SecuritiesCompanion extends UpdateCompanion<Security> {
     required String name,
     required String kind,
     this.amc = const Value.absent(),
+    this.taxCategory = const Value.absent(),
   }) : isin = Value(isin),
        name = Value(name),
        kind = Value(kind);
@@ -10449,6 +10502,7 @@ class SecuritiesCompanion extends UpdateCompanion<Security> {
     Expression<String>? name,
     Expression<String>? kind,
     Expression<String>? amc,
+    Expression<String>? taxCategory,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -10456,6 +10510,7 @@ class SecuritiesCompanion extends UpdateCompanion<Security> {
       if (name != null) 'name': name,
       if (kind != null) 'kind': kind,
       if (amc != null) 'amc': amc,
+      if (taxCategory != null) 'tax_category': taxCategory,
     });
   }
 
@@ -10465,6 +10520,7 @@ class SecuritiesCompanion extends UpdateCompanion<Security> {
     Value<String>? name,
     Value<String>? kind,
     Value<String?>? amc,
+    Value<String?>? taxCategory,
   }) {
     return SecuritiesCompanion(
       id: id ?? this.id,
@@ -10472,6 +10528,7 @@ class SecuritiesCompanion extends UpdateCompanion<Security> {
       name: name ?? this.name,
       kind: kind ?? this.kind,
       amc: amc ?? this.amc,
+      taxCategory: taxCategory ?? this.taxCategory,
     );
   }
 
@@ -10493,6 +10550,9 @@ class SecuritiesCompanion extends UpdateCompanion<Security> {
     if (amc.present) {
       map['amc'] = Variable<String>(amc.value);
     }
+    if (taxCategory.present) {
+      map['tax_category'] = Variable<String>(taxCategory.value);
+    }
     return map;
   }
 
@@ -10503,7 +10563,8 @@ class SecuritiesCompanion extends UpdateCompanion<Security> {
           ..write('isin: $isin, ')
           ..write('name: $name, ')
           ..write('kind: $kind, ')
-          ..write('amc: $amc')
+          ..write('amc: $amc, ')
+          ..write('taxCategory: $taxCategory')
           ..write(')'))
         .toString();
   }
@@ -21734,6 +21795,7 @@ typedef $$SecuritiesTableCreateCompanionBuilder =
       required String name,
       required String kind,
       Value<String?> amc,
+      Value<String?> taxCategory,
     });
 typedef $$SecuritiesTableUpdateCompanionBuilder =
     SecuritiesCompanion Function({
@@ -21742,6 +21804,7 @@ typedef $$SecuritiesTableUpdateCompanionBuilder =
       Value<String> name,
       Value<String> kind,
       Value<String?> amc,
+      Value<String?> taxCategory,
     });
 
 final class $$SecuritiesTableReferences
@@ -21837,6 +21900,11 @@ class $$SecuritiesTableFilterComposer
 
   ColumnFilters<String> get amc => $composableBuilder(
     column: $table.amc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get taxCategory => $composableBuilder(
+    column: $table.taxCategory,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -21949,6 +22017,11 @@ class $$SecuritiesTableOrderingComposer
     column: $table.amc,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get taxCategory => $composableBuilder(
+    column: $table.taxCategory,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SecuritiesTableAnnotationComposer
@@ -21974,6 +22047,11 @@ class $$SecuritiesTableAnnotationComposer
 
   GeneratedColumn<String> get amc =>
       $composableBuilder(column: $table.amc, builder: (column) => column);
+
+  GeneratedColumn<String> get taxCategory => $composableBuilder(
+    column: $table.taxCategory,
+    builder: (column) => column,
+  );
 
   Expression<T> investmentTxnsRefs<T extends Object>(
     Expression<T> Function($$InvestmentTxnsTableAnnotationComposer a) f,
@@ -22088,12 +22166,14 @@ class $$SecuritiesTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<String> kind = const Value.absent(),
                 Value<String?> amc = const Value.absent(),
+                Value<String?> taxCategory = const Value.absent(),
               }) => SecuritiesCompanion(
                 id: id,
                 isin: isin,
                 name: name,
                 kind: kind,
                 amc: amc,
+                taxCategory: taxCategory,
               ),
           createCompanionCallback:
               ({
@@ -22102,12 +22182,14 @@ class $$SecuritiesTableTableManager
                 required String name,
                 required String kind,
                 Value<String?> amc = const Value.absent(),
+                Value<String?> taxCategory = const Value.absent(),
               }) => SecuritiesCompanion.insert(
                 id: id,
                 isin: isin,
                 name: name,
                 kind: kind,
                 amc: amc,
+                taxCategory: taxCategory,
               ),
           withReferenceMapper: (p0) => p0
               .map(
