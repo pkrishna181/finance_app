@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 11.3 — upcoming payments
+Last updated: Phase 11.4 — reminders
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -1120,6 +1120,27 @@ UI: `UpcomingScreen` (30-day total, month grid with dots, red when overdue;
 tap a day to filter; this month and next), from the "Subscriptions & EMIs"
 card on Insights and from Loans. Feeds the reminders in 11.4.
 Tests: `test/insights/upcoming_test.dart`.
+
+### Reminders (Phase 11.4)
+
+`flutter_local_notifications` 22 + `timezone` / `flutter_timezone`. Android:
+`POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, the plugin's scheduled /
+boot receivers, core-library desugaring. Inexact scheduling
+(`inexactAllowWhileIdle`) at about 9 am, so no exact-alarm permission.
+
+`ReminderPlanner` (pure, `insights/reminders.dart`) from the 11.3 calendar:
+card bills 3 days before and on the due day (overdue: today), EMIs / mandates
+the day before, SIPs / renewals the day before ("about" when predicted). A
+reminder whose time passed earlier today goes out in a minute; older ones are
+dropped. IDs are FNV-1a hashes of (what, day), so re-planning never
+duplicates. Budget alerts (80% and over) are sent immediately, once per
+level per month (state in shared prefs).
+
+`ReminderService.sync` (off until the user enables it and grants permission)
+cancels and re-schedules the next 30 days; `HomeShell` calls it on start and
+resume. Groups: bills, subscriptions & SIPs, budgets. Notifications use
+private visibility (content hidden on a secure lock screen). UI: Home → bell
+→ Reminders. Tests: `test/insights/reminders_test.dart` (fake scheduler).
 
 ---
 

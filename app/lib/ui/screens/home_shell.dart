@@ -8,6 +8,7 @@ import 'ask_screen.dart';
 import 'home_screen.dart';
 import 'import_screen.dart';
 import 'insights_screen.dart';
+import '../../core/notifications/reminder_service.dart';
 
 /// Bottom-nav shell: Home / Insights / Import / Ask.
 class HomeShell extends StatefulWidget {
@@ -48,8 +49,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       final db = await ArthDatabase.openEncrypted();
       if (!mounted) return;
       setState(() => _db = db);
+      _syncReminders(db);
       await _coordinator.onAppResumed(db);
     } catch (_) {}
+  }
+
+  /// Re-plans reminders from the latest data (no-op when they're off).
+  /// Skipped for an injected test database.
+  void _syncReminders(ArthDatabase db) {
+    if (widget.database != null) return;
+    unawaited(ReminderService(db).sync().catchError((_) => 0));
   }
 
   @override
@@ -65,6 +74,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (db == null) return;
     if (state == AppLifecycleState.resumed) {
       unawaited(_coordinator.onAppResumed(db));
+      _syncReminders(db);
     }
   }
 

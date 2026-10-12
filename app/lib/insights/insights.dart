@@ -28,6 +28,7 @@ export 'net_worth_repository.dart';
 export 'portfolio.dart';
 export 'portfolio_repository.dart';
 export 'recurring_detector.dart';
+export 'reminders.dart';
 export 'retirement.dart';
 export 'retirement_repository.dart';
 export 'schedule_al.dart';

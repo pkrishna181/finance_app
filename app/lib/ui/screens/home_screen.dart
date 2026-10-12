@@ -6,6 +6,7 @@ import '../../llm/jobs/llm_batch_coordinator.dart';
 import 'llm_debug_settings_screen.dart';
 import '../../llm/llama_cpp_engine.dart';
 import 'privacy_settings_screen.dart';
+import 'reminders_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   HomeScreen({
@@ -25,6 +26,15 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Arth'),
         actions: [
+          IconButton(
+            tooltip: 'Reminders',
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const RemindersScreen(),
+              ),
+            ),
+          ),
           IconButton(
             tooltip: 'Privacy',
             icon: const Icon(Icons.privacy_tip_outlined),
