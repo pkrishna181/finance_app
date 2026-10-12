@@ -8,6 +8,7 @@ import 'saved_passwords_screen.dart';
 import '../../ingestion/investments/amfi_nav.dart';
 import '../widgets/price_feed_opt_in.dart';
 import '../../core/security/app_lock.dart';
+import 'backup_screen.dart';
 
 /// Privacy controls: SMS consent revoke and permission shortcuts.
 class PrivacySettingsScreen extends StatefulWidget {
@@ -112,6 +113,17 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
                   ),
                 const Divider(),
                 const AppLockTiles(),
+                ListTile(
+                  leading: const Icon(Icons.backup_outlined),
+                  title: const Text('Backup & restore'),
+                  subtitle: const Text('Encrypted with your passphrase'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const BackupScreen(),
+                    ),
+                  ),
+                ),
                 const Divider(),
                 const _PriceFeedTile(),
                 const Divider(),

@@ -21,6 +21,10 @@ Statement PDF passwords you choose to remember are kept in the phone's secure
 storage (Android Keystore / iOS Keychain), are never shown again, and can be
 removed any time under Privacy → Statement passwords.
 
+Backups (Privacy → Backup & restore) are a single file encrypted with a
+passphrase you choose (AES-256-GCM, PBKDF2 key). Arth writes it where you pick
+and never uploads it; without the passphrase it cannot be opened.
+
 ## Quick start
 
 ```bash

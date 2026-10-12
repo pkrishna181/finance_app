@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 11.1 — app lock
+Last updated: Phase 11.2 — encrypted backup
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -1079,6 +1079,33 @@ themselves out.
 `com.arth.arth/window` channel (blank app-switcher preview, no screenshots).
 Settings live in shared preferences (on/off and timing only). UI: Privacy →
 App lock. Tests: `test/ui/app_lock_test.dart`.
+
+### Encrypted backup and restore (Phase 11.2)
+
+`core/backup/`: `BackupService.export` dumps **every** table (from
+`sqlite_master`, so raw tables like `llm_disagreements` are included) as JSON
+`{format, app, schemaVersion, createdAt, tables: {name: {columns, rows}}}`,
+optionally plus the saved statement passwords (off by default), gzips it and
+seals it with `BackupCrypto`:
+
+- `ARTHBAK1` | PBKDF2 iterations | 16-byte salt | 12-byte nonce | AES-256-GCM
+  ciphertext + tag; the header is the GCM associated data, so a wrong
+  passphrase, tampering or a non-Arth file all fail cleanly.
+- Key = PBKDF2-HMAC-SHA256(passphrase, salt, 600,000) (OWASP 2023), run in an
+  isolate (~1.7 s on a desktop JIT; a few seconds on a phone). `pointycastle`
+  4.x (MIT, pure Dart) provides PBKDF2 and GCM.
+
+`restore` refuses backups from a newer schema, wipes all tables (foreign keys
+off), inserts each backed-up table's rows for the columns that still exist
+(older backups get defaults for newer columns), checks
+`PRAGMA foreign_key_check`, notifies drift streams, and merges saved passwords
+into the vault. `inspect` shows date / counts before anything is replaced.
+
+UI: Privacy → Backup & restore (passphrase ≥ 10 characters typed twice, a
+"no recovery if forgotten" warning; restore asks for confirmation after
+showing what the file contains). Files are written where the user chooses;
+nothing is uploaded. Tests: `test/core/backup_test.dart`,
+`test/ui/backup_screen_test.dart`.
 
 ---
 

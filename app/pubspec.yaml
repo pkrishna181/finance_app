@@ -49,6 +49,7 @@ dependencies:
   # actively maintained (imfuzzy/fl_chart); no network or native code.
   fl_chart: ^1.0.0
   local_auth: ^3.0.2
+  pointycastle: ^4.0.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
