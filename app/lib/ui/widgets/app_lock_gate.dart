@@ -12,9 +12,14 @@ class AppLockGate extends StatefulWidget {
     this.settings,
     this.authenticator,
     this.clock,
+    this.initiallyEnabled,
   });
 
   final Widget child;
+
+  /// Lock setting read before the app started (see `main`), so the first
+  /// frame is already correct: no flash of content, no blank frame.
+  final bool? initiallyEnabled;
   final AppLockSettings? settings;
   final Authenticator? authenticator;
 
@@ -28,7 +33,7 @@ class AppLockGate extends StatefulWidget {
 class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
   late final _settings = widget.settings ?? AppLockSettings();
   late final _auth = widget.authenticator ?? DeviceAuthenticator();
-  bool? _locked; // null = deciding
+  late bool? _locked = widget.initiallyEnabled; // null = deciding
   bool _authenticating = false;
   DateTime? _backgroundedAt;
 
@@ -42,10 +47,15 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
   }
 
   Future<void> _init() async {
-    final enabled = await _settings.isEnabled();
-    await AppLockSettings.applySecureWindow(await _settings.secureWindow());
+    bool enabled;
+    try {
+      enabled = widget.initiallyEnabled ?? await _settings.isEnabled();
+      await AppLockSettings.applySecureWindow(await _settings.secureWindow());
+    } catch (_) {
+      enabled = widget.initiallyEnabled ?? false;
+    }
     if (!mounted) return;
-    setState(() => _locked = enabled);
+    if (_locked != enabled) setState(() => _locked = enabled);
     if (enabled) await _unlock();
   }
 
