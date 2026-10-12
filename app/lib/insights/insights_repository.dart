@@ -66,6 +66,10 @@ class InsightsRepository {
       where.add('LOWER(t.bank_code) = ?');
       vars.add(Variable(q.bank!));
     }
+    if (q.type != null) {
+      where.add('t.txn_type = ?');
+      vars.add(Variable(q.type!));
+    }
     return _select(
       where.isEmpty ? '1' : where.join(' AND '),
       vars,

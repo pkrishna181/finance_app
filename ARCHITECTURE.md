@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 8.3 — savings goals
+Last updated: Phase 8.4 — data check-up
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -633,7 +633,8 @@ Tests: `test/insights/yearly_test.dart`, `test/ui/insights_screen_test.dart`.
 filters: free words (merchant, description or canonical name contains), quoted
 phrases, `cat:<slug or name prefix>` / `cat:none`, `>`, `>=`, `<`, `<=`, `=`
 amounts in ₹, `from:` / `to:` (yyyy-mm-dd, inclusive), `in:yyyy-mm`,
-`debit` / `credit`, `bank:`. Invalid dates and unknown keys fall back to text.
+`debit` / `credit`, `bank:`, `type:` (txn type, e.g. `type:atm`; 8.4).
+Invalid dates and unknown keys fall back to text.
 
 `InsightsRepository.search` builds one parameterized SQL query (all terms
 ANDed; `LIKE` wildcards in user text are escaped), newest first, capped at 500
@@ -766,6 +767,28 @@ shows current balances; logged contributions can be removed), and a Goals card
 on Insights.
 
 Tests: `test/insights/goals_test.dart`, `test/ui/insights_screen_test.dart`.
+
+### Data check-up (Phase 8.4)
+
+`DataDoctor` (pure, `insights/doctor.dart`) over the last 13 months
+(`runDataDoctor` loads rows + counts). Findings, warnings first:
+
+| Check | Rule |
+|---|---|
+| Balance doesn't add up | Per bank account with a last 4 (cards, cash, manual excluded): previous day-closing balance + net movement of the following days ≠ next closing balance (± ₹1). Compared across days because row order within a day is unreliable. |
+| No data for N months | Calendar months with no rows between an account's first and last month. |
+| Nothing since … | Account's latest row older than 45 days. |
+| Uncategorized share | ≥ 20% of the last 3 months' spend (self-transfers excluded) → search `cat:none debit`. |
+| Possible duplicates | Same bank, direction, amount (≥ ₹500) and day more than once → search for that day and amount. |
+| Cash counted twice | Logged manual cash spending in a month that also has ATM withdrawals not marked Transfers (self) → search `type:atm debit`. |
+| Unread messages / skipped rows | Unresolved unparsed SMS / statement rows. |
+| Cards not tracked | Card suggestions from 8.1. |
+
+`DoctorScreen` (heart-shield icon on Insights) links each finding to a
+pre-filled search, the cards screen, or the Import tab (`InsightsScreen.
+onOpenImport`, wired by `HomeShell`).
+
+Tests: `test/insights/doctor_test.dart`, `test/ui/insights_screen_test.dart`.
 
 ---
 

@@ -7,6 +7,7 @@ import '../theme/chart_colors.dart';
 import 'budgets_screen.dart';
 import 'category_transactions_screen.dart';
 import 'credit_cards_screen.dart';
+import 'doctor_screen.dart';
 import 'goals_screen.dart';
 import 'manual_transaction_screen.dart';
 import 'search_screen.dart';
@@ -22,12 +23,20 @@ Color sliceColor(BuildContext context, CategorySlice s, int index) {
 }
 
 class InsightsScreen extends StatefulWidget {
-  const InsightsScreen({super.key, this.database, this.reloadToken = 0});
+  const InsightsScreen({
+    super.key,
+    this.database,
+    this.reloadToken = 0,
+    this.onOpenImport,
+  });
 
   final ArthDatabase? database;
 
   /// Bump to force a reload (e.g. when the tab is re-selected after an import).
   final int reloadToken;
+
+  /// Switches the app to the Import tab.
+  final VoidCallback? onOpenImport;
 
   @override
   State<InsightsScreen> createState() => _InsightsScreenState();
@@ -163,6 +172,18 @@ class _InsightsScreenState extends State<InsightsScreen> {
     );
   }
 
+  Future<void> _openDoctor() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => DoctorScreen(
+          database: widget.database!,
+          onOpenImport: widget.onOpenImport,
+        ),
+      ),
+    );
+    if (mounted) await _load();
+  }
+
   Future<void> _addManual() async {
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -224,6 +245,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
               tooltip: 'Add transaction',
               icon: const Icon(Icons.add),
               onPressed: _addManual,
+            ),
+          if (widget.database != null)
+            IconButton(
+              tooltip: 'Data check-up',
+              icon: const Icon(Icons.health_and_safety_outlined),
+              onPressed: _openDoctor,
             ),
           if (widget.database != null)
             IconButton(

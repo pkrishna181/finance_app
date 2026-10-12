@@ -12,6 +12,7 @@
 /// | `in:2026-05` | one calendar month |
 /// | `debit`, `credit` | direction |
 /// | `bank:hdfc` | bank code |
+/// | `type:atm` | transaction type (upi, atm, card, neft, …) |
 ///
 /// Unrecognized `key:value` tokens are treated as text.
 class TxnQuery {
@@ -24,6 +25,7 @@ class TxnQuery {
     this.toExclusive,
     this.isDebit,
     this.bank,
+    this.type,
   });
 
   /// Lowercased text terms; every one must match.
@@ -37,6 +39,7 @@ class TxnQuery {
   final DateTime? toExclusive;
   final bool? isDebit;
   final String? bank;
+  final String? type;
 
   static const kNoCategory = 'none';
 
@@ -48,7 +51,8 @@ class TxnQuery {
       from == null &&
       toExclusive == null &&
       isDebit == null &&
-      bank == null;
+      bank == null &&
+      type == null;
 
   static final _amount = RegExp(r'^(>=|<=|>|<|=)₹?(\d+(?:\.\d{1,2})?)$');
   static final _date = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$');
@@ -63,6 +67,7 @@ class TxnQuery {
     DateTime? to;
     bool? debit;
     String? bank;
+    String? type;
 
     for (final raw in _tokenize(input)) {
       final tok = raw.toLowerCase();
@@ -98,6 +103,9 @@ class TxnQuery {
             continue;
           case 'bank':
             bank = value;
+            continue;
+          case 'type':
+            type = value;
             continue;
           case 'from':
             final d = _parseDate(value);
@@ -135,6 +143,7 @@ class TxnQuery {
       toExclusive: to,
       isDebit: debit,
       bank: bank,
+      type: type,
     );
   }
 

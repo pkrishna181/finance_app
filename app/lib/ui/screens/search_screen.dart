@@ -10,12 +10,20 @@ import 'manual_transaction_screen.dart';
 /// Search all transactions with [TxnQuery] syntax. Tap a row to change its
 /// category; long-press to select rows and change them together.
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key, required this.database, this.onChanged});
+  const SearchScreen({
+    super.key,
+    required this.database,
+    this.onChanged,
+    this.initialQuery,
+  });
 
   final ArthDatabase database;
 
   /// Called after categories are changed (e.g. to reload Insights).
   final VoidCallback? onChanged;
+
+  /// Pre-filled query, run immediately.
+  final String? initialQuery;
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -51,6 +59,11 @@ class _SearchScreenState extends State<SearchScreen> {
     _repo.pickableCategories().then((c) {
       if (mounted) setState(() => _categories = c);
     });
+    final q = widget.initialQuery;
+    if (q != null && q.isNotEmpty) {
+      _field.text = q;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _run());
+    }
   }
 
   @override
@@ -275,7 +288,8 @@ class _SearchScreenState extends State<SearchScreen> {
                       'Words match the merchant or description. '
                       'cat: category (or cat:none) · >, <, = amount in ₹ · '
                       'from:/to: yyyy-mm-dd · in: yyyy-mm · '
-                      'debit / credit · bank: · "quoted phrases".\n'
+                      'debit / credit · bank: · type: (upi, atm, card…) · '
+                      '"quoted phrases".\n'
                       'Long-press a result to select several.',
                       style: t.bodySmall,
                     ),

@@ -328,4 +328,39 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('₹5,000 of ₹50,000 · 10%'), findsOneWidget);
   });
+
+  testWidgets('data check-up opens a finding as a search', (tester) async {
+    _tallView(tester);
+    final db = ArthDatabase.memory();
+    addTearDown(() => tester.runAsync(db.close));
+    await tester.runAsync(() async {
+      final now = DateTime.now();
+      for (final h in ['a', 'b']) {
+        await db.into(db.transactions).insert(TransactionsCompanion.insert(
+              amountPaise: 90000,
+              direction: 'debit',
+              txnType: 'upi',
+              bookedAt: DateTime(now.year, now.month, now.day, 9),
+              bankCode: 'HDFC',
+              rawMerchant: 'SHOP $h',
+              rawDescription: 'SHOP',
+              dedupeHash: h,
+            ));
+      }
+    });
+    await tester.pumpWidget(MaterialApp(home: InsightsScreen(database: db)));
+    await _settle(tester);
+    await tester.tap(find.byTooltip('Data check-up'));
+    await _settle(tester);
+    await tester.pumpAndSettle();
+    expect(find.text('1 possible duplicate'), findsOneWidget);
+    expect(find.textContaining('of recent spending is uncategorized'),
+        findsOneWidget);
+
+    await tester.tap(find.text('1 possible duplicate'));
+    await _settle(tester);
+    await tester.pumpAndSettle();
+    await _settle(tester);
+    expect(find.textContaining('2 results'), findsOneWidget);
+  });
 }
