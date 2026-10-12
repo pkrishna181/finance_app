@@ -490,3 +490,15 @@ class LoanPrepayments extends Table {
   /// tenure (keep EMI, finish sooner) | emi (keep end date, lower EMI)
   TextColumn get mode => text().withDefault(const Constant('tenure'))();
 }
+
+/// Target share per asset class (Phase 10.4).
+class AllocationTargets extends Table {
+  /// equity | debt | gold | cash | realEstate | other
+  TextColumn get bucket => text()();
+
+  /// Basis points of the planned portfolio (6000 = 60%).
+  IntColumn get targetBp => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {bucket};
+}

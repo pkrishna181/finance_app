@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:arth/core/db/database.dart';
 import 'package:arth/ingestion/investments/cas_import.dart';
 import 'package:arth/ingestion/investments/cas_parser.dart';
+import 'package:arth/ui/screens/allocation_screen.dart';
 import 'package:arth/ui/screens/capital_gains_screen.dart';
 import 'package:arth/ui/screens/loans_screen.dart';
 import 'package:flutter/material.dart';
@@ -96,5 +97,26 @@ void main() {
     await tester.tap(find.text('Lower EMI'));
     await tester.pump();
     expect(find.textContaining('EMI drops to'), findsOneWidget);
+  });
+
+  testWidgets('allocation: set targets from a preset and see drift',
+      (tester) async {
+    final db = await dbWithCas(tester);
+    await tester.pumpWidget(MaterialApp(
+      home: AllocationScreen(database: db, now: DateTime(2026, 9, 30)),
+    ));
+    await settle(tester);
+    expect(find.text('Set target percentages'), findsOneWidget);
+    await tester.tap(find.text('Targets'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Balanced 60/30/10'));
+    await tester.pump();
+    expect(find.text('Adds up to 100%'), findsOneWidget);
+    await tester.tap(find.text('Save'));
+    await settle(tester);
+    await tester.pumpAndSettle();
+    // Fixture: ~60% equity, ~40% debt, no gold → off target.
+    expect(find.textContaining('consider rebalancing'), findsOneWidget);
+    expect(find.textContaining('add ₹'), findsWidgets);
   });
 }

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/db/database.dart';
 import '../../insights/insights.dart';
+import 'allocation_screen.dart';
 import 'loans_screen.dart';
 
 String _date(DateTime d) => '${d.day} ${monthShort(d.month)} ${d.year}';
@@ -105,6 +106,20 @@ class _NetWorthScreenState extends State<NetWorthScreen> {
                     '${inrWhole(nw.assetsPaise)} owned · '
                     '${inrWhole(nw.liabilitiesPaise)} owed',
                     style: t.bodyMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.pie_chart_outline),
+                    title: const Text('Asset allocation'),
+                    subtitle: const Text('Your mix vs targets, and how to rebalance'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () async {
+                      await Navigator.of(context).push(MaterialPageRoute<void>(
+                        builder: (_) => AllocationScreen(database: widget.database),
+                      ));
+                      await _load();
+                    },
                   ),
                   if (_history.length >= 2) ...[
                     const SizedBox(height: 16),

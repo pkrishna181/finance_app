@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 10.3 — loans
+Last updated: Phase 10.4 — asset allocation
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -994,6 +994,26 @@ add / edit with the calculated EMI shown.
 
 Tests: `test/insights/loans_test.dart` (textbook EMI and balance values),
 `test/ui/tax_screens_test.dart`.
+
+### Asset allocation (Phase 10.4)
+
+Schema v15: `allocation_targets` (asset class → basis points; must add to
+100% or be empty).
+
+`insights/allocation.dart` (pure): asset classes equity, debt, gold, cash,
+real estate, other. Funds map from their tax category (10.1) with name hints
+(gold / silver → gold; international / Nasdaq / S&P … → equity even though
+taxed as "other"); shares → equity; bank balances → cash; manual FD / PPF /
+EPF → debt, gold → gold, property → real estate, cash → cash, NPS / other →
+other; vehicles and liabilities are not counted. Percentages, drift and
+add / trim amounts are over the **planned** classes only, so e.g. property can
+stay out. Rebalancing is suggested at ≥ 5 points of drift.
+
+UI: Net worth → Asset allocation (bars with a target marker, drift, add /
+trim amounts; target editor with presets 70/20/10, 60/30/10, 40/50/10) and a
+note to rebalance with new money first because selling can be taxed.
+
+Tests: `test/insights/allocation_test.dart`, `test/ui/tax_screens_test.dart`.
 
 ---
 

@@ -53,6 +53,7 @@ class UpsertResult {
     ManualAssetValues,
     Loans,
     LoanPrepayments,
+    AllocationTargets,
   ],
 )
 class ArthDatabase extends _$ArthDatabase {
@@ -81,7 +82,7 @@ class ArthDatabase extends _$ArthDatabase {
   }
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -164,6 +165,9 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
           if (from < 14) {
             await m.createTable(loans);
             await m.createTable(loanPrepayments);
+          }
+          if (from < 15) {
+            await m.createTable(allocationTargets);
           }
         },
         beforeOpen: (details) async {

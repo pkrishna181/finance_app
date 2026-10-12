@@ -14293,6 +14293,226 @@ class LoanPrepaymentsCompanion extends UpdateCompanion<LoanPrepayment> {
   }
 }
 
+class $AllocationTargetsTable extends AllocationTargets
+    with TableInfo<$AllocationTargetsTable, AllocationTarget> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AllocationTargetsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _bucketMeta = const VerificationMeta('bucket');
+  @override
+  late final GeneratedColumn<String> bucket = GeneratedColumn<String>(
+    'bucket',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetBpMeta = const VerificationMeta(
+    'targetBp',
+  );
+  @override
+  late final GeneratedColumn<int> targetBp = GeneratedColumn<int>(
+    'target_bp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [bucket, targetBp];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'allocation_targets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AllocationTarget> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('bucket')) {
+      context.handle(
+        _bucketMeta,
+        bucket.isAcceptableOrUnknown(data['bucket']!, _bucketMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bucketMeta);
+    }
+    if (data.containsKey('target_bp')) {
+      context.handle(
+        _targetBpMeta,
+        targetBp.isAcceptableOrUnknown(data['target_bp']!, _targetBpMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_targetBpMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {bucket};
+  @override
+  AllocationTarget map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AllocationTarget(
+      bucket: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bucket'],
+      )!,
+      targetBp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}target_bp'],
+      )!,
+    );
+  }
+
+  @override
+  $AllocationTargetsTable createAlias(String alias) {
+    return $AllocationTargetsTable(attachedDatabase, alias);
+  }
+}
+
+class AllocationTarget extends DataClass
+    implements Insertable<AllocationTarget> {
+  /// equity | debt | gold | cash | realEstate | other
+  final String bucket;
+
+  /// Basis points of the planned portfolio (6000 = 60%).
+  final int targetBp;
+  const AllocationTarget({required this.bucket, required this.targetBp});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['bucket'] = Variable<String>(bucket);
+    map['target_bp'] = Variable<int>(targetBp);
+    return map;
+  }
+
+  AllocationTargetsCompanion toCompanion(bool nullToAbsent) {
+    return AllocationTargetsCompanion(
+      bucket: Value(bucket),
+      targetBp: Value(targetBp),
+    );
+  }
+
+  factory AllocationTarget.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AllocationTarget(
+      bucket: serializer.fromJson<String>(json['bucket']),
+      targetBp: serializer.fromJson<int>(json['targetBp']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'bucket': serializer.toJson<String>(bucket),
+      'targetBp': serializer.toJson<int>(targetBp),
+    };
+  }
+
+  AllocationTarget copyWith({String? bucket, int? targetBp}) =>
+      AllocationTarget(
+        bucket: bucket ?? this.bucket,
+        targetBp: targetBp ?? this.targetBp,
+      );
+  AllocationTarget copyWithCompanion(AllocationTargetsCompanion data) {
+    return AllocationTarget(
+      bucket: data.bucket.present ? data.bucket.value : this.bucket,
+      targetBp: data.targetBp.present ? data.targetBp.value : this.targetBp,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AllocationTarget(')
+          ..write('bucket: $bucket, ')
+          ..write('targetBp: $targetBp')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(bucket, targetBp);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AllocationTarget &&
+          other.bucket == this.bucket &&
+          other.targetBp == this.targetBp);
+}
+
+class AllocationTargetsCompanion extends UpdateCompanion<AllocationTarget> {
+  final Value<String> bucket;
+  final Value<int> targetBp;
+  final Value<int> rowid;
+  const AllocationTargetsCompanion({
+    this.bucket = const Value.absent(),
+    this.targetBp = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AllocationTargetsCompanion.insert({
+    required String bucket,
+    required int targetBp,
+    this.rowid = const Value.absent(),
+  }) : bucket = Value(bucket),
+       targetBp = Value(targetBp);
+  static Insertable<AllocationTarget> custom({
+    Expression<String>? bucket,
+    Expression<int>? targetBp,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (bucket != null) 'bucket': bucket,
+      if (targetBp != null) 'target_bp': targetBp,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AllocationTargetsCompanion copyWith({
+    Value<String>? bucket,
+    Value<int>? targetBp,
+    Value<int>? rowid,
+  }) {
+    return AllocationTargetsCompanion(
+      bucket: bucket ?? this.bucket,
+      targetBp: targetBp ?? this.targetBp,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (bucket.present) {
+      map['bucket'] = Variable<String>(bucket.value);
+    }
+    if (targetBp.present) {
+      map['target_bp'] = Variable<int>(targetBp.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AllocationTargetsCompanion(')
+          ..write('bucket: $bucket, ')
+          ..write('targetBp: $targetBp, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$ArthDatabase extends GeneratedDatabase {
   _$ArthDatabase(QueryExecutor e) : super(e);
   $ArthDatabaseManager get managers => $ArthDatabaseManager(this);
@@ -14339,6 +14559,8 @@ abstract class _$ArthDatabase extends GeneratedDatabase {
   late final $LoanPrepaymentsTable loanPrepayments = $LoanPrepaymentsTable(
     this,
   );
+  late final $AllocationTargetsTable allocationTargets =
+      $AllocationTargetsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -14371,6 +14593,7 @@ abstract class _$ArthDatabase extends GeneratedDatabase {
     manualAssetValues,
     loans,
     loanPrepayments,
+    allocationTargets,
   ];
 }
 
@@ -26600,6 +26823,162 @@ typedef $$LoanPrepaymentsTableProcessedTableManager =
       LoanPrepayment,
       PrefetchHooks Function({bool loanId})
     >;
+typedef $$AllocationTargetsTableCreateCompanionBuilder =
+    AllocationTargetsCompanion Function({
+      required String bucket,
+      required int targetBp,
+      Value<int> rowid,
+    });
+typedef $$AllocationTargetsTableUpdateCompanionBuilder =
+    AllocationTargetsCompanion Function({
+      Value<String> bucket,
+      Value<int> targetBp,
+      Value<int> rowid,
+    });
+
+class $$AllocationTargetsTableFilterComposer
+    extends Composer<_$ArthDatabase, $AllocationTargetsTable> {
+  $$AllocationTargetsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get bucket => $composableBuilder(
+    column: $table.bucket,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get targetBp => $composableBuilder(
+    column: $table.targetBp,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AllocationTargetsTableOrderingComposer
+    extends Composer<_$ArthDatabase, $AllocationTargetsTable> {
+  $$AllocationTargetsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get bucket => $composableBuilder(
+    column: $table.bucket,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get targetBp => $composableBuilder(
+    column: $table.targetBp,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AllocationTargetsTableAnnotationComposer
+    extends Composer<_$ArthDatabase, $AllocationTargetsTable> {
+  $$AllocationTargetsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get bucket =>
+      $composableBuilder(column: $table.bucket, builder: (column) => column);
+
+  GeneratedColumn<int> get targetBp =>
+      $composableBuilder(column: $table.targetBp, builder: (column) => column);
+}
+
+class $$AllocationTargetsTableTableManager
+    extends
+        RootTableManager<
+          _$ArthDatabase,
+          $AllocationTargetsTable,
+          AllocationTarget,
+          $$AllocationTargetsTableFilterComposer,
+          $$AllocationTargetsTableOrderingComposer,
+          $$AllocationTargetsTableAnnotationComposer,
+          $$AllocationTargetsTableCreateCompanionBuilder,
+          $$AllocationTargetsTableUpdateCompanionBuilder,
+          (
+            AllocationTarget,
+            BaseReferences<
+              _$ArthDatabase,
+              $AllocationTargetsTable,
+              AllocationTarget
+            >,
+          ),
+          AllocationTarget,
+          PrefetchHooks Function()
+        > {
+  $$AllocationTargetsTableTableManager(
+    _$ArthDatabase db,
+    $AllocationTargetsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AllocationTargetsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AllocationTargetsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AllocationTargetsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> bucket = const Value.absent(),
+                Value<int> targetBp = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AllocationTargetsCompanion(
+                bucket: bucket,
+                targetBp: targetBp,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String bucket,
+                required int targetBp,
+                Value<int> rowid = const Value.absent(),
+              }) => AllocationTargetsCompanion.insert(
+                bucket: bucket,
+                targetBp: targetBp,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AllocationTargetsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$ArthDatabase,
+      $AllocationTargetsTable,
+      AllocationTarget,
+      $$AllocationTargetsTableFilterComposer,
+      $$AllocationTargetsTableOrderingComposer,
+      $$AllocationTargetsTableAnnotationComposer,
+      $$AllocationTargetsTableCreateCompanionBuilder,
+      $$AllocationTargetsTableUpdateCompanionBuilder,
+      (
+        AllocationTarget,
+        BaseReferences<
+          _$ArthDatabase,
+          $AllocationTargetsTable,
+          AllocationTarget
+        >,
+      ),
+      AllocationTarget,
+      PrefetchHooks Function()
+    >;
 
 class $ArthDatabaseManager {
   final _$ArthDatabase _db;
@@ -26658,4 +27037,6 @@ class $ArthDatabaseManager {
       $$LoansTableTableManager(_db, _db.loans);
   $$LoanPrepaymentsTableTableManager get loanPrepayments =>
       $$LoanPrepaymentsTableTableManager(_db, _db.loanPrepayments);
+  $$AllocationTargetsTableTableManager get allocationTargets =>
+      $$AllocationTargetsTableTableManager(_db, _db.allocationTargets);
 }
