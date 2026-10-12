@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'screens/home_shell.dart';
 import 'theme/arth_theme.dart';
+import 'widgets/app_lock_gate.dart';
 
 class ArthApp extends StatelessWidget {
   const ArthApp({super.key});
@@ -12,7 +13,7 @@ class ArthApp extends StatelessWidget {
       title: 'Arth',
       debugShowCheckedModeBanner: false,
       theme: ArthTheme.light(),
-      home: const HomeShell(),
+      home: const AppLockGate(child: HomeShell()),
     );
   }
 }

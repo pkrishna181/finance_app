@@ -6,7 +6,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Telephony
-import io.flutter.embedding.android.FlutterActivity
+import android.view.WindowManager
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
@@ -15,11 +16,28 @@ import io.flutter.plugin.common.MethodChannel
  * Paginated (date DESC, LIMIT/OFFSET), optional sender entity filter.
  * Returns maps: {sender, body, date_millis}. Never logs bodies.
  */
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     private val channelName = "com.arth.arth/sms_inbox"
+    private val windowChannelName = "com.arth.arth/window"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // FLAG_SECURE: hides the app in the recent-apps switcher and blocks
+        // screenshots / screen recording while enabled (app lock setting).
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, windowChannelName)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "setSecure" -> {
+                        if (call.argument<Boolean>("secure") == true) {
+                            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                        } else {
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                        }
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
                 when (call.method) {

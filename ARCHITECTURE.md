@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 10.6 — Schedule AL (roadmap phases 7–10 complete)
+Last updated: Phase 11.1 — app lock
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -26,7 +26,7 @@ reimplement from docs/ideas only, never copy code).
 | 8 ✅ | Credit cards (cycle, due date, utilization, bill vs paid); manual transactions; savings goals; data "doctor" |
 | 9 ✅ | Holdings layer: CAMS/KFintech + NSDL/CDSL CAS PDF import, manual assets (gold, FD, EPF/PPF, property); net worth; XIRR; opt-in price lists |
 | 10 ✅ | Capital gains (FIFO lots, current Indian rules — verify at build time), tax harvesting, Schedule AL, allocation targets, retirement goal, loans |
-| later | Notepad calculator ("sheets"); biometric app lock |
+| 11 | App lock; encrypted backup / restore; upcoming-payments calendar; reminders; notepad calculator ("sheets") |
 
 Not adopted: plain-text journal editor, ledger/hledger/beancount backends,
 handlebars import templates (bank profiles cover this).
@@ -1060,6 +1060,25 @@ Items valued rather than costed (property, gold, vehicles, unknown-cost
 shares) are flagged "value, not cost — check". UI: Net worth → Schedule AL.
 
 Tests: `test/insights/schedule_al_test.dart`, `test/ui/tax_screens_test.dart`.
+
+### App lock (Phase 11.1)
+
+`local_auth` 3.x (`DeviceAuthenticator`, biometrics with the phone's PIN /
+pattern as fallback). Android: `MainActivity` is now a
+`FlutterFragmentActivity`, `USE_BIOMETRIC` permission, AppCompat launch /
+normal themes (+ `androidx.appcompat` dependency) as the plugin requires.
+
+`AppLockGate` wraps `HomeShell`: when enabled the app is locked at launch and
+again after the chosen time in the background (immediately / 1 / 5 / 30 min,
+default 1 min). The app stays alive underneath (`Offstage`); lifecycle events
+caused by the auth prompt itself are ignored. Turning the lock on requires a
+successful unlock first (and a device screen lock), so users can't lock
+themselves out.
+
+"Hide in recent apps" sets `FLAG_SECURE` through the
+`com.arth.arth/window` channel (blank app-switcher preview, no screenshots).
+Settings live in shared preferences (on/off and timing only). UI: Privacy →
+App lock. Tests: `test/ui/app_lock_test.dart`.
 
 ---
 
