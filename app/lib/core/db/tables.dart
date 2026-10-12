@@ -114,6 +114,9 @@ class Transactions extends Table {
   /// subscription | sip | enach | other | null
   TextColumn get recurringKind => text().nullable()();
 
+  /// bank | card | null (unknown) — which kind of account the row is from.
+  TextColumn get accountKind => text().nullable()();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
@@ -257,4 +260,50 @@ class Budgets extends Table {
   TextColumn get startMonth => text()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Facts printed on an imported statement (Phase 8.1): card/account number
+/// and, for cards, the bill.
+@DataClassName('StatementSummaryRow')
+class StatementSummaries extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get importId => integer().unique().references(Imports, #id)();
+  TextColumn get bankCode => text()();
+
+  /// bank | card
+  TextColumn get accountKind => text()();
+  TextColumn get last4 => text().nullable()();
+  DateTimeColumn get statementDate => dateTime().nullable()();
+  DateTimeColumn get dueDate => dateTime().nullable()();
+  IntColumn get totalDuePaise => integer().nullable()();
+  IntColumn get minDuePaise => integer().nullable()();
+  IntColumn get creditLimitPaise => integer().nullable()();
+
+  /// Latest transaction date on the statement (fallback statement date).
+  DateTimeColumn get periodEnd => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Credit cards the user tracks (Phase 8.1).
+class CreditCards extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get bankCode => text()();
+
+  /// Last four digits; null matches the bank's card rows without a number.
+  TextColumn get last4 => text().nullable()();
+  TextColumn get name => text()();
+  IntColumn get creditLimitPaise => integer().nullable()();
+
+  /// Day of month the statement is generated (1–31).
+  IntColumn get statementDay => integer().nullable()();
+
+  /// Day of month payment is due (1–31).
+  IntColumn get dueDay => integer().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => [
+        {bankCode, last4},
+      ];
 }

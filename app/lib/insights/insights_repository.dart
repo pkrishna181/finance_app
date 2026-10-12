@@ -74,6 +74,27 @@ class InsightsRepository {
     );
   }
 
+  /// Rows from a credit card in `[from, to)`: the bank's rows with
+  /// `account_hint = last4`, or (no [last4]) its rows marked as card.
+  Future<List<InsightTxn>> cardTransactions(
+    String bankCode,
+    String? last4,
+    DateTime from,
+    DateTime to,
+  ) {
+    return _select(
+      't.bank_code = ? AND t.booked_at >= ? AND t.booked_at < ? AND '
+      "${last4 == null ? "t.account_kind = 'card'" : 't.account_hint = ?'}",
+      [
+        Variable<String>(bankCode),
+        Variable<DateTime>(from),
+        Variable<DateTime>(to),
+        if (last4 != null) Variable<String>(last4),
+      ],
+      order: 'ASC',
+    );
+  }
+
   static String _escapeLike(String s) => s
       .replaceAll('\\', '\\\\')
       .replaceAll('%', '\\%')
@@ -98,6 +119,7 @@ SELECT t.id AS id,
        t.merchant_id AS merchant_id,
        t.raw_merchant AS raw_merchant,
        t.balance_after_paise AS balance_after_paise,
+       t.account_kind AS account_kind,
        c.slug AS category_slug,
        m.canonical_name AS merchant_name
 FROM transactions t
@@ -127,6 +149,7 @@ ${limit == null ? '' : 'LIMIT $limit'}
           merchantName: r.readNullable<String>('merchant_name'),
           rawMerchant: r.read<String>('raw_merchant'),
           balanceAfterPaise: r.readNullable<int>('balance_after_paise'),
+          accountKind: r.readNullable<String>('account_kind'),
         ),
     ];
   }

@@ -6,6 +6,7 @@ import '../../insights/insights.dart';
 import '../theme/chart_colors.dart';
 import 'budgets_screen.dart';
 import 'category_transactions_screen.dart';
+import 'credit_cards_screen.dart';
 import 'search_screen.dart';
 import 'yearly_screen.dart';
 
@@ -36,6 +37,8 @@ class _InsightsScreenState extends State<InsightsScreen> {
   InsightsSnapshot? _snapshot;
   bool _loading = true;
   Object? _error;
+  List<CardStatus> _cards = const [];
+  int _cardSuggestions = 0;
 
   @override
   void initState() {
@@ -86,8 +89,13 @@ class _InsightsScreenState extends State<InsightsScreen> {
       );
       final dismissed = await repo.dismissedAnomalyKeys();
       final budgetDefs = await BudgetRepository(db).list();
+      final cardRepo = CreditCardRepository(db);
+      final cards = await cardRepo.statuses(DateTime.now());
+      final cardSuggestions = (await cardRepo.suggestions()).length;
       if (!mounted) return;
       setState(() {
+        _cards = cards;
+        _cardSuggestions = cardSuggestions;
         _months = months;
         _selected = selected;
         _snapshot = InsightsSnapshot.build(
@@ -148,6 +156,15 @@ class _InsightsScreenState extends State<InsightsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openCards() async {
+    final db = widget.database;
+    if (db == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => CreditCardsScreen(database: db)),
+    );
+    if (mounted) await _load();
   }
 
   Future<void> _openYear() async {
@@ -243,6 +260,14 @@ class _InsightsScreenState extends State<InsightsScreen> {
             const SizedBox(height: 12),
             if (snap.forecast != null) ...[
               _ForecastCard(forecast: snap.forecast!),
+              const SizedBox(height: 12),
+            ],
+            if (_cards.isNotEmpty || _cardSuggestions > 0) ...[
+              _CardsCard(
+                cards: _cards,
+                suggestions: _cardSuggestions,
+                onOpen: _openCards,
+              ),
               const SizedBox(height: 12),
             ],
             _BudgetCard(budgets: snap.budgets, onManage: _openBudgets),
@@ -782,6 +807,70 @@ class _AnomalyCard extends StatelessWidget {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CardsCard extends StatelessWidget {
+  const _CardsCard({
+    required this.cards,
+    required this.suggestions,
+    required this.onOpen,
+  });
+  final List<CardStatus> cards;
+  final int suggestions;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    if (cards.isEmpty) {
+      return Card(
+        margin: EdgeInsets.zero,
+        child: ListTile(
+          leading: const Icon(Icons.credit_card),
+          title: Text('$suggestions credit card'
+              '${suggestions == 1 ? '' : 's'} found in your statements'),
+          subtitle: const Text('Track bills, due dates and limit use'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: onOpen,
+        ),
+      );
+    }
+    final total = cards.fold<int>(0, (s, c) => s + c.outstandingPaise);
+    return Card(
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: Text('Credit cards', style: t.titleMedium)),
+                  Text('${inrWhole(total)} outstanding', style: t.bodySmall),
+                ],
+              ),
+              for (final c in cards.where((c) =>
+                  c.state == CardBillState.due ||
+                  c.state == CardBillState.overdue).take(2)) ...[
+                const SizedBox(height: 12),
+                CardStatusTile(status: c),
+              ],
+              if (!cards.any((c) =>
+                  c.state == CardBillState.due ||
+                  c.state == CardBillState.overdue))
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text('No bills due.', style: t.bodySmall),
+                ),
+            ],
+          ),
         ),
       ),
     );

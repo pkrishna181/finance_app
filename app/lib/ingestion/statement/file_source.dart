@@ -15,6 +15,7 @@ import 'header_mapper.dart';
 import 'pdf/password_hints.dart';
 import 'pdf/pdf_loader.dart';
 import 'row_parser.dart';
+import 'statement_summary.dart';
 import 'table_loader.dart';
 
 /// Preview payload before confirm write.
@@ -29,7 +30,13 @@ class StatementImportPreview {
     required this.newCount,
     required this.duplicateCount,
     required this.unparseableCount,
-  }) : transactions = List<ParsedTransaction>.from(parseResult.transactions);
+    this.summary = const StatementSummary(),
+  }) : transactions = [
+          for (final t in parseResult.transactions)
+            summary.last4 != null && t.accountHint == null
+                ? _withAccountHint(t, summary.last4!)
+                : t,
+        ];
 
   final String fileName;
   final String contentHash;
@@ -40,6 +47,13 @@ class StatementImportPreview {
   final int newCount;
   final int duplicateCount;
   final int unparseableCount;
+
+  /// Card/account number and bill facts printed on the statement.
+  final StatementSummary summary;
+
+  /// bank | card, from the detected statement layout.
+  String get accountKind =>
+      HeaderMapper.isCreditCardProfileId(columnMap.profileId) ? 'card' : 'bank';
 
   /// Mutable copy — user may flip direction on inferred rows before confirm.
   final List<ParsedTransaction> transactions;
@@ -58,6 +72,7 @@ class StatementImportPreview {
       type: t.type,
       bookedAt: t.bookedAt,
       bankCode: t.bankCode,
+      accountHint: t.accountHint,
       rawMerchant: t.rawMerchant,
       rawDescription: t.rawDescription,
       upiPayerVpa: t.upiPayerVpa,
@@ -184,6 +199,7 @@ class StatementFileSource implements IngestionSource {
       rows: grid.rows,
       columnMap: columnMap,
     );
+    final summary = extractStatementSummary(grid.rows);
 
     var duplicateCount = 0;
     var newCount = 0;
@@ -216,6 +232,7 @@ class StatementFileSource implements IngestionSource {
         newCount: newCount,
         duplicateCount: duplicateCount,
         unparseableCount: parseResult.unparsed.length,
+        summary: summary,
       ),
     );
   }
@@ -271,6 +288,7 @@ class StatementFileSource implements IngestionSource {
           externalRef: Value(t.externalRef),
           balanceAfterPaise: Value(t.balanceAfterPaise?.paise),
           importId: Value(importId),
+          accountKind: Value(preview.accountKind),
         ),
         importId: importId,
       );
@@ -278,7 +296,43 @@ class StatementFileSource implements IngestionSource {
         inserted++;
       } else {
         duplicates++;
+        // Already known (e.g. from SMS): fill in what the statement adds.
+        await db.customUpdate(
+          'UPDATE transactions SET '
+          'account_kind = COALESCE(account_kind, ?), '
+          'account_hint = COALESCE(account_hint, ?) WHERE id = ?',
+          variables: [
+            Variable<String>(preview.accountKind),
+            Variable<String>(t.accountHint),
+            Variable<int>(result.transactionId),
+          ],
+          updates: {db.transactions},
+        );
       }
+    }
+
+    final sum = preview.summary;
+    if (!sum.isEmpty || preview.accountKind == 'card') {
+      DateTime? periodEnd;
+      for (final t in preview.transactions) {
+        if (periodEnd == null || t.bookedAt.isAfter(periodEnd)) {
+          periodEnd = t.bookedAt;
+        }
+      }
+      await db.into(db.statementSummaries).insert(
+            StatementSummariesCompanion.insert(
+              importId: importId,
+              bankCode: preview.columnMap.bankCode,
+              accountKind: preview.accountKind,
+              last4: Value(sum.last4),
+              statementDate: Value(sum.statementDate),
+              dueDate: Value(sum.dueDate),
+              totalDuePaise: Value(sum.totalDuePaise),
+              minDuePaise: Value(sum.minDuePaise),
+              creditLimitPaise: Value(sum.creditLimitPaise),
+              periodEnd: Value(periodEnd),
+            ),
+          );
     }
 
     for (final u in preview.parseResult.unparsed) {
@@ -309,6 +363,26 @@ class StatementFileSource implements IngestionSource {
     return Ok(inserted);
   }
 }
+
+ParsedTransaction _withAccountHint(ParsedTransaction t, String hint) =>
+    ParsedTransaction(
+      amountPaise: t.amountPaise,
+      direction: t.direction,
+      type: t.type,
+      bookedAt: t.bookedAt,
+      bankCode: t.bankCode,
+      rawMerchant: t.rawMerchant,
+      rawDescription: t.rawDescription,
+      dedupeKey: t.dedupeKey,
+      accountHint: hint,
+      upiPayerVpa: t.upiPayerVpa,
+      upiPayeeVpa: t.upiPayeeVpa,
+      upiRef: t.upiRef,
+      remarks: t.remarks,
+      externalRef: t.externalRef,
+      balanceAfterPaise: t.balanceAfterPaise,
+      directionInferred: t.directionInferred,
+    );
 
 Map<String, dynamic> _parseTabularInIsolate(Uint8List bytes, String fileName) {
   final loaded = TableLoader().loadBytes(bytes, fileName: fileName);

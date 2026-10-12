@@ -171,4 +171,5 @@ InsightTxn _withCategory(InsightTxn t, String slug) => InsightTxn(
       merchantName: t.merchantName,
       rawMerchant: t.rawMerchant,
       balanceAfterPaise: t.balanceAfterPaise,
+      accountKind: t.accountKind,
     );

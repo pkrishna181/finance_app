@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 8.0 — saved statement passwords, batch import
+Last updated: Phase 8.1 — credit cards
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -518,8 +518,8 @@ affect categorization. Tests: `test/insights/anomaly_detector_test.dart`.
   balance, carried forward on quiet days; an account joins from its first known
   balance. Accounts with < 3 balance points are ignored. **Uses all rows
   including transfers** (balances don't care about spend semantics).
-  Caveat: credit-card statements may report outstanding/limit rather than a
-  balance and would distort the sum; not special-cased yet.
+  Rows with `account_kind = 'card'` are skipped (card statements report
+  outstanding, not money you hold) — Phase 8.1.
 - **`CashflowForecaster`** (current calendar month only) — projected spend =
   spent so far + recurring charges still due (from 6.3 series; mandate date
   wins over the estimate; weekly series can fall due repeatedly; overdue ones
@@ -679,6 +679,46 @@ Overlapping statements and SMS rows dedupe through the usual `dedupe_hash`.
 
 Tests: `test/ingestion/password_vault_test.dart` (unlocks the real encrypted
 golden PDF), `test/ui/import_screen_test.dart`.
+
+### Credit cards (Phase 8.1)
+
+Schema v9: `transactions.account_kind` (`bank` | `card` | null),
+`statement_summaries` (one per statement import), `credit_cards`.
+
+**On import** `extractStatementSummary` (pure,
+`ingestion/statement/statement_summary.dart`) scans the whole grid for the
+card/account last 4 (masked numbers, "ending 1234", "Account No: …"; several
+different numbers → none) and card bill facts (statement date, payment due
+date, total / minimum due, credit limit; value in the same row after the label,
+else the same column of the next row). The preview stamps `last4` onto rows
+without an `account_hint`; `confirmImport` sets `account_kind` from the layout
+(card profiles → `card`), fills `account_kind` / `account_hint` on rows already
+known from SMS, and stores the summary. No false positives across the golden
+statements; CSV and PDF of the same statement agree.
+
+**Card status** (`CardCycleCalculator`, pure, `insights/credit_cards.dart`):
+cycle from the card's statement day (clamped to short months), else the latest
+printed bill's statement date / last transaction. The printed total due and due
+date win when that bill closed within 5 days of the cycle; otherwise the bill is
+estimated as spends − refunds in the previous cycle, and the due date comes from
+the due day. Credits whose text looks like a payment (payment, thank you, BBPS,
+NEFT, autopay, …) count as paid; other credits are refunds. Outstanding = unpaid
+bill + unbilled; utilization = outstanding / limit (card's, else statement's).
+States: due, overdue, paid, no bill.
+
+`CreditCardRepository`: tracked cards (bank + optional last 4, limit,
+statement / due day); suggestions = card rows grouped by bank + last 4 that
+aren't tracked yet; `statuses(asOf)` sorted overdue → due soonest. A card with
+no last 4 matches all of that bank's card rows.
+
+UI: `CreditCardsScreen` (status tiles, "Found in your statements → Track",
+add/edit/remove) and a "Credit cards" card on Insights (total outstanding and
+up to two bills due), shown once a card is tracked or found. The utilization
+note mentions the common 30% guideline.
+
+Tests: `test/ingestion/statement_summary_test.dart`,
+`test/insights/credit_cards_test.dart` (includes importing the HDFC card
+golden statement end to end).
 
 ---
 

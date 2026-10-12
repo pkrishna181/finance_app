@@ -5,6 +5,8 @@ export 'anomaly_detector.dart';
 export 'budget.dart';
 export 'budget_repository.dart';
 export 'cashflow.dart';
+export 'credit_card_repository.dart';
+export 'credit_cards.dart';
 export 'insight_format.dart';
 export 'insight_models.dart';
 export 'insights_aggregator.dart';

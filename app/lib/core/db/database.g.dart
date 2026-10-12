@@ -2082,6 +2082,17 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _accountKindMeta = const VerificationMeta(
+    'accountKind',
+  );
+  @override
+  late final GeneratedColumn<String> accountKind = GeneratedColumn<String>(
+    'account_kind',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -2133,6 +2144,7 @@ class $TransactionsTable extends Transactions
     importId,
     isRecurringCandidate,
     recurringKind,
+    accountKind,
     createdAt,
     updatedAt,
   ];
@@ -2347,6 +2359,15 @@ class $TransactionsTable extends Transactions
         ),
       );
     }
+    if (data.containsKey('account_kind')) {
+      context.handle(
+        _accountKindMeta,
+        accountKind.isAcceptableOrUnknown(
+          data['account_kind']!,
+          _accountKindMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -2468,6 +2489,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.string,
         data['${effectivePrefix}recurring_kind'],
       ),
+      accountKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_kind'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -2525,6 +2550,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
 
   /// subscription | sip | enach | other | null
   final String? recurringKind;
+
+  /// bank | card | null (unknown) — which kind of account the row is from.
+  final String? accountKind;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Transaction({
@@ -2553,6 +2581,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     this.importId,
     required this.isRecurringCandidate,
     this.recurringKind,
+    this.accountKind,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -2611,6 +2640,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     map['is_recurring_candidate'] = Variable<bool>(isRecurringCandidate);
     if (!nullToAbsent || recurringKind != null) {
       map['recurring_kind'] = Variable<String>(recurringKind);
+    }
+    if (!nullToAbsent || accountKind != null) {
+      map['account_kind'] = Variable<String>(accountKind);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -2672,6 +2704,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       recurringKind: recurringKind == null && nullToAbsent
           ? const Value.absent()
           : Value(recurringKind),
+      accountKind: accountKind == null && nullToAbsent
+          ? const Value.absent()
+          : Value(accountKind),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -2712,6 +2747,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
         json['isRecurringCandidate'],
       ),
       recurringKind: serializer.fromJson<String?>(json['recurringKind']),
+      accountKind: serializer.fromJson<String?>(json['accountKind']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -2747,6 +2783,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'importId': serializer.toJson<int?>(importId),
       'isRecurringCandidate': serializer.toJson<bool>(isRecurringCandidate),
       'recurringKind': serializer.toJson<String?>(recurringKind),
+      'accountKind': serializer.toJson<String?>(accountKind),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -2778,6 +2815,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     Value<int?> importId = const Value.absent(),
     bool? isRecurringCandidate,
     Value<String?> recurringKind = const Value.absent(),
+    Value<String?> accountKind = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Transaction(
@@ -2814,6 +2852,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     recurringKind: recurringKind.present
         ? recurringKind.value
         : this.recurringKind,
+    accountKind: accountKind.present ? accountKind.value : this.accountKind,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -2874,6 +2913,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       recurringKind: data.recurringKind.present
           ? data.recurringKind.value
           : this.recurringKind,
+      accountKind: data.accountKind.present
+          ? data.accountKind.value
+          : this.accountKind,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -2907,6 +2949,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('importId: $importId, ')
           ..write('isRecurringCandidate: $isRecurringCandidate, ')
           ..write('recurringKind: $recurringKind, ')
+          ..write('accountKind: $accountKind, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2940,6 +2983,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     importId,
     isRecurringCandidate,
     recurringKind,
+    accountKind,
     createdAt,
     updatedAt,
   ]);
@@ -2972,6 +3016,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.importId == this.importId &&
           other.isRecurringCandidate == this.isRecurringCandidate &&
           other.recurringKind == this.recurringKind &&
+          other.accountKind == this.accountKind &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -3002,6 +3047,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<int?> importId;
   final Value<bool> isRecurringCandidate;
   final Value<String?> recurringKind;
+  final Value<String?> accountKind;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const TransactionsCompanion({
@@ -3030,6 +3076,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.importId = const Value.absent(),
     this.isRecurringCandidate = const Value.absent(),
     this.recurringKind = const Value.absent(),
+    this.accountKind = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -3059,6 +3106,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.importId = const Value.absent(),
     this.isRecurringCandidate = const Value.absent(),
     this.recurringKind = const Value.absent(),
+    this.accountKind = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : amountPaise = Value(amountPaise),
@@ -3095,6 +3143,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<int>? importId,
     Expression<bool>? isRecurringCandidate,
     Expression<String>? recurringKind,
+    Expression<String>? accountKind,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -3126,6 +3175,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (isRecurringCandidate != null)
         'is_recurring_candidate': isRecurringCandidate,
       if (recurringKind != null) 'recurring_kind': recurringKind,
+      if (accountKind != null) 'account_kind': accountKind,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -3157,6 +3207,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Value<int?>? importId,
     Value<bool>? isRecurringCandidate,
     Value<String?>? recurringKind,
+    Value<String?>? accountKind,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -3187,6 +3238,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       importId: importId ?? this.importId,
       isRecurringCandidate: isRecurringCandidate ?? this.isRecurringCandidate,
       recurringKind: recurringKind ?? this.recurringKind,
+      accountKind: accountKind ?? this.accountKind,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -3274,6 +3326,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (recurringKind.present) {
       map['recurring_kind'] = Variable<String>(recurringKind.value);
     }
+    if (accountKind.present) {
+      map['account_kind'] = Variable<String>(accountKind.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -3311,6 +3366,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('importId: $importId, ')
           ..write('isRecurringCandidate: $isRecurringCandidate, ')
           ..write('recurringKind: $recurringKind, ')
+          ..write('accountKind: $accountKind, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -7757,6 +7813,1309 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
   }
 }
 
+class $StatementSummariesTable extends StatementSummaries
+    with TableInfo<$StatementSummariesTable, StatementSummaryRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StatementSummariesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _importIdMeta = const VerificationMeta(
+    'importId',
+  );
+  @override
+  late final GeneratedColumn<int> importId = GeneratedColumn<int>(
+    'import_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'UNIQUE REFERENCES imports (id)',
+    ),
+  );
+  static const VerificationMeta _bankCodeMeta = const VerificationMeta(
+    'bankCode',
+  );
+  @override
+  late final GeneratedColumn<String> bankCode = GeneratedColumn<String>(
+    'bank_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _accountKindMeta = const VerificationMeta(
+    'accountKind',
+  );
+  @override
+  late final GeneratedColumn<String> accountKind = GeneratedColumn<String>(
+    'account_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _last4Meta = const VerificationMeta('last4');
+  @override
+  late final GeneratedColumn<String> last4 = GeneratedColumn<String>(
+    'last4',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statementDateMeta = const VerificationMeta(
+    'statementDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> statementDate =
+      GeneratedColumn<DateTime>(
+        'statement_date',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _dueDateMeta = const VerificationMeta(
+    'dueDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> dueDate = GeneratedColumn<DateTime>(
+    'due_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _totalDuePaiseMeta = const VerificationMeta(
+    'totalDuePaise',
+  );
+  @override
+  late final GeneratedColumn<int> totalDuePaise = GeneratedColumn<int>(
+    'total_due_paise',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _minDuePaiseMeta = const VerificationMeta(
+    'minDuePaise',
+  );
+  @override
+  late final GeneratedColumn<int> minDuePaise = GeneratedColumn<int>(
+    'min_due_paise',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _creditLimitPaiseMeta = const VerificationMeta(
+    'creditLimitPaise',
+  );
+  @override
+  late final GeneratedColumn<int> creditLimitPaise = GeneratedColumn<int>(
+    'credit_limit_paise',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _periodEndMeta = const VerificationMeta(
+    'periodEnd',
+  );
+  @override
+  late final GeneratedColumn<DateTime> periodEnd = GeneratedColumn<DateTime>(
+    'period_end',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    importId,
+    bankCode,
+    accountKind,
+    last4,
+    statementDate,
+    dueDate,
+    totalDuePaise,
+    minDuePaise,
+    creditLimitPaise,
+    periodEnd,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'statement_summaries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StatementSummaryRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('import_id')) {
+      context.handle(
+        _importIdMeta,
+        importId.isAcceptableOrUnknown(data['import_id']!, _importIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_importIdMeta);
+    }
+    if (data.containsKey('bank_code')) {
+      context.handle(
+        _bankCodeMeta,
+        bankCode.isAcceptableOrUnknown(data['bank_code']!, _bankCodeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bankCodeMeta);
+    }
+    if (data.containsKey('account_kind')) {
+      context.handle(
+        _accountKindMeta,
+        accountKind.isAcceptableOrUnknown(
+          data['account_kind']!,
+          _accountKindMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_accountKindMeta);
+    }
+    if (data.containsKey('last4')) {
+      context.handle(
+        _last4Meta,
+        last4.isAcceptableOrUnknown(data['last4']!, _last4Meta),
+      );
+    }
+    if (data.containsKey('statement_date')) {
+      context.handle(
+        _statementDateMeta,
+        statementDate.isAcceptableOrUnknown(
+          data['statement_date']!,
+          _statementDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('due_date')) {
+      context.handle(
+        _dueDateMeta,
+        dueDate.isAcceptableOrUnknown(data['due_date']!, _dueDateMeta),
+      );
+    }
+    if (data.containsKey('total_due_paise')) {
+      context.handle(
+        _totalDuePaiseMeta,
+        totalDuePaise.isAcceptableOrUnknown(
+          data['total_due_paise']!,
+          _totalDuePaiseMeta,
+        ),
+      );
+    }
+    if (data.containsKey('min_due_paise')) {
+      context.handle(
+        _minDuePaiseMeta,
+        minDuePaise.isAcceptableOrUnknown(
+          data['min_due_paise']!,
+          _minDuePaiseMeta,
+        ),
+      );
+    }
+    if (data.containsKey('credit_limit_paise')) {
+      context.handle(
+        _creditLimitPaiseMeta,
+        creditLimitPaise.isAcceptableOrUnknown(
+          data['credit_limit_paise']!,
+          _creditLimitPaiseMeta,
+        ),
+      );
+    }
+    if (data.containsKey('period_end')) {
+      context.handle(
+        _periodEndMeta,
+        periodEnd.isAcceptableOrUnknown(data['period_end']!, _periodEndMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StatementSummaryRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StatementSummaryRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      importId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}import_id'],
+      )!,
+      bankCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bank_code'],
+      )!,
+      accountKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_kind'],
+      )!,
+      last4: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last4'],
+      ),
+      statementDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}statement_date'],
+      ),
+      dueDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}due_date'],
+      ),
+      totalDuePaise: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_due_paise'],
+      ),
+      minDuePaise: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}min_due_paise'],
+      ),
+      creditLimitPaise: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}credit_limit_paise'],
+      ),
+      periodEnd: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}period_end'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $StatementSummariesTable createAlias(String alias) {
+    return $StatementSummariesTable(attachedDatabase, alias);
+  }
+}
+
+class StatementSummaryRow extends DataClass
+    implements Insertable<StatementSummaryRow> {
+  final int id;
+  final int importId;
+  final String bankCode;
+
+  /// bank | card
+  final String accountKind;
+  final String? last4;
+  final DateTime? statementDate;
+  final DateTime? dueDate;
+  final int? totalDuePaise;
+  final int? minDuePaise;
+  final int? creditLimitPaise;
+
+  /// Latest transaction date on the statement (fallback statement date).
+  final DateTime? periodEnd;
+  final DateTime createdAt;
+  const StatementSummaryRow({
+    required this.id,
+    required this.importId,
+    required this.bankCode,
+    required this.accountKind,
+    this.last4,
+    this.statementDate,
+    this.dueDate,
+    this.totalDuePaise,
+    this.minDuePaise,
+    this.creditLimitPaise,
+    this.periodEnd,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['import_id'] = Variable<int>(importId);
+    map['bank_code'] = Variable<String>(bankCode);
+    map['account_kind'] = Variable<String>(accountKind);
+    if (!nullToAbsent || last4 != null) {
+      map['last4'] = Variable<String>(last4);
+    }
+    if (!nullToAbsent || statementDate != null) {
+      map['statement_date'] = Variable<DateTime>(statementDate);
+    }
+    if (!nullToAbsent || dueDate != null) {
+      map['due_date'] = Variable<DateTime>(dueDate);
+    }
+    if (!nullToAbsent || totalDuePaise != null) {
+      map['total_due_paise'] = Variable<int>(totalDuePaise);
+    }
+    if (!nullToAbsent || minDuePaise != null) {
+      map['min_due_paise'] = Variable<int>(minDuePaise);
+    }
+    if (!nullToAbsent || creditLimitPaise != null) {
+      map['credit_limit_paise'] = Variable<int>(creditLimitPaise);
+    }
+    if (!nullToAbsent || periodEnd != null) {
+      map['period_end'] = Variable<DateTime>(periodEnd);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  StatementSummariesCompanion toCompanion(bool nullToAbsent) {
+    return StatementSummariesCompanion(
+      id: Value(id),
+      importId: Value(importId),
+      bankCode: Value(bankCode),
+      accountKind: Value(accountKind),
+      last4: last4 == null && nullToAbsent
+          ? const Value.absent()
+          : Value(last4),
+      statementDate: statementDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(statementDate),
+      dueDate: dueDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dueDate),
+      totalDuePaise: totalDuePaise == null && nullToAbsent
+          ? const Value.absent()
+          : Value(totalDuePaise),
+      minDuePaise: minDuePaise == null && nullToAbsent
+          ? const Value.absent()
+          : Value(minDuePaise),
+      creditLimitPaise: creditLimitPaise == null && nullToAbsent
+          ? const Value.absent()
+          : Value(creditLimitPaise),
+      periodEnd: periodEnd == null && nullToAbsent
+          ? const Value.absent()
+          : Value(periodEnd),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory StatementSummaryRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StatementSummaryRow(
+      id: serializer.fromJson<int>(json['id']),
+      importId: serializer.fromJson<int>(json['importId']),
+      bankCode: serializer.fromJson<String>(json['bankCode']),
+      accountKind: serializer.fromJson<String>(json['accountKind']),
+      last4: serializer.fromJson<String?>(json['last4']),
+      statementDate: serializer.fromJson<DateTime?>(json['statementDate']),
+      dueDate: serializer.fromJson<DateTime?>(json['dueDate']),
+      totalDuePaise: serializer.fromJson<int?>(json['totalDuePaise']),
+      minDuePaise: serializer.fromJson<int?>(json['minDuePaise']),
+      creditLimitPaise: serializer.fromJson<int?>(json['creditLimitPaise']),
+      periodEnd: serializer.fromJson<DateTime?>(json['periodEnd']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'importId': serializer.toJson<int>(importId),
+      'bankCode': serializer.toJson<String>(bankCode),
+      'accountKind': serializer.toJson<String>(accountKind),
+      'last4': serializer.toJson<String?>(last4),
+      'statementDate': serializer.toJson<DateTime?>(statementDate),
+      'dueDate': serializer.toJson<DateTime?>(dueDate),
+      'totalDuePaise': serializer.toJson<int?>(totalDuePaise),
+      'minDuePaise': serializer.toJson<int?>(minDuePaise),
+      'creditLimitPaise': serializer.toJson<int?>(creditLimitPaise),
+      'periodEnd': serializer.toJson<DateTime?>(periodEnd),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  StatementSummaryRow copyWith({
+    int? id,
+    int? importId,
+    String? bankCode,
+    String? accountKind,
+    Value<String?> last4 = const Value.absent(),
+    Value<DateTime?> statementDate = const Value.absent(),
+    Value<DateTime?> dueDate = const Value.absent(),
+    Value<int?> totalDuePaise = const Value.absent(),
+    Value<int?> minDuePaise = const Value.absent(),
+    Value<int?> creditLimitPaise = const Value.absent(),
+    Value<DateTime?> periodEnd = const Value.absent(),
+    DateTime? createdAt,
+  }) => StatementSummaryRow(
+    id: id ?? this.id,
+    importId: importId ?? this.importId,
+    bankCode: bankCode ?? this.bankCode,
+    accountKind: accountKind ?? this.accountKind,
+    last4: last4.present ? last4.value : this.last4,
+    statementDate: statementDate.present
+        ? statementDate.value
+        : this.statementDate,
+    dueDate: dueDate.present ? dueDate.value : this.dueDate,
+    totalDuePaise: totalDuePaise.present
+        ? totalDuePaise.value
+        : this.totalDuePaise,
+    minDuePaise: minDuePaise.present ? minDuePaise.value : this.minDuePaise,
+    creditLimitPaise: creditLimitPaise.present
+        ? creditLimitPaise.value
+        : this.creditLimitPaise,
+    periodEnd: periodEnd.present ? periodEnd.value : this.periodEnd,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  StatementSummaryRow copyWithCompanion(StatementSummariesCompanion data) {
+    return StatementSummaryRow(
+      id: data.id.present ? data.id.value : this.id,
+      importId: data.importId.present ? data.importId.value : this.importId,
+      bankCode: data.bankCode.present ? data.bankCode.value : this.bankCode,
+      accountKind: data.accountKind.present
+          ? data.accountKind.value
+          : this.accountKind,
+      last4: data.last4.present ? data.last4.value : this.last4,
+      statementDate: data.statementDate.present
+          ? data.statementDate.value
+          : this.statementDate,
+      dueDate: data.dueDate.present ? data.dueDate.value : this.dueDate,
+      totalDuePaise: data.totalDuePaise.present
+          ? data.totalDuePaise.value
+          : this.totalDuePaise,
+      minDuePaise: data.minDuePaise.present
+          ? data.minDuePaise.value
+          : this.minDuePaise,
+      creditLimitPaise: data.creditLimitPaise.present
+          ? data.creditLimitPaise.value
+          : this.creditLimitPaise,
+      periodEnd: data.periodEnd.present ? data.periodEnd.value : this.periodEnd,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StatementSummaryRow(')
+          ..write('id: $id, ')
+          ..write('importId: $importId, ')
+          ..write('bankCode: $bankCode, ')
+          ..write('accountKind: $accountKind, ')
+          ..write('last4: $last4, ')
+          ..write('statementDate: $statementDate, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('totalDuePaise: $totalDuePaise, ')
+          ..write('minDuePaise: $minDuePaise, ')
+          ..write('creditLimitPaise: $creditLimitPaise, ')
+          ..write('periodEnd: $periodEnd, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    importId,
+    bankCode,
+    accountKind,
+    last4,
+    statementDate,
+    dueDate,
+    totalDuePaise,
+    minDuePaise,
+    creditLimitPaise,
+    periodEnd,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StatementSummaryRow &&
+          other.id == this.id &&
+          other.importId == this.importId &&
+          other.bankCode == this.bankCode &&
+          other.accountKind == this.accountKind &&
+          other.last4 == this.last4 &&
+          other.statementDate == this.statementDate &&
+          other.dueDate == this.dueDate &&
+          other.totalDuePaise == this.totalDuePaise &&
+          other.minDuePaise == this.minDuePaise &&
+          other.creditLimitPaise == this.creditLimitPaise &&
+          other.periodEnd == this.periodEnd &&
+          other.createdAt == this.createdAt);
+}
+
+class StatementSummariesCompanion extends UpdateCompanion<StatementSummaryRow> {
+  final Value<int> id;
+  final Value<int> importId;
+  final Value<String> bankCode;
+  final Value<String> accountKind;
+  final Value<String?> last4;
+  final Value<DateTime?> statementDate;
+  final Value<DateTime?> dueDate;
+  final Value<int?> totalDuePaise;
+  final Value<int?> minDuePaise;
+  final Value<int?> creditLimitPaise;
+  final Value<DateTime?> periodEnd;
+  final Value<DateTime> createdAt;
+  const StatementSummariesCompanion({
+    this.id = const Value.absent(),
+    this.importId = const Value.absent(),
+    this.bankCode = const Value.absent(),
+    this.accountKind = const Value.absent(),
+    this.last4 = const Value.absent(),
+    this.statementDate = const Value.absent(),
+    this.dueDate = const Value.absent(),
+    this.totalDuePaise = const Value.absent(),
+    this.minDuePaise = const Value.absent(),
+    this.creditLimitPaise = const Value.absent(),
+    this.periodEnd = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  StatementSummariesCompanion.insert({
+    this.id = const Value.absent(),
+    required int importId,
+    required String bankCode,
+    required String accountKind,
+    this.last4 = const Value.absent(),
+    this.statementDate = const Value.absent(),
+    this.dueDate = const Value.absent(),
+    this.totalDuePaise = const Value.absent(),
+    this.minDuePaise = const Value.absent(),
+    this.creditLimitPaise = const Value.absent(),
+    this.periodEnd = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : importId = Value(importId),
+       bankCode = Value(bankCode),
+       accountKind = Value(accountKind);
+  static Insertable<StatementSummaryRow> custom({
+    Expression<int>? id,
+    Expression<int>? importId,
+    Expression<String>? bankCode,
+    Expression<String>? accountKind,
+    Expression<String>? last4,
+    Expression<DateTime>? statementDate,
+    Expression<DateTime>? dueDate,
+    Expression<int>? totalDuePaise,
+    Expression<int>? minDuePaise,
+    Expression<int>? creditLimitPaise,
+    Expression<DateTime>? periodEnd,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (importId != null) 'import_id': importId,
+      if (bankCode != null) 'bank_code': bankCode,
+      if (accountKind != null) 'account_kind': accountKind,
+      if (last4 != null) 'last4': last4,
+      if (statementDate != null) 'statement_date': statementDate,
+      if (dueDate != null) 'due_date': dueDate,
+      if (totalDuePaise != null) 'total_due_paise': totalDuePaise,
+      if (minDuePaise != null) 'min_due_paise': minDuePaise,
+      if (creditLimitPaise != null) 'credit_limit_paise': creditLimitPaise,
+      if (periodEnd != null) 'period_end': periodEnd,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  StatementSummariesCompanion copyWith({
+    Value<int>? id,
+    Value<int>? importId,
+    Value<String>? bankCode,
+    Value<String>? accountKind,
+    Value<String?>? last4,
+    Value<DateTime?>? statementDate,
+    Value<DateTime?>? dueDate,
+    Value<int?>? totalDuePaise,
+    Value<int?>? minDuePaise,
+    Value<int?>? creditLimitPaise,
+    Value<DateTime?>? periodEnd,
+    Value<DateTime>? createdAt,
+  }) {
+    return StatementSummariesCompanion(
+      id: id ?? this.id,
+      importId: importId ?? this.importId,
+      bankCode: bankCode ?? this.bankCode,
+      accountKind: accountKind ?? this.accountKind,
+      last4: last4 ?? this.last4,
+      statementDate: statementDate ?? this.statementDate,
+      dueDate: dueDate ?? this.dueDate,
+      totalDuePaise: totalDuePaise ?? this.totalDuePaise,
+      minDuePaise: minDuePaise ?? this.minDuePaise,
+      creditLimitPaise: creditLimitPaise ?? this.creditLimitPaise,
+      periodEnd: periodEnd ?? this.periodEnd,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (importId.present) {
+      map['import_id'] = Variable<int>(importId.value);
+    }
+    if (bankCode.present) {
+      map['bank_code'] = Variable<String>(bankCode.value);
+    }
+    if (accountKind.present) {
+      map['account_kind'] = Variable<String>(accountKind.value);
+    }
+    if (last4.present) {
+      map['last4'] = Variable<String>(last4.value);
+    }
+    if (statementDate.present) {
+      map['statement_date'] = Variable<DateTime>(statementDate.value);
+    }
+    if (dueDate.present) {
+      map['due_date'] = Variable<DateTime>(dueDate.value);
+    }
+    if (totalDuePaise.present) {
+      map['total_due_paise'] = Variable<int>(totalDuePaise.value);
+    }
+    if (minDuePaise.present) {
+      map['min_due_paise'] = Variable<int>(minDuePaise.value);
+    }
+    if (creditLimitPaise.present) {
+      map['credit_limit_paise'] = Variable<int>(creditLimitPaise.value);
+    }
+    if (periodEnd.present) {
+      map['period_end'] = Variable<DateTime>(periodEnd.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StatementSummariesCompanion(')
+          ..write('id: $id, ')
+          ..write('importId: $importId, ')
+          ..write('bankCode: $bankCode, ')
+          ..write('accountKind: $accountKind, ')
+          ..write('last4: $last4, ')
+          ..write('statementDate: $statementDate, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('totalDuePaise: $totalDuePaise, ')
+          ..write('minDuePaise: $minDuePaise, ')
+          ..write('creditLimitPaise: $creditLimitPaise, ')
+          ..write('periodEnd: $periodEnd, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CreditCardsTable extends CreditCards
+    with TableInfo<$CreditCardsTable, CreditCard> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CreditCardsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _bankCodeMeta = const VerificationMeta(
+    'bankCode',
+  );
+  @override
+  late final GeneratedColumn<String> bankCode = GeneratedColumn<String>(
+    'bank_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _last4Meta = const VerificationMeta('last4');
+  @override
+  late final GeneratedColumn<String> last4 = GeneratedColumn<String>(
+    'last4',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _creditLimitPaiseMeta = const VerificationMeta(
+    'creditLimitPaise',
+  );
+  @override
+  late final GeneratedColumn<int> creditLimitPaise = GeneratedColumn<int>(
+    'credit_limit_paise',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statementDayMeta = const VerificationMeta(
+    'statementDay',
+  );
+  @override
+  late final GeneratedColumn<int> statementDay = GeneratedColumn<int>(
+    'statement_day',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _dueDayMeta = const VerificationMeta('dueDay');
+  @override
+  late final GeneratedColumn<int> dueDay = GeneratedColumn<int>(
+    'due_day',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    bankCode,
+    last4,
+    name,
+    creditLimitPaise,
+    statementDay,
+    dueDay,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'credit_cards';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CreditCard> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('bank_code')) {
+      context.handle(
+        _bankCodeMeta,
+        bankCode.isAcceptableOrUnknown(data['bank_code']!, _bankCodeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bankCodeMeta);
+    }
+    if (data.containsKey('last4')) {
+      context.handle(
+        _last4Meta,
+        last4.isAcceptableOrUnknown(data['last4']!, _last4Meta),
+      );
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('credit_limit_paise')) {
+      context.handle(
+        _creditLimitPaiseMeta,
+        creditLimitPaise.isAcceptableOrUnknown(
+          data['credit_limit_paise']!,
+          _creditLimitPaiseMeta,
+        ),
+      );
+    }
+    if (data.containsKey('statement_day')) {
+      context.handle(
+        _statementDayMeta,
+        statementDay.isAcceptableOrUnknown(
+          data['statement_day']!,
+          _statementDayMeta,
+        ),
+      );
+    }
+    if (data.containsKey('due_day')) {
+      context.handle(
+        _dueDayMeta,
+        dueDay.isAcceptableOrUnknown(data['due_day']!, _dueDayMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {bankCode, last4},
+  ];
+  @override
+  CreditCard map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CreditCard(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      bankCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bank_code'],
+      )!,
+      last4: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last4'],
+      ),
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      creditLimitPaise: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}credit_limit_paise'],
+      ),
+      statementDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}statement_day'],
+      ),
+      dueDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}due_day'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CreditCardsTable createAlias(String alias) {
+    return $CreditCardsTable(attachedDatabase, alias);
+  }
+}
+
+class CreditCard extends DataClass implements Insertable<CreditCard> {
+  final int id;
+  final String bankCode;
+
+  /// Last four digits; null matches the bank's card rows without a number.
+  final String? last4;
+  final String name;
+  final int? creditLimitPaise;
+
+  /// Day of month the statement is generated (1–31).
+  final int? statementDay;
+
+  /// Day of month payment is due (1–31).
+  final int? dueDay;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const CreditCard({
+    required this.id,
+    required this.bankCode,
+    this.last4,
+    required this.name,
+    this.creditLimitPaise,
+    this.statementDay,
+    this.dueDay,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['bank_code'] = Variable<String>(bankCode);
+    if (!nullToAbsent || last4 != null) {
+      map['last4'] = Variable<String>(last4);
+    }
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || creditLimitPaise != null) {
+      map['credit_limit_paise'] = Variable<int>(creditLimitPaise);
+    }
+    if (!nullToAbsent || statementDay != null) {
+      map['statement_day'] = Variable<int>(statementDay);
+    }
+    if (!nullToAbsent || dueDay != null) {
+      map['due_day'] = Variable<int>(dueDay);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  CreditCardsCompanion toCompanion(bool nullToAbsent) {
+    return CreditCardsCompanion(
+      id: Value(id),
+      bankCode: Value(bankCode),
+      last4: last4 == null && nullToAbsent
+          ? const Value.absent()
+          : Value(last4),
+      name: Value(name),
+      creditLimitPaise: creditLimitPaise == null && nullToAbsent
+          ? const Value.absent()
+          : Value(creditLimitPaise),
+      statementDay: statementDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(statementDay),
+      dueDay: dueDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dueDay),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory CreditCard.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CreditCard(
+      id: serializer.fromJson<int>(json['id']),
+      bankCode: serializer.fromJson<String>(json['bankCode']),
+      last4: serializer.fromJson<String?>(json['last4']),
+      name: serializer.fromJson<String>(json['name']),
+      creditLimitPaise: serializer.fromJson<int?>(json['creditLimitPaise']),
+      statementDay: serializer.fromJson<int?>(json['statementDay']),
+      dueDay: serializer.fromJson<int?>(json['dueDay']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'bankCode': serializer.toJson<String>(bankCode),
+      'last4': serializer.toJson<String?>(last4),
+      'name': serializer.toJson<String>(name),
+      'creditLimitPaise': serializer.toJson<int?>(creditLimitPaise),
+      'statementDay': serializer.toJson<int?>(statementDay),
+      'dueDay': serializer.toJson<int?>(dueDay),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  CreditCard copyWith({
+    int? id,
+    String? bankCode,
+    Value<String?> last4 = const Value.absent(),
+    String? name,
+    Value<int?> creditLimitPaise = const Value.absent(),
+    Value<int?> statementDay = const Value.absent(),
+    Value<int?> dueDay = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => CreditCard(
+    id: id ?? this.id,
+    bankCode: bankCode ?? this.bankCode,
+    last4: last4.present ? last4.value : this.last4,
+    name: name ?? this.name,
+    creditLimitPaise: creditLimitPaise.present
+        ? creditLimitPaise.value
+        : this.creditLimitPaise,
+    statementDay: statementDay.present ? statementDay.value : this.statementDay,
+    dueDay: dueDay.present ? dueDay.value : this.dueDay,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  CreditCard copyWithCompanion(CreditCardsCompanion data) {
+    return CreditCard(
+      id: data.id.present ? data.id.value : this.id,
+      bankCode: data.bankCode.present ? data.bankCode.value : this.bankCode,
+      last4: data.last4.present ? data.last4.value : this.last4,
+      name: data.name.present ? data.name.value : this.name,
+      creditLimitPaise: data.creditLimitPaise.present
+          ? data.creditLimitPaise.value
+          : this.creditLimitPaise,
+      statementDay: data.statementDay.present
+          ? data.statementDay.value
+          : this.statementDay,
+      dueDay: data.dueDay.present ? data.dueDay.value : this.dueDay,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CreditCard(')
+          ..write('id: $id, ')
+          ..write('bankCode: $bankCode, ')
+          ..write('last4: $last4, ')
+          ..write('name: $name, ')
+          ..write('creditLimitPaise: $creditLimitPaise, ')
+          ..write('statementDay: $statementDay, ')
+          ..write('dueDay: $dueDay, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    bankCode,
+    last4,
+    name,
+    creditLimitPaise,
+    statementDay,
+    dueDay,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CreditCard &&
+          other.id == this.id &&
+          other.bankCode == this.bankCode &&
+          other.last4 == this.last4 &&
+          other.name == this.name &&
+          other.creditLimitPaise == this.creditLimitPaise &&
+          other.statementDay == this.statementDay &&
+          other.dueDay == this.dueDay &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class CreditCardsCompanion extends UpdateCompanion<CreditCard> {
+  final Value<int> id;
+  final Value<String> bankCode;
+  final Value<String?> last4;
+  final Value<String> name;
+  final Value<int?> creditLimitPaise;
+  final Value<int?> statementDay;
+  final Value<int?> dueDay;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const CreditCardsCompanion({
+    this.id = const Value.absent(),
+    this.bankCode = const Value.absent(),
+    this.last4 = const Value.absent(),
+    this.name = const Value.absent(),
+    this.creditLimitPaise = const Value.absent(),
+    this.statementDay = const Value.absent(),
+    this.dueDay = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  CreditCardsCompanion.insert({
+    this.id = const Value.absent(),
+    required String bankCode,
+    this.last4 = const Value.absent(),
+    required String name,
+    this.creditLimitPaise = const Value.absent(),
+    this.statementDay = const Value.absent(),
+    this.dueDay = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : bankCode = Value(bankCode),
+       name = Value(name);
+  static Insertable<CreditCard> custom({
+    Expression<int>? id,
+    Expression<String>? bankCode,
+    Expression<String>? last4,
+    Expression<String>? name,
+    Expression<int>? creditLimitPaise,
+    Expression<int>? statementDay,
+    Expression<int>? dueDay,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (bankCode != null) 'bank_code': bankCode,
+      if (last4 != null) 'last4': last4,
+      if (name != null) 'name': name,
+      if (creditLimitPaise != null) 'credit_limit_paise': creditLimitPaise,
+      if (statementDay != null) 'statement_day': statementDay,
+      if (dueDay != null) 'due_day': dueDay,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  CreditCardsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? bankCode,
+    Value<String?>? last4,
+    Value<String>? name,
+    Value<int?>? creditLimitPaise,
+    Value<int?>? statementDay,
+    Value<int?>? dueDay,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return CreditCardsCompanion(
+      id: id ?? this.id,
+      bankCode: bankCode ?? this.bankCode,
+      last4: last4 ?? this.last4,
+      name: name ?? this.name,
+      creditLimitPaise: creditLimitPaise ?? this.creditLimitPaise,
+      statementDay: statementDay ?? this.statementDay,
+      dueDay: dueDay ?? this.dueDay,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (bankCode.present) {
+      map['bank_code'] = Variable<String>(bankCode.value);
+    }
+    if (last4.present) {
+      map['last4'] = Variable<String>(last4.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (creditLimitPaise.present) {
+      map['credit_limit_paise'] = Variable<int>(creditLimitPaise.value);
+    }
+    if (statementDay.present) {
+      map['statement_day'] = Variable<int>(statementDay.value);
+    }
+    if (dueDay.present) {
+      map['due_day'] = Variable<int>(dueDay.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CreditCardsCompanion(')
+          ..write('id: $id, ')
+          ..write('bankCode: $bankCode, ')
+          ..write('last4: $last4, ')
+          ..write('name: $name, ')
+          ..write('creditLimitPaise: $creditLimitPaise, ')
+          ..write('statementDay: $statementDay, ')
+          ..write('dueDay: $dueDay, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$ArthDatabase extends GeneratedDatabase {
   _$ArthDatabase(QueryExecutor e) : super(e);
   $ArthDatabaseManager get managers => $ArthDatabaseManager(this);
@@ -7782,6 +9141,9 @@ abstract class _$ArthDatabase extends GeneratedDatabase {
   late final $LlmJobsTable llmJobs = $LlmJobsTable(this);
   late final $LlmReviewItemsTable llmReviewItems = $LlmReviewItemsTable(this);
   late final $BudgetsTable budgets = $BudgetsTable(this);
+  late final $StatementSummariesTable statementSummaries =
+      $StatementSummariesTable(this);
+  late final $CreditCardsTable creditCards = $CreditCardsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7801,6 +9163,8 @@ abstract class _$ArthDatabase extends GeneratedDatabase {
     llmJobs,
     llmReviewItems,
     budgets,
+    statementSummaries,
+    creditCards,
   ];
 }
 
@@ -9245,6 +10609,30 @@ final class $$ImportsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $StatementSummariesTable,
+    List<StatementSummaryRow>
+  >
+  _statementSummariesRefsTable(_$ArthDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.statementSummaries,
+        aliasName: 'imports__id__statement_summaries__import_id',
+      );
+
+  $$StatementSummariesTableProcessedTableManager get statementSummariesRefs {
+    final manager = $$StatementSummariesTableTableManager(
+      $_db,
+      $_db.statementSummaries,
+    ).filter((f) => f.importId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _statementSummariesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$ImportsTableFilterComposer
@@ -9384,6 +10772,31 @@ class $$ImportsTableFilterComposer
                     $removeJoinBuilderFromRootComposer,
               ),
         );
+    return f(composer);
+  }
+
+  Expression<bool> statementSummariesRefs(
+    Expression<bool> Function($$StatementSummariesTableFilterComposer f) f,
+  ) {
+    final $$StatementSummariesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.statementSummaries,
+      getReferencedColumn: (t) => t.importId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StatementSummariesTableFilterComposer(
+            $db: $db,
+            $table: $db.statementSummaries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
     return f(composer);
   }
 }
@@ -9585,6 +10998,32 @@ class $$ImportsTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> statementSummariesRefs<T extends Object>(
+    Expression<T> Function($$StatementSummariesTableAnnotationComposer a) f,
+  ) {
+    final $$StatementSummariesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.statementSummaries,
+          getReferencedColumn: (t) => t.importId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StatementSummariesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.statementSummaries,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$ImportsTableTableManager
@@ -9604,6 +11043,7 @@ class $$ImportsTableTableManager
             bool transactionsRefs,
             bool transactionImportsRefs,
             bool unparsedStatementRowsRefs,
+            bool statementSummariesRefs,
           })
         > {
   $$ImportsTableTableManager(_$ArthDatabase db, $ImportsTable table)
@@ -9682,6 +11122,7 @@ class $$ImportsTableTableManager
                 transactionsRefs = false,
                 transactionImportsRefs = false,
                 unparsedStatementRowsRefs = false,
+                statementSummariesRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -9689,6 +11130,7 @@ class $$ImportsTableTableManager
                     if (transactionsRefs) db.transactions,
                     if (transactionImportsRefs) db.transactionImports,
                     if (unparsedStatementRowsRefs) db.unparsedStatementRows,
+                    if (statementSummariesRefs) db.statementSummaries,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -9756,6 +11198,27 @@ class $$ImportsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (statementSummariesRefs)
+                        await $_getPrefetchedData<
+                          Import,
+                          $ImportsTable,
+                          StatementSummaryRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ImportsTableReferences
+                              ._statementSummariesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ImportsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).statementSummariesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.importId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -9780,6 +11243,7 @@ typedef $$ImportsTableProcessedTableManager =
         bool transactionsRefs,
         bool transactionImportsRefs,
         bool unparsedStatementRowsRefs,
+        bool statementSummariesRefs,
       })
     >;
 typedef $$TransactionsTableCreateCompanionBuilder =
@@ -9809,6 +11273,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<int?> importId,
       Value<bool> isRecurringCandidate,
       Value<String?> recurringKind,
+      Value<String?> accountKind,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -9839,6 +11304,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<int?> importId,
       Value<bool> isRecurringCandidate,
       Value<String?> recurringKind,
+      Value<String?> accountKind,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -10074,6 +11540,11 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get recurringKind => $composableBuilder(
     column: $table.recurringKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountKind => $composableBuilder(
+    column: $table.accountKind,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10351,6 +11822,11 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get accountKind => $composableBuilder(
+    column: $table.accountKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -10529,6 +12005,11 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<String> get recurringKind => $composableBuilder(
     column: $table.recurringKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get accountKind => $composableBuilder(
+    column: $table.accountKind,
     builder: (column) => column,
   );
 
@@ -10744,6 +12225,7 @@ class $$TransactionsTableTableManager
                 Value<int?> importId = const Value.absent(),
                 Value<bool> isRecurringCandidate = const Value.absent(),
                 Value<String?> recurringKind = const Value.absent(),
+                Value<String?> accountKind = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => TransactionsCompanion(
@@ -10772,6 +12254,7 @@ class $$TransactionsTableTableManager
                 importId: importId,
                 isRecurringCandidate: isRecurringCandidate,
                 recurringKind: recurringKind,
+                accountKind: accountKind,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -10802,6 +12285,7 @@ class $$TransactionsTableTableManager
                 Value<int?> importId = const Value.absent(),
                 Value<bool> isRecurringCandidate = const Value.absent(),
                 Value<String?> recurringKind = const Value.absent(),
+                Value<String?> accountKind = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => TransactionsCompanion.insert(
@@ -10830,6 +12314,7 @@ class $$TransactionsTableTableManager
                 importId: importId,
                 isRecurringCandidate: isRecurringCandidate,
                 recurringKind: recurringKind,
+                accountKind: accountKind,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -14363,6 +15848,750 @@ typedef $$BudgetsTableProcessedTableManager =
       Budget,
       PrefetchHooks Function({bool categoryId})
     >;
+typedef $$StatementSummariesTableCreateCompanionBuilder =
+    StatementSummariesCompanion Function({
+      Value<int> id,
+      required int importId,
+      required String bankCode,
+      required String accountKind,
+      Value<String?> last4,
+      Value<DateTime?> statementDate,
+      Value<DateTime?> dueDate,
+      Value<int?> totalDuePaise,
+      Value<int?> minDuePaise,
+      Value<int?> creditLimitPaise,
+      Value<DateTime?> periodEnd,
+      Value<DateTime> createdAt,
+    });
+typedef $$StatementSummariesTableUpdateCompanionBuilder =
+    StatementSummariesCompanion Function({
+      Value<int> id,
+      Value<int> importId,
+      Value<String> bankCode,
+      Value<String> accountKind,
+      Value<String?> last4,
+      Value<DateTime?> statementDate,
+      Value<DateTime?> dueDate,
+      Value<int?> totalDuePaise,
+      Value<int?> minDuePaise,
+      Value<int?> creditLimitPaise,
+      Value<DateTime?> periodEnd,
+      Value<DateTime> createdAt,
+    });
+
+final class $$StatementSummariesTableReferences
+    extends
+        BaseReferences<
+          _$ArthDatabase,
+          $StatementSummariesTable,
+          StatementSummaryRow
+        > {
+  $$StatementSummariesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ImportsTable _importIdTable(_$ArthDatabase db) =>
+      db.imports.createAlias('statement_summaries__import_id__imports__id');
+
+  $$ImportsTableProcessedTableManager get importId {
+    final $_column = $_itemColumn<int>('import_id')!;
+
+    final manager = $$ImportsTableTableManager(
+      $_db,
+      $_db.imports,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_importIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$StatementSummariesTableFilterComposer
+    extends Composer<_$ArthDatabase, $StatementSummariesTable> {
+  $$StatementSummariesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bankCode => $composableBuilder(
+    column: $table.bankCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountKind => $composableBuilder(
+    column: $table.accountKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get last4 => $composableBuilder(
+    column: $table.last4,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get statementDate => $composableBuilder(
+    column: $table.statementDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get dueDate => $composableBuilder(
+    column: $table.dueDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalDuePaise => $composableBuilder(
+    column: $table.totalDuePaise,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get minDuePaise => $composableBuilder(
+    column: $table.minDuePaise,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get creditLimitPaise => $composableBuilder(
+    column: $table.creditLimitPaise,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get periodEnd => $composableBuilder(
+    column: $table.periodEnd,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ImportsTableFilterComposer get importId {
+    final $$ImportsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.importId,
+      referencedTable: $db.imports,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ImportsTableFilterComposer(
+            $db: $db,
+            $table: $db.imports,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StatementSummariesTableOrderingComposer
+    extends Composer<_$ArthDatabase, $StatementSummariesTable> {
+  $$StatementSummariesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get bankCode => $composableBuilder(
+    column: $table.bankCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accountKind => $composableBuilder(
+    column: $table.accountKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get last4 => $composableBuilder(
+    column: $table.last4,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get statementDate => $composableBuilder(
+    column: $table.statementDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get dueDate => $composableBuilder(
+    column: $table.dueDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalDuePaise => $composableBuilder(
+    column: $table.totalDuePaise,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get minDuePaise => $composableBuilder(
+    column: $table.minDuePaise,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get creditLimitPaise => $composableBuilder(
+    column: $table.creditLimitPaise,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get periodEnd => $composableBuilder(
+    column: $table.periodEnd,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ImportsTableOrderingComposer get importId {
+    final $$ImportsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.importId,
+      referencedTable: $db.imports,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ImportsTableOrderingComposer(
+            $db: $db,
+            $table: $db.imports,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StatementSummariesTableAnnotationComposer
+    extends Composer<_$ArthDatabase, $StatementSummariesTable> {
+  $$StatementSummariesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get bankCode =>
+      $composableBuilder(column: $table.bankCode, builder: (column) => column);
+
+  GeneratedColumn<String> get accountKind => $composableBuilder(
+    column: $table.accountKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get last4 =>
+      $composableBuilder(column: $table.last4, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get statementDate => $composableBuilder(
+    column: $table.statementDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get dueDate =>
+      $composableBuilder(column: $table.dueDate, builder: (column) => column);
+
+  GeneratedColumn<int> get totalDuePaise => $composableBuilder(
+    column: $table.totalDuePaise,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get minDuePaise => $composableBuilder(
+    column: $table.minDuePaise,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get creditLimitPaise => $composableBuilder(
+    column: $table.creditLimitPaise,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get periodEnd =>
+      $composableBuilder(column: $table.periodEnd, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$ImportsTableAnnotationComposer get importId {
+    final $$ImportsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.importId,
+      referencedTable: $db.imports,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ImportsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.imports,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StatementSummariesTableTableManager
+    extends
+        RootTableManager<
+          _$ArthDatabase,
+          $StatementSummariesTable,
+          StatementSummaryRow,
+          $$StatementSummariesTableFilterComposer,
+          $$StatementSummariesTableOrderingComposer,
+          $$StatementSummariesTableAnnotationComposer,
+          $$StatementSummariesTableCreateCompanionBuilder,
+          $$StatementSummariesTableUpdateCompanionBuilder,
+          (StatementSummaryRow, $$StatementSummariesTableReferences),
+          StatementSummaryRow,
+          PrefetchHooks Function({bool importId})
+        > {
+  $$StatementSummariesTableTableManager(
+    _$ArthDatabase db,
+    $StatementSummariesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$StatementSummariesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$StatementSummariesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$StatementSummariesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> importId = const Value.absent(),
+                Value<String> bankCode = const Value.absent(),
+                Value<String> accountKind = const Value.absent(),
+                Value<String?> last4 = const Value.absent(),
+                Value<DateTime?> statementDate = const Value.absent(),
+                Value<DateTime?> dueDate = const Value.absent(),
+                Value<int?> totalDuePaise = const Value.absent(),
+                Value<int?> minDuePaise = const Value.absent(),
+                Value<int?> creditLimitPaise = const Value.absent(),
+                Value<DateTime?> periodEnd = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => StatementSummariesCompanion(
+                id: id,
+                importId: importId,
+                bankCode: bankCode,
+                accountKind: accountKind,
+                last4: last4,
+                statementDate: statementDate,
+                dueDate: dueDate,
+                totalDuePaise: totalDuePaise,
+                minDuePaise: minDuePaise,
+                creditLimitPaise: creditLimitPaise,
+                periodEnd: periodEnd,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int importId,
+                required String bankCode,
+                required String accountKind,
+                Value<String?> last4 = const Value.absent(),
+                Value<DateTime?> statementDate = const Value.absent(),
+                Value<DateTime?> dueDate = const Value.absent(),
+                Value<int?> totalDuePaise = const Value.absent(),
+                Value<int?> minDuePaise = const Value.absent(),
+                Value<int?> creditLimitPaise = const Value.absent(),
+                Value<DateTime?> periodEnd = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => StatementSummariesCompanion.insert(
+                id: id,
+                importId: importId,
+                bankCode: bankCode,
+                accountKind: accountKind,
+                last4: last4,
+                statementDate: statementDate,
+                dueDate: dueDate,
+                totalDuePaise: totalDuePaise,
+                minDuePaise: minDuePaise,
+                creditLimitPaise: creditLimitPaise,
+                periodEnd: periodEnd,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$StatementSummariesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({importId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (importId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.importId,
+                                referencedTable:
+                                    $$StatementSummariesTableReferences
+                                        ._importIdTable(db),
+                                referencedColumn:
+                                    $$StatementSummariesTableReferences
+                                        ._importIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$StatementSummariesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$ArthDatabase,
+      $StatementSummariesTable,
+      StatementSummaryRow,
+      $$StatementSummariesTableFilterComposer,
+      $$StatementSummariesTableOrderingComposer,
+      $$StatementSummariesTableAnnotationComposer,
+      $$StatementSummariesTableCreateCompanionBuilder,
+      $$StatementSummariesTableUpdateCompanionBuilder,
+      (StatementSummaryRow, $$StatementSummariesTableReferences),
+      StatementSummaryRow,
+      PrefetchHooks Function({bool importId})
+    >;
+typedef $$CreditCardsTableCreateCompanionBuilder =
+    CreditCardsCompanion Function({
+      Value<int> id,
+      required String bankCode,
+      Value<String?> last4,
+      required String name,
+      Value<int?> creditLimitPaise,
+      Value<int?> statementDay,
+      Value<int?> dueDay,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+typedef $$CreditCardsTableUpdateCompanionBuilder =
+    CreditCardsCompanion Function({
+      Value<int> id,
+      Value<String> bankCode,
+      Value<String?> last4,
+      Value<String> name,
+      Value<int?> creditLimitPaise,
+      Value<int?> statementDay,
+      Value<int?> dueDay,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+class $$CreditCardsTableFilterComposer
+    extends Composer<_$ArthDatabase, $CreditCardsTable> {
+  $$CreditCardsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bankCode => $composableBuilder(
+    column: $table.bankCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get last4 => $composableBuilder(
+    column: $table.last4,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get creditLimitPaise => $composableBuilder(
+    column: $table.creditLimitPaise,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get statementDay => $composableBuilder(
+    column: $table.statementDay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get dueDay => $composableBuilder(
+    column: $table.dueDay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CreditCardsTableOrderingComposer
+    extends Composer<_$ArthDatabase, $CreditCardsTable> {
+  $$CreditCardsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get bankCode => $composableBuilder(
+    column: $table.bankCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get last4 => $composableBuilder(
+    column: $table.last4,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get creditLimitPaise => $composableBuilder(
+    column: $table.creditLimitPaise,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get statementDay => $composableBuilder(
+    column: $table.statementDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get dueDay => $composableBuilder(
+    column: $table.dueDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CreditCardsTableAnnotationComposer
+    extends Composer<_$ArthDatabase, $CreditCardsTable> {
+  $$CreditCardsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get bankCode =>
+      $composableBuilder(column: $table.bankCode, builder: (column) => column);
+
+  GeneratedColumn<String> get last4 =>
+      $composableBuilder(column: $table.last4, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get creditLimitPaise => $composableBuilder(
+    column: $table.creditLimitPaise,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get statementDay => $composableBuilder(
+    column: $table.statementDay,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get dueDay =>
+      $composableBuilder(column: $table.dueDay, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$CreditCardsTableTableManager
+    extends
+        RootTableManager<
+          _$ArthDatabase,
+          $CreditCardsTable,
+          CreditCard,
+          $$CreditCardsTableFilterComposer,
+          $$CreditCardsTableOrderingComposer,
+          $$CreditCardsTableAnnotationComposer,
+          $$CreditCardsTableCreateCompanionBuilder,
+          $$CreditCardsTableUpdateCompanionBuilder,
+          (
+            CreditCard,
+            BaseReferences<_$ArthDatabase, $CreditCardsTable, CreditCard>,
+          ),
+          CreditCard,
+          PrefetchHooks Function()
+        > {
+  $$CreditCardsTableTableManager(_$ArthDatabase db, $CreditCardsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CreditCardsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CreditCardsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CreditCardsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> bankCode = const Value.absent(),
+                Value<String?> last4 = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int?> creditLimitPaise = const Value.absent(),
+                Value<int?> statementDay = const Value.absent(),
+                Value<int?> dueDay = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => CreditCardsCompanion(
+                id: id,
+                bankCode: bankCode,
+                last4: last4,
+                name: name,
+                creditLimitPaise: creditLimitPaise,
+                statementDay: statementDay,
+                dueDay: dueDay,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String bankCode,
+                Value<String?> last4 = const Value.absent(),
+                required String name,
+                Value<int?> creditLimitPaise = const Value.absent(),
+                Value<int?> statementDay = const Value.absent(),
+                Value<int?> dueDay = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => CreditCardsCompanion.insert(
+                id: id,
+                bankCode: bankCode,
+                last4: last4,
+                name: name,
+                creditLimitPaise: creditLimitPaise,
+                statementDay: statementDay,
+                dueDay: dueDay,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CreditCardsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$ArthDatabase,
+      $CreditCardsTable,
+      CreditCard,
+      $$CreditCardsTableFilterComposer,
+      $$CreditCardsTableOrderingComposer,
+      $$CreditCardsTableAnnotationComposer,
+      $$CreditCardsTableCreateCompanionBuilder,
+      $$CreditCardsTableUpdateCompanionBuilder,
+      (
+        CreditCard,
+        BaseReferences<_$ArthDatabase, $CreditCardsTable, CreditCard>,
+      ),
+      CreditCard,
+      PrefetchHooks Function()
+    >;
 
 class $ArthDatabaseManager {
   final _$ArthDatabase _db;
@@ -14395,4 +16624,8 @@ class $ArthDatabaseManager {
       $$LlmReviewItemsTableTableManager(_db, _db.llmReviewItems);
   $$BudgetsTableTableManager get budgets =>
       $$BudgetsTableTableManager(_db, _db.budgets);
+  $$StatementSummariesTableTableManager get statementSummaries =>
+      $$StatementSummariesTableTableManager(_db, _db.statementSummaries);
+  $$CreditCardsTableTableManager get creditCards =>
+      $$CreditCardsTableTableManager(_db, _db.creditCards);
 }

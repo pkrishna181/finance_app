@@ -40,6 +40,8 @@ class UpsertResult {
     LlmJobs,
     LlmReviewItems,
     Budgets,
+    StatementSummaries,
+    CreditCards,
   ],
 )
 class ArthDatabase extends _$ArthDatabase {
@@ -68,7 +70,7 @@ class ArthDatabase extends _$ArthDatabase {
   }
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -124,6 +126,11 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
           }
           if (from < 8) {
             await m.createTable(budgets);
+          }
+          if (from < 9) {
+            await m.addColumn(transactions, transactions.accountKind);
+            await m.createTable(statementSummaries);
+            await m.createTable(creditCards);
           }
         },
         beforeOpen: (details) async {
