@@ -21,6 +21,7 @@ class _CapitalGainsScreenState extends State<CapitalGainsScreen> {
   late final _repo = CapitalGainsRepository(widget.database);
   List<FyGains>? _years;
   Map<int, TaxCategoryView> _cats = const {};
+  List<HarvestIdea> _ideas = const [];
   int _index = 0;
 
   DateTime get _now => widget.now ?? DateTime.now();
@@ -34,6 +35,7 @@ class _CapitalGainsScreenState extends State<CapitalGainsScreen> {
   Future<void> _load() async {
     var years = await _repo.byYear(_now);
     final cats = await _repo.categories();
+    final ideas = await _repo.harvestIdeas(_now);
     // Always show the current year (for planning), even without sales.
     final current = FinancialYear.of(_now);
     if (!years.any((y) => y.fy == current)) {
@@ -43,6 +45,7 @@ class _CapitalGainsScreenState extends State<CapitalGainsScreen> {
     setState(() {
       _years = years;
       _cats = cats;
+      _ideas = ideas;
       _index = _index.clamp(0, years.length - 1);
     });
   }
@@ -109,6 +112,10 @@ class _CapitalGainsScreenState extends State<CapitalGainsScreen> {
                 ),
                 _YearCard(gains: years[_index]),
                 const SizedBox(height: 16),
+                if (years[_index].fy == FinancialYear.of(_now)) ...[
+                  _HarvestSection(ideas: _ideas),
+                  const SizedBox(height: 16),
+                ],
                 if (years[_index].legs.isNotEmpty) ...[
                   Text('Sales', style: t.titleSmall),
                   for (final l in years[_index].legs) _LegTile(leg: l),
@@ -219,6 +226,73 @@ class _YearCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _HarvestSection extends StatelessWidget {
+  const _HarvestSection({required this.ideas});
+  final List<HarvestIdea> ideas;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final gains = ideas.where((i) => i.kind == HarvestKind.exemptGain).toList();
+    final losses = ideas.where((i) => i.kind == HarvestKind.loss).toList();
+    String units(int e4) => (e4 / 1e4).toStringAsFixed(3);
+    Widget tile(HarvestIdea i, String what) => ListTile(
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+          title: Text(i.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+          subtitle: Text(
+            'Sell ${units(i.unitsE4)} units (~${inrWhole(i.saleValuePaise)}) '
+            'from ${i.accountLabel} → $what'
+            '${i.costEstimated ? ' · cost estimated' : ''}',
+          ),
+        );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Save tax this year', style: t.titleSmall),
+        if (ideas.isEmpty)
+          Text(
+            'Nothing to harvest right now: no long-term equity gains to book '
+            'within the exemption, and no losses that would cut this year\'s '
+            'tax.',
+            style: t.bodySmall,
+          ),
+        if (gains.isNotEmpty) ...[
+          Text(
+            'Book long-term gains tax-free (within the ₹1.25 lakh exemption), '
+            'then buy back to raise your cost:',
+            style: t.bodySmall,
+          ),
+          for (final i in gains)
+            tile(i, '${inrWhole(i.gainPaise)} gain, no tax'),
+        ],
+        if (losses.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text('Book losses to offset this year\'s taxable gains:',
+              style: t.bodySmall),
+          for (final i in losses)
+            tile(
+              i,
+              '${inrWhole(-i.gainPaise)} ${i.longTerm ? 'long' : 'short'}-term '
+              'loss, saves ~${inrWhole(i.taxSavedPaise)}',
+            ),
+        ],
+        if (ideas.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'Units are sold oldest first. Check exit loads and the bid-ask '
+              'cost before selling; India has no wash-sale rule, so buying '
+              'back the same day is allowed. ELSS units in their 3-year '
+              'lock-in are excluded.',
+              style: t.bodySmall,
+            ),
+          ),
+      ],
     );
   }
 }

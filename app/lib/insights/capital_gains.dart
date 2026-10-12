@@ -246,7 +246,15 @@ class CapitalGainsCalculator {
   };
 
   /// Every sale leg (FIFO) for one holding.
-  List<SaleLeg> legs(GainsInput g) {
+  List<SaleLeg> legs(GainsInput g) => _run(g).legs;
+
+  /// Lots still held after all transactions (oldest first).
+  List<OpenLot> openLots(GainsInput g) => [
+    for (final l in _run(g).lots)
+      OpenLot(l.date, l.units, l.cost, estimated: l.estimated),
+  ];
+
+  ({List<SaleLeg> legs, List<_Lot> lots}) _run(GainsInput g) {
     final txns = [...g.txns]
       ..sort((a, b) {
         final c = a.date.compareTo(b.date);
@@ -331,7 +339,7 @@ class CapitalGainsCalculator {
         );
       }
     }
-    return out;
+    return (legs: out, lots: lots);
   }
 
   /// Sale legs of all holdings grouped by financial year, newest first.
@@ -403,6 +411,20 @@ class CapitalGainsCalculator {
       lossCarriedPaise: stLoss + ltLoss,
     );
   }
+}
+
+/// A purchase lot still held.
+class OpenLot {
+  const OpenLot(
+    this.date,
+    this.unitsE4,
+    this.costPaise, {
+    this.estimated = false,
+  });
+  final DateTime date;
+  final int unitsE4;
+  final int costPaise;
+  final bool estimated;
 }
 
 class _Lot {

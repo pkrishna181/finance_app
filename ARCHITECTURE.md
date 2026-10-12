@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 10.1 — capital gains
+Last updated: Phase 10.2 — tax harvesting
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -946,6 +946,28 @@ sales list, editable fund categories, and a clear "estimate, not tax advice"
 note.
 
 Tests: `test/insights/capital_gains_test.dart`, `test/ui/tax_screens_test.dart`.
+
+### Tax harvesting (Phase 10.2)
+
+`TaxHarvester` (pure, `insights/tax_harvest.dart`) for the current financial
+year, on the open FIFO lots (`CapitalGainsCalculator.openLots`) at today's
+price:
+
+- **Exempt gains:** equity holdings only; take lots from the oldest while they
+  are long-term and in profit (stop at the first short-term or loss lot,
+  because redemptions are FIFO), biggest gains first, until the year's unused
+  ₹1.25 L exemption is used; the last one is a proportional slice.
+- **Losses:** only when this year has gains that would be taxed. Lots from the
+  oldest while below cost; short-term losses offset slab / equity STCG first,
+  then long-term gains; long-term losses offset only long-term gains. Tax
+  saved is estimated at 20% (short-term) / 12.5% (long-term).
+- ELSS (name contains ELSS / tax saver) lots within their 3-year lock-in are
+  not sellable (and block later lots, FIFO).
+
+Shown as "Save tax this year" on the capital-gains screen (current year), with
+caveats about exit loads and costs; India has no wash-sale rule.
+
+Tests: `test/insights/tax_harvest_test.dart`.
 
 ---
 
