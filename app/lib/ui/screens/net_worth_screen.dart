@@ -6,6 +6,7 @@ import '../../core/db/database.dart';
 import '../../insights/insights.dart';
 import 'allocation_screen.dart';
 import 'loans_screen.dart';
+import 'schedule_al_screen.dart';
 
 String _date(DateTime d) => '${d.day} ${monthShort(d.month)} ${d.year}';
 
@@ -108,6 +109,16 @@ class _NetWorthScreenState extends State<NetWorthScreen> {
                     style: t.bodyMedium,
                   ),
                   const SizedBox(height: 8),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.assignment_outlined),
+                    title: const Text('Schedule AL'),
+                    subtitle: const Text('Assets and liabilities for your tax return'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                      builder: (_) => ScheduleAlScreen(database: widget.database),
+                    )),
+                  ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.pie_chart_outline),

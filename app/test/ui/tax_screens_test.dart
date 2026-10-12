@@ -7,6 +7,7 @@ import 'package:arth/ui/screens/allocation_screen.dart';
 import 'package:arth/ui/screens/capital_gains_screen.dart';
 import 'package:arth/ui/screens/loans_screen.dart';
 import 'package:arth/ui/screens/retirement_screen.dart';
+import 'package:arth/ui/screens/schedule_al_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -142,5 +143,23 @@ void main() {
     expect(find.textContaining('a month from now to close the gap'),
         findsOneWidget);
     expect(find.text('Update'), findsOneWidget);
+  });
+
+  testWidgets('schedule AL: last completed year by default', (tester) async {
+    final db = await dbWithCas(tester);
+    await tester.pumpWidget(MaterialApp(
+      home: ScheduleAlScreen(database: db, now: DateTime(2026, 10, 12)),
+    ));
+    await settle(tester);
+    expect(find.text('FY 2025-26'), findsOneWidget);
+    expect(find.textContaining('Shares and securities'), findsOneWidget);
+    expect(find.text('Total assets'), findsOneWidget);
+    // Can't move past the current year.
+    await tester.tap(find.byTooltip('Newer year'));
+    await settle(tester);
+    expect(find.text('FY 2026-27'), findsOneWidget);
+    final next = tester.widget<IconButton>(
+        find.widgetWithIcon(IconButton, Icons.chevron_right));
+    expect(next.onPressed, isNull);
   });
 }

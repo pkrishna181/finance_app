@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 10.5 — retirement plan
+Last updated: Phase 10.6 — Schedule AL (roadmap phases 7–10 complete)
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -22,10 +22,10 @@ reimplement from docs/ideas only, never copy code).
 
 | Phase | Scope |
 |---|---|
-| 7 | Budgets (per-category, rollover, alerts); yearly views + income statement (cash-flow sankey, spend heatmap); transaction search + bulk edit |
-| 8 | Credit cards (cycle, due date, utilization, bill vs paid); manual transactions; savings goals; data "doctor" |
-| 9 | Holdings layer: CAMS/KFintech + NSDL/CDSL CAS PDF import, manual assets (gold, FD, EPF/PPF, property); net worth; XIRR; opt-in price lists |
-| 10 | Capital gains (FIFO lots, current Indian rules — verify at build time), tax harvesting, Schedule AL, allocation targets, retirement goal, loans |
+| 7 ✅ | Budgets (per-category, rollover, alerts); yearly views + income statement (cash-flow sankey, spend heatmap); transaction search + bulk edit |
+| 8 ✅ | Credit cards (cycle, due date, utilization, bill vs paid); manual transactions; savings goals; data "doctor" |
+| 9 ✅ | Holdings layer: CAMS/KFintech + NSDL/CDSL CAS PDF import, manual assets (gold, FD, EPF/PPF, property); net worth; XIRR; opt-in price lists |
+| 10 ✅ | Capital gains (FIFO lots, current Indian rules — verify at build time), tax harvesting, Schedule AL, allocation targets, retirement goal, loans |
 | later | Notepad calculator ("sheets"); biometric app lock |
 
 Not adopted: plain-text journal editor, ledger/hledger/beancount backends,
@@ -1038,6 +1038,28 @@ today's rupees, % funded, monthly saving needed, recent saving; assumptions
 form with asset-class chips).
 
 Tests: `test/insights/retirement_test.dart`, `test/ui/tax_screens_test.dart`.
+
+### Schedule AL (Phase 10.6)
+
+`insights/schedule_al.dart` + `ScheduleAlRepository`: a draft of ITR Schedule
+AL (required when total income exceeds ₹1 crore from AY 2025-26; ₹50 lakh
+before) as on 31 March of the chosen year (default: last completed year).
+
+| Section | From |
+|---|---|
+| A immovable | manual property |
+| B(1)(i) jewellery, bullion | manual gold |
+| B(1)(iii) vehicles | manual vehicles |
+| B(1)(iv)(a) bank incl. deposits | bank balances on / before 31 Mar, FD principal, PPF, EPF |
+| B(1)(iv)(b) shares & securities | holdings at FIFO cost (value when cost unknown, flagged), NPS |
+| B(1)(iv)(e) cash | manual cash |
+| D liabilities | loans outstanding, manual loans, card dues |
+| unclassified | manual "other" |
+
+Items valued rather than costed (property, gold, vehicles, unknown-cost
+shares) are flagged "value, not cost — check". UI: Net worth → Schedule AL.
+
+Tests: `test/insights/schedule_al_test.dart`, `test/ui/tax_screens_test.dart`.
 
 ---
 
