@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/db/database.dart';
 import '../../insights/insights.dart';
+import 'loans_screen.dart';
 
 String _date(DateTime d) => '${d.day} ${monthShort(d.month)} ${d.year}';
 
@@ -72,7 +73,21 @@ class _NetWorthScreenState extends State<NetWorthScreen> {
     final t = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Net worth')),
+      appBar: AppBar(
+        title: const Text('Net worth'),
+        actions: [
+          TextButton.icon(
+            onPressed: () async {
+              await Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => LoansScreen(database: widget.database),
+              ));
+              await _load();
+            },
+            icon: const Icon(Icons.account_balance_outlined),
+            label: const Text('Loans'),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _edit(),
         icon: const Icon(Icons.add),

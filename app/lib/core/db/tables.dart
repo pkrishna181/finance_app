@@ -457,3 +457,36 @@ class ManualAssetValues extends Table {
         {assetId, date},
       ];
 }
+
+/// Loans with an amortising EMI (Phase 10.3).
+class Loans extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+
+  /// home | car | personal | education | gold | other
+  TextColumn get kind => text()();
+  TextColumn get lender => text().nullable()();
+  IntColumn get principalPaise => integer()();
+
+  /// Yearly interest in basis points (850 = 8.5%).
+  IntColumn get rateBp => integer()();
+  IntColumn get tenureMonths => integer()();
+
+  /// Month of the first EMI.
+  DateTimeColumn get firstEmiDate => dateTime()();
+
+  /// As charged by the lender; computed from the terms when null.
+  IntColumn get emiPaise => integer().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Extra payments toward a loan (Phase 10.3).
+class LoanPrepayments extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get loanId => integer().references(Loans, #id)();
+  DateTimeColumn get date => dateTime()();
+  IntColumn get amountPaise => integer()();
+
+  /// tenure (keep EMI, finish sooner) | emi (keep end date, lower EMI)
+  TextColumn get mode => text().withDefault(const Constant('tenure'))();
+}

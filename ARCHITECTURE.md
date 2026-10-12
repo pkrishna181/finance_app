@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 10.2 — tax harvesting
+Last updated: Phase 10.3 — loans
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -968,6 +968,32 @@ Shown as "Save tax this year" on the capital-gains screen (current year), with
 caveats about exit loads and costs; India has no wash-sale rule.
 
 Tests: `test/insights/tax_harvest_test.dart`.
+
+### Loans (Phase 10.3)
+
+Schema v14: `loans` (kind, lender, principal, rate in bp, tenure months, first
+EMI date, optional lender EMI) and `loan_prepayments` (date, amount, mode:
+`tenure` keeps the EMI and finishes sooner, `emi` keeps the end date and
+recomputes the EMI).
+
+`LoanCalculator` (pure, `insights/loans.dart`): reducing-balance monthly
+schedule (EMI = P·r·(1+r)ⁿ / ((1+r)ⁿ − 1), r = rate / 12; the lender's EMI wins
+when entered; prepayments apply before the next EMI; rounding residue under 1%
+of an EMI is folded into the last one). `status(asOf)`: outstanding, EMIs paid
+/ left, next and last EMI, interest still to pay. `year(fy)`: interest and
+principal paid in a financial year. `prepayEffect`: interest and EMIs saved,
+or the new EMI.
+
+`LoanRepository.emisSeen`: bank debits within ±1% of the EMI since the first
+EMI. Outstanding loans are liabilities in net worth (and its history).
+
+UI: Net worth → Loans (total outstanding and monthly EMIs, % repaid), loan
+detail (status, interest / principal by year with the 24(b) / 80C note for
+home loans, EMIs seen, prepayment calculator with "I made this payment"), and
+add / edit with the calculated EMI shown.
+
+Tests: `test/insights/loans_test.dart` (textbook EMI and balance values),
+`test/ui/tax_screens_test.dart`.
 
 ---
 

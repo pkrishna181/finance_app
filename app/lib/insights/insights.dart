@@ -18,6 +18,8 @@ export 'insight_models.dart';
 export 'insights_aggregator.dart';
 export 'insights_repository.dart';
 export 'insights_snapshot.dart';
+export 'loan_repository.dart';
+export 'loans.dart';
 export 'manual_transactions.dart';
 export 'net_worth.dart';
 export 'net_worth_repository.dart';

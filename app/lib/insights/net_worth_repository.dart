@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import '../core/db/database.dart';
 import 'credit_card_repository.dart';
 import 'goal_repository.dart';
+import 'loan_repository.dart';
 import 'net_worth.dart';
 import 'portfolio_repository.dart';
 
@@ -183,6 +184,15 @@ class NetWorthRepository {
           assetId: a.id,
         ),
       );
+    }
+    for (final l in await LoanRepository(_db).statuses(on)) {
+      if (l.outstandingPaise <= 0 || l.loan.firstEmiDate.isAfter(on)) continue;
+      items.add(NetWorthItem(
+        group: NetWorthGroup.loans,
+        label: l.loan.name,
+        valuePaise: l.outstandingPaise,
+        asOf: on,
+      ));
     }
     if (includeCards) {
       for (final c in await CreditCardRepository(_db).statuses(on)) {
