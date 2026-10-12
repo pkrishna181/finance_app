@@ -1,0 +1,14 @@
+NSDL Consolidated Account Statement
+Statement for the period from 01-Sep-2026 to 30-Sep-2026
+TEST USER (PAN : ABCDE1234F)
+NSDL Demat Account
+ZERODHA BROKING LIMITED DP ID : IN303028 Client ID : 12345678
+Holdings as on 30-Sep-2026
+ISIN Security No. of Shares Face Value Market Price Value in INR
+INE002A01018 RELIANCE INDUSTRIES LIMITED 10 10.00 2,950.50 29,505.00
+INE009A01021 INFOSYS LIMITED 25 5.00 1,820.40 45,510.00
+INE062A01020 STATE BANK OF INDIA 40 1.00 812.35 32,494.00
+Sub Total 1,07,509.00
+Mutual Fund Folios (F)
+ISIN UCC ISIN Description Folio No. No. of Units Average Cost NAV per unit Total Cost Value
+INF179K01UT0 MFHDFC0001 HDFC Flexi Cap Fund - Direct Growth 1234567/89 12.100 1,983.43 2,250.1234 23,999.50 27,226.49

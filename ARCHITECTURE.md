@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 8.4 — data check-up
+Last updated: Phase 9.1 — investment statements (CAS)
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -789,6 +789,48 @@ pre-filled search, the cards screen, or the Import tab (`InsightsScreen.
 onOpenImport`, wired by `HomeShell`).
 
 Tests: `test/insights/doctor_test.dart`, `test/ui/insights_screen_test.dart`.
+
+### Investment statements — CAS (Phase 9.1)
+
+Schema v11: `securities` (ISIN, name, mf / equity), `investment_accounts`
+(folio or demat, provider), `investment_txns` (units / NAV × 10⁴, signed paise,
+content-hash dedupe), `holding_snapshots` (units, price, value, cost per
+account + security + date), `security_prices`.
+
+`CasParser` (pure, `ingestion/investments/cas_parser.dart`) works on text lines
+(`LayoutToGrid.textLines`). Formats were checked against the open-source
+casparser project (MIT) for reference; the code is our own.
+
+- **Detection:** "Consolidated Account Statement/Summary" heading plus folio /
+  demat markers. Provider from the `CAMSCASWS` / `KFINCASWS` watermark, NSDL /
+  CDSL header text, or "Registrar : CAMS/KFINTECH".
+- **Detailed CAMS / KFintech:** AMC line → `Folio No:` (+ PAN) → scheme header
+  (from the scheme-code line or the ISIN line; may wrap) → `Opening Unit
+  Balance` → dated rows → `Closing Unit Balance … NAV on … Total Cost Value …
+  Market Value on …` (may wrap). Rows: trailing decimal numbers (parentheses =
+  negative); 4 → amount, units, NAV, balance; 3 / 2 disambiguated by whether
+  units carry the running balance; 1 → amount (stamp duty, STT, IDCW paid).
+  Types: purchase, SIP, redemption, switch in/out (incl. STP), IDCW payout /
+  reinvest, tax, reversal, misc. Units that don't add up to the closing
+  balance produce a warning.
+- **Holdings tables** (NSDL / CDSL / summary CAS): an ISIN line whose trailing
+  numbers contain quantity … price … value with quantity × price ≈ value
+  (±0.5%); the value is taken from the rightmost column and the quantity from
+  the leftmost, so face value / balance / average-cost columns in between are
+  skipped. ISINs already covered by detailed schemes are ignored. Account from
+  `DP ID / Client ID` or `BO ID`; date from the period or "as on".
+
+`CasImporter` stores a statement in one DB transaction; `openStatementFile`
+(in `batch_import.dart`) opens a PDF **once** (saved passwords via
+`PdfUnlockSession`), routes CAS to `CasImporter` and everything else to the
+bank / card preview using the same pages. Batch and single import both use it;
+a single CAS shows a summary dialog instead of the preview.
+
+Fixtures: `test/golden/cas/*.txt` (synthetic, modelled on real layouts) and
+PDFs from `app/tool/generate_cas_pdfs.py` (CAMS one locked with
+`ABCDE1234F`). Tests: `test/ingestion/investments/`.
+**Known gap:** the synthetic fixtures can't cover every real template; check
+against real statements and add failing ones as fixtures.
 
 ---
 

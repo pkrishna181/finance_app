@@ -14,6 +14,7 @@ import '../source.dart';
 import 'header_mapper.dart';
 import 'pdf/password_hints.dart';
 import 'pdf/pdf_loader.dart';
+import 'pdf/positioned_text.dart';
 import 'row_parser.dart';
 import 'statement_summary.dart';
 import 'table_loader.dart';
@@ -101,7 +102,7 @@ class StatementFileSource implements IngestionSource {
   String get id => 'statement';
 
   @override
-  String get displayName => 'Bank & card statements (CSV, Excel, PDF)';
+  String get displayName => 'Statements: bank, card & investments (CAS)';
 
   @override
   SourceAvailability get availability => SourceAvailability.available;
@@ -143,6 +144,7 @@ class StatementFileSource implements IngestionSource {
     required Uint8List bytes,
     required String fileName,
     PdfPasswordProvider? passwordProvider,
+    List<PdfPageTextContent>? pages,
   }) async {
     final contentHash = sha256.convert(bytes).toString();
     final existing = await db.findImportByHash(contentHash);
@@ -155,10 +157,12 @@ class StatementFileSource implements IngestionSource {
     late final ColumnMap columnMap;
 
     if (isPdf) {
-      final loaded = await _pdfLoader.loadBytes(
-        bytes: bytes,
-        passwordProvider: passwordProvider,
-      );
+      final loaded = pages != null
+          ? _pdfLoader.gridFromPages(pages)
+          : await _pdfLoader.loadBytes(
+              bytes: bytes,
+              passwordProvider: passwordProvider,
+            );
       if (loaded.isErr) {
         return Err(loaded.errorOrNull ?? 'pdf_load_failed');
       }

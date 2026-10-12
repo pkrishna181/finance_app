@@ -44,6 +44,11 @@ class UpsertResult {
     CreditCards,
     Goals,
     GoalContributions,
+    Securities,
+    InvestmentAccounts,
+    InvestmentTxns,
+    HoldingSnapshots,
+    SecurityPrices,
   ],
 )
 class ArthDatabase extends _$ArthDatabase {
@@ -72,7 +77,7 @@ class ArthDatabase extends _$ArthDatabase {
   }
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -137,6 +142,13 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
           if (from < 10) {
             await m.createTable(goals);
             await m.createTable(goalContributions);
+          }
+          if (from < 11) {
+            await m.createTable(securities);
+            await m.createTable(investmentAccounts);
+            await m.createTable(investmentTxns);
+            await m.createTable(holdingSnapshots);
+            await m.createTable(securityPrices);
           }
         },
         beforeOpen: (details) async {

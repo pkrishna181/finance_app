@@ -186,38 +186,54 @@ class _ImportScreenState extends State<ImportScreen> {
           );
         },
       );
-      final preview = await source.previewBytes(
+      final opened = await openStatementFile(
         db: db,
-        bytes: file.bytes,
-        fileName: file.name,
-        passwordProvider: file.name.toLowerCase().endsWith('.pdf')
-            ? session.provide
-            : null,
+        source: source,
+        file: file,
+        session: session,
       );
       if (!context.mounted) return;
 
-      await preview.when(
-        ok: (p) async {
-          await session.commit(bankCode: p.columnMap.bankCode);
-          if (!context.mounted) return;
-          await Navigator.of(context).push<void>(
-            MaterialPageRoute<void>(
-              builder: (_) => StatementPreviewScreen(
-                preview: p,
-                db: db,
-                source: source,
-              ),
-            ),
-          );
+      await opened.when(
+        ok: (o) async {
+          switch (o) {
+            case OpenedCas(:final result):
+              await showDialog<void>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: Text('${result.providerLabel} statement imported'),
+                  content: Text(casSummary(result)),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
+              );
+            case OpenedStatement(:final preview):
+              await Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (_) => StatementPreviewScreen(
+                    preview: preview,
+                    db: db,
+                    source: source,
+                  ),
+                ),
+              );
+          }
         },
         err: (msg, _) async {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                statementImportErrorMessage(
-                  msg,
-                  bankCode: guessIssuer(file.name),
-                ),
+                msg == 'cas_empty'
+                    ? 'This looks like an investment statement, but no '
+                        'holdings could be read.'
+                    : statementImportErrorMessage(
+                        msg,
+                        bankCode: guessIssuer(file.name),
+                      ),
               ),
             ),
           );

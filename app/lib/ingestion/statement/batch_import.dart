@@ -1,8 +1,17 @@
 import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart';
+
 import '../../core/db/database.dart';
+import '../../core/result/result.dart';
+import '../../insights/insight_format.dart';
+import '../investments/cas_import.dart';
+import '../investments/cas_parser.dart';
 import 'file_source.dart';
+import 'pdf/layout_to_grid.dart';
 import 'pdf/password_vault.dart';
+import 'pdf/pdf_loader.dart';
+import 'pdf/positioned_text.dart';
 
 enum BatchFileStatus {
   pending,
@@ -105,7 +114,6 @@ class StatementBatchImporter {
 
   Future<BatchFileResult> importOne(StatementFile f) async {
     final base = BatchFileResult(name: f.name);
-    final isPdf = f.name.toLowerCase().endsWith('.pdf');
     late final PdfUnlockSession session;
     session = PdfUnlockSession(
       vault: vault,
@@ -113,47 +121,59 @@ class StatementBatchImporter {
       ask: (n) => askPassword(f.name, n, session.savedTried),
     );
     try {
-      final preview = await source.previewBytes(
+      final opened = await openStatementFile(
         db: db,
-        bytes: f.bytes,
-        fileName: f.name,
-        passwordProvider: isPdf ? session.provide : null,
+        source: source,
+        file: f,
+        session: session,
       );
-      if (preview.isErr) {
-        final code = preview.errorOrNull!;
+      if (opened.isErr) {
+        final code = opened.errorOrNull!;
         return switch (code) {
           'duplicate_file' => base.copyWith(
-            status: BatchFileStatus.alreadyImported,
-            message: 'Already imported',
-          ),
+              status: BatchFileStatus.alreadyImported,
+              message: 'Already imported',
+            ),
           'pdf_password_required' => base.copyWith(
-            status: BatchFileStatus.skipped,
-            message: 'Locked — no password worked',
-          ),
+              status: BatchFileStatus.skipped,
+              message: 'Locked — no password worked',
+            ),
+          'cas_empty' => base.copyWith(
+              status: BatchFileStatus.failed,
+              message: 'Investment statement, but no holdings could be read',
+            ),
           _ => base.copyWith(
-            status: BatchFileStatus.failed,
-            message: statementImportErrorMessage(code),
-          ),
+              status: BatchFileStatus.failed,
+              message: statementImportErrorMessage(code),
+            ),
         };
       }
-      final p = preview.okOrNull!;
-      final bank = p.columnMap.bankCode;
-      await session.commit(bankCode: bank);
-      final written = await source.confirmImport(db: db, preview: p);
-      if (written.isErr) {
-        return base.copyWith(
-          status: BatchFileStatus.failed,
-          message: written.errorOrNull,
-          bankCode: bank,
-        );
+      switch (opened.okOrNull!) {
+        case OpenedCas(:final result):
+          return base.copyWith(
+            status: BatchFileStatus.imported,
+            inserted: result.newTxns,
+            bankCode: result.providerLabel,
+            message: casSummary(result),
+          );
+        case OpenedStatement(:final preview):
+          final bank = preview.columnMap.bankCode;
+          final written = await source.confirmImport(db: db, preview: preview);
+          if (written.isErr) {
+            return base.copyWith(
+              status: BatchFileStatus.failed,
+              message: written.errorOrNull,
+              bankCode: bank,
+            );
+          }
+          return base.copyWith(
+            status: BatchFileStatus.imported,
+            inserted: written.okOrNull,
+            duplicates: preview.transactions.length - written.okOrNull!,
+            unparsed: preview.unparseableCount,
+            bankCode: bank,
+          );
       }
-      return base.copyWith(
-        status: BatchFileStatus.imported,
-        inserted: written.okOrNull,
-        duplicates: p.transactions.length - written.okOrNull!,
-        unparsed: p.unparseableCount,
-        bankCode: bank,
-      );
     } catch (e) {
       return base.copyWith(
         status: BatchFileStatus.failed,
@@ -161,4 +181,76 @@ class StatementBatchImporter {
       );
     }
   }
+}
+
+/// A file after [openStatementFile]: investment statements are already
+/// stored; bank / card statements await confirmation.
+sealed class OpenedFile {
+  const OpenedFile();
+}
+
+class OpenedCas extends OpenedFile {
+  const OpenedCas(this.result);
+  final CasImportResult result;
+}
+
+class OpenedStatement extends OpenedFile {
+  const OpenedStatement(this.preview);
+  final StatementImportPreview preview;
+}
+
+/// Opens [file] once (PDF passwords via [session]), then routes it: a CAS
+/// (CAMS / KFintech / NSDL / CDSL) is parsed and stored right away; anything
+/// else becomes a bank / card statement preview. The session is committed
+/// (password remembered / marked used) once the file opens.
+Future<Result<OpenedFile>> openStatementFile({
+  required ArthDatabase db,
+  required StatementFileSource source,
+  required StatementFile file,
+  required PdfUnlockSession session,
+  PdfStatementLoader? pdfLoader,
+}) async {
+  final isPdf = file.name.toLowerCase().endsWith('.pdf');
+  List<PdfPageTextContent>? pages;
+  if (isPdf) {
+    final extracted = await (pdfLoader ?? PdfStatementLoader()).extractPages(
+      bytes: file.bytes,
+      passwordProvider: session.provide,
+    );
+    if (extracted.isErr) return Err(extracted.errorOrNull!);
+    pages = extracted.okOrNull!;
+    final lines = const LayoutToGrid().textLines(pages);
+    if (looksLikeCas(lines)) {
+      final st = const CasParser().parse(lines);
+      await session.commit(bankCode: CasImporter.providerCode(st.provider));
+      final stored = await CasImporter(db).store(
+        st,
+        fileName: file.name,
+        contentHash: sha256.convert(file.bytes).toString(),
+      );
+      if (stored.error != null) return Err(stored.error!);
+      return Ok(OpenedCas(stored.result!));
+    }
+  }
+  final preview = await source.previewBytes(
+    db: db,
+    bytes: file.bytes,
+    fileName: file.name,
+    pages: pages,
+  );
+  if (preview.isErr) return Err(preview.errorOrNull!);
+  await session.commit(bankCode: preview.okOrNull!.columnMap.bankCode);
+  return Ok(OpenedStatement(preview.okOrNull!));
+}
+
+/// "5 funds · ₹4,12,000 on 30 Sep 2026 · 120 new transactions"
+String casSummary(CasImportResult r) {
+  final n = r.schemes + r.holdings;
+  final d = r.asOf;
+  return [
+    '$n holding${n == 1 ? '' : 's'}',
+    '${inrWhole(r.valuePaise)}${d == null ? '' : ' on ${d.day} ${monthShort(d.month)} ${d.year}'}',
+    if (r.newTxns > 0) '${r.newTxns} new transactions',
+    if (r.warnings.isNotEmpty) '${r.warnings.length} to check',
+  ].join(' · ');
 }

@@ -269,7 +269,7 @@ void main() {
         ),
       ));
       await tester.pump();
-      await tester.tap(find.text('Bank & card statements (CSV, Excel, PDF)'));
+      await tester.tap(find.text('Statements: bank, card & investments (CAS)'));
       for (var i = 0; i < 30 && find.text('Import finished').evaluate().isEmpty; i++) {
         await tester.runAsync(
             () => Future<void>.delayed(const Duration(milliseconds: 100)));

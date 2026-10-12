@@ -1,0 +1,41 @@
+CAMSCASWS-000123456
+Consolidated Account Statement
+01-Apr-2025 To 30-Sep-2026
+Email Id: test.user@example.com
+TEST USER
+12 MG ROAD BENGALURU 560001
+This Consolidated Account Statement is brought to you as an investor friendly initiative
+Date Transaction Amount Units Price Unit
+(INR) (INR) Balance
+HDFC Mutual Fund
+Folio No: 1234567 / 89 PAN: ABCDE1234F KYC: OK PAN: OK
+TEST USER
+B92Z-HDFC Flexi Cap Fund - Direct Plan - Growth Option (Non-Demat) - ISIN: INF179K01UT0(Advisor: DIRECT) Registrar :
+CAMS
+Nominee 1: SOME NOMINEE
+Opening Unit Balance: 10.000
+10-May-2025 Purchase-SIP Instalment 1/60 4,999.75 2.500 1,999.9000 12.500
+10-May-2025 *** Stamp Duty *** 0.25
+10-Jun-2025 Purchase-SIP Instalment 2/60 4,999.75 2.400 2,083.2300 14.900
+10-Jun-2025 *** Stamp Duty *** 0.25
+15-Jan-2026 Redemption (6,000.00) (2.800) 2,142.8571 12.100
+15-Jan-2026 *** STT Paid *** 0.06
+Closing Unit Balance: 12.100 NAV on 30-Sep-2026: INR 2,250.1234 Total Cost Value: 23,999.50 Market Value on 30-Sep-2026:
+INR 27,226.49
+Page 1 of 3
+Mirae Asset Mutual Fund
+Folio No: 7788990011 PAN: ABCDE1234F KYC: OK PAN: OK
+MAEF-Mirae Asset ELSS Tax Saver Fund - Direct Plan - IDCW (formerly Mirae Asset Tax Saver Fund) - ISIN:
+INF769K01DH9 (Advisor: ARN-0000) Registrar : KFINTECH
+Opening Unit Balance: 0.000
+05-Aug-2025 Purchase 10,000.00 400.000 25.0000 400.000
+05-Aug-2025 *** Stamp Duty *** 0.50
+20-Mar-2026 IDCW Paid @ Rs.1.50 per unit 600.00
+22-Mar-2026 IDCW Reinvestment @ Rs.0.50 per unit 200.00 7.843 25.5000 407.843
+Closing Unit Balance: 407.843 NAV on 30-Sep-2026: INR 27.1100 Total Cost Value: 10,200.00 Market Value on 30-Sep-2026: INR 11,056.62
+Parag Parikh Mutual Fund
+Folio No: 55443322 PAN: ABCDE1234F KYC: OK PAN: OK
+PPLF-Parag Parikh Liquid Fund - Direct Plan - Growth - ISIN: INF879O01100(Advisor: DIRECT) Registrar : KFINTECH
+Opening Unit Balance: 0.000
+01-Sep-2025 Switch In - From PPFAS Flexi Cap 25,000.00 18.1234 1,379.4542 18.1234
+Closing Unit Balance: 18.123 NAV on 30-Sep-2026: INR 1,400.0000 Total Cost Value: 25,000.00 Market Value on 30-Sep-2026: INR 25,372.76

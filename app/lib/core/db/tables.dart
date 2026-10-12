@@ -338,3 +338,87 @@ class GoalContributions extends Table {
   TextColumn get note => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
+
+/// A fund, share or other security (Phase 9).
+class Securities extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get isin => text().unique()();
+  TextColumn get name => text()();
+
+  /// mf | equity | other
+  TextColumn get kind => text()();
+  TextColumn get amc => text().nullable()();
+}
+
+/// A mutual-fund folio or demat account (Phase 9).
+class InvestmentAccounts extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  /// folio | demat
+  TextColumn get kind => text()();
+
+  /// Folio number or `DP ID/Client ID` / BO ID.
+  TextColumn get number => text()();
+
+  /// CAMS | KFINTECH | NSDL | CDSL | UNKNOWN
+  TextColumn get provider => text()();
+  TextColumn get amc => text().nullable()();
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => [
+        {kind, number},
+      ];
+}
+
+/// Mutual-fund transactions from detailed CAS (Phase 9). Units / NAV are
+/// scaled by 10⁴; amounts are signed paise (redemptions negative).
+class InvestmentTxns extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get accountId => integer().references(InvestmentAccounts, #id)();
+  IntColumn get securityId => integer().references(Securities, #id)();
+  DateTimeColumn get date => dateTime()();
+
+  /// See `CasTxnType` names.
+  TextColumn get type => text()();
+  TextColumn get description => text()();
+  IntColumn get amountPaise => integer().nullable()();
+  IntColumn get unitsE4 => integer().nullable()();
+  IntColumn get navE4 => integer().nullable()();
+  IntColumn get balanceE4 => integer().nullable()();
+  IntColumn get importId => integer().nullable().references(Imports, #id)();
+  TextColumn get dedupeHash => text().unique()();
+}
+
+/// Units held on a date (closing balance from CAS) (Phase 9).
+class HoldingSnapshots extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get accountId => integer().references(InvestmentAccounts, #id)();
+  IntColumn get securityId => integer().references(Securities, #id)();
+  DateTimeColumn get asOf => dateTime()();
+  IntColumn get unitsE4 => integer()();
+  IntColumn get priceE4 => integer()();
+  IntColumn get valuePaise => integer()();
+  IntColumn get costPaise => integer().nullable()();
+  IntColumn get importId => integer().nullable().references(Imports, #id)();
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => [
+        {accountId, securityId, asOf},
+      ];
+}
+
+/// Price / NAV of a security on a date (Phase 9).
+class SecurityPrices extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get securityId => integer().references(Securities, #id)();
+  DateTimeColumn get date => dateTime()();
+  IntColumn get priceE4 => integer()();
+
+  /// cas | amfi
+  TextColumn get source => text()();
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => [
+        {securityId, date},
+      ];
+}
