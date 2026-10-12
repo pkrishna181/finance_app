@@ -5,6 +5,8 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../ingestion/sms/consent_screen.dart';
 import 'saved_passwords_screen.dart';
+import '../../ingestion/investments/amfi_nav.dart';
+import '../widgets/price_feed_opt_in.dart';
 
 /// Privacy controls: SMS consent revoke and permission shortcuts.
 class PrivacySettingsScreen extends StatefulWidget {
@@ -108,6 +110,8 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
                     ),
                   ),
                 const Divider(),
+                const _PriceFeedTile(),
+                const Divider(),
                 ListTile(
                   leading: const Icon(Icons.key_outlined),
                   title: const Text('Statement passwords'),
@@ -134,3 +138,59 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
     );
   }
 }
+
+/// Opt-in for downloading AMFI's public NAV list.
+class _PriceFeedTile extends StatefulWidget {
+  const _PriceFeedTile();
+
+  @override
+  State<_PriceFeedTile> createState() => _PriceFeedTileState();
+}
+
+class _PriceFeedTileState extends State<_PriceFeedTile> {
+  final _settings = PriceFeedSettings();
+  bool? _enabled;
+  DateTime? _last;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final e = await _settings.isEnabled();
+    final l = await _settings.lastUpdate();
+    if (mounted) {
+      setState(() {
+        _enabled = e;
+        _last = l;
+      });
+    }
+  }
+
+  Future<void> _toggle(bool on) async {
+    if (on) {
+      if (!await showPriceFeedOptIn(context, settings: _settings)) return;
+    } else {
+      await _settings.setEnabled(false);
+    }
+    await _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = _last;
+    return SwitchListTile(
+      secondary: const Icon(Icons.cloud_download_outlined),
+      value: _enabled ?? false,
+      onChanged: _enabled == null ? null : _toggle,
+      title: const Text('Update fund prices from AMFI'),
+      subtitle: Text(
+        'Downloads AMFI\'s public list of all fund NAVs; nothing about you is '
+        'sent.${l == null ? '' : ' Last updated ${l.day}/${l.month}/${l.year}.'}',
+      ),
+    );
+  }
+}
+

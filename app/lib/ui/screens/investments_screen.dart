@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../core/db/database.dart';
 import '../../insights/insights.dart';
+import '../../ingestion/investments/amfi_nav.dart';
 import '../theme/chart_colors.dart';
+import '../widgets/price_feed_opt_in.dart';
 
 String _pct(double f) {
   final v = f * 100;
@@ -18,10 +20,18 @@ String _units(int e4) {
 /// Mutual funds and shares from imported CAS statements: value, invested,
 /// gain and XIRR, overall and per holding.
 class InvestmentsScreen extends StatefulWidget {
-  const InvestmentsScreen({super.key, required this.database, this.now});
+  const InvestmentsScreen({
+    super.key,
+    required this.database,
+    this.now,
+    this.updater,
+  });
 
   final ArthDatabase database;
   final DateTime? now;
+
+  /// Price updater override (tests).
+  final AmfiNavUpdater? updater;
 
   @override
   State<InvestmentsScreen> createState() => _InvestmentsScreenState();
@@ -29,11 +39,36 @@ class InvestmentsScreen extends StatefulWidget {
 
 class _InvestmentsScreenState extends State<InvestmentsScreen> {
   PortfolioSummary? _s;
+  bool _updating = false;
+  late final _updater = widget.updater ?? AmfiNavUpdater(widget.database);
 
   @override
   void initState() {
     super.initState();
     _load();
+    _autoUpdate();
+  }
+
+  /// Once a day when the user opted in; silent on failure.
+  Future<void> _autoUpdate() async {
+    final r = await _updater.updateIfStale();
+    if (r != null && r.isOk && mounted) await _load();
+  }
+
+  Future<void> _updatePrices() async {
+    if (!await PriceFeedSettings().isEnabled()) {
+      if (!mounted || !await showPriceFeedOptIn(context)) return;
+    }
+    setState(() => _updating = true);
+    final r = await _updater.update();
+    if (!mounted) return;
+    setState(() => _updating = false);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(r.isOk
+          ? 'Updated ${r.okOrNull} fund price${r.okOrNull == 1 ? '' : 's'}'
+          : 'Couldn\'t reach AMFI — try again later'),
+    ));
+    if (r.isOk) await _load();
   }
 
   Future<void> _load() async {
@@ -47,7 +82,21 @@ class _InvestmentsScreenState extends State<InvestmentsScreen> {
   Widget build(BuildContext context) {
     final s = _s;
     return Scaffold(
-      appBar: AppBar(title: const Text('Investments')),
+      appBar: AppBar(
+        title: const Text('Investments'),
+        actions: [
+          IconButton(
+            tooltip: 'Update fund prices',
+            icon: _updating
+                ? const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.sync),
+            onPressed: _updating ? null : _updatePrices,
+          ),
+        ],
+      ),
       body: s == null
           ? const Center(child: CircularProgressIndicator())
           : s.isEmpty

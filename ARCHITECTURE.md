@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 9.2 — net worth
+Last updated: Phase 9.4 — opt-in fund prices
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -885,6 +885,31 @@ When there are no bank transactions yet, Insights still shows net worth and
 investments.
 
 Tests: `test/insights/net_worth_test.dart`, `test/ui/insights_screen_test.dart`.
+
+### Fund prices from AMFI (Phase 9.4) — the only data download
+
+`AmfiNavUpdater` (`ingestion/investments/amfi_nav.dart`) implements the
+network exception at the top of this document:
+
+- **Off by default.** `PriceFeedSettings` (shared preferences: on/off + last
+  update time only). Turning it on — from Privacy or the Investments "Update
+  fund prices" button — shows `showPriceFeedOptIn`, which states what is
+  downloaded, from where, that nothing about the user is sent, and that shares
+  aren't covered.
+- **Request:** a plain GET of `https://portal.amfiindia.com/spages/NAVAll.txt`
+  (public, every scheme, no parameters / cookies / identifiers).
+- **Parsing:** `parseAmfiNav` reads ISINs from columns 2–3 and NAV + date from
+  the last two columns, so the 6- and 8-column layouts both work (checked
+  against the live file: 14,378 rows, 17,866 ISINs).
+- **Matching** happens on the phone: only funds already in `securities` get a
+  `security_prices` row (`source = 'amfi'`, upsert per day). Portfolio and net
+  worth pick up the newest price automatically.
+- **When:** "Update fund prices" on Investments, or `updateIfStale` (≥ 20 h)
+  when the Investments screen opens and the feed is on. Failures are reported
+  and write nothing. Tests inject a fake fetch; nothing in the test suite hits
+  the network.
+- Share prices are not downloaded (no bulk feed fits the policy cleanly yet);
+  they refresh from the next demat CAS.
 
 ---
 

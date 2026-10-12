@@ -11,9 +11,11 @@ Arth makes no network requests with your data — no cloud parsing, analytics or
 crash reporting. Two optional downloads exist, both off until you turn them on:
 
 - the on-device LLM model weights (one-time), and
-- *(planned)* public price lists (e.g. AMFI's all-schemes NAV file) to value
-  investments. Arth downloads the **whole** list and looks up your holdings on
-  the phone, so the request reveals nothing about what you own.
+- mutual-fund prices: AMFI's public all-schemes NAV file
+  (`portal.amfiindia.com/spages/NAVAll.txt`, ~1.5 MB), at most once a day or
+  when you tap Update. Arth downloads the **whole** list and looks up your
+  holdings on the phone, so the request reveals nothing about what you own.
+  Turn it on or off under Privacy → Update fund prices.
 
 Statement PDF passwords you choose to remember are kept in the phone's secure
 storage (Android Keystore / iOS Keychain), are never shown again, and can be
