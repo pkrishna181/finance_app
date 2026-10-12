@@ -41,7 +41,7 @@ class _BackupScreenState extends State<BackupScreen> {
   }
 
   Future<void> _open() async {
-    final db = widget.database ?? await ArthDatabase.openEncrypted();
+    final db = widget.database ?? await ArthDatabase.shared();
     if (mounted) setState(() => _db = db);
   }
 

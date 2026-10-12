@@ -31,7 +31,7 @@ class HomeScreen extends StatelessWidget {
             tooltip: 'Sheets',
             icon: const Icon(Icons.calculate_outlined),
             onPressed: () async {
-              final db = database ?? await ArthDatabase.openEncrypted();
+              final db = database ?? await ArthDatabase.shared();
               if (!context.mounted) return;
               await Navigator.of(context).push(
                 MaterialPageRoute<void>(

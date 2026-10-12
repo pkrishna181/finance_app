@@ -9,6 +9,7 @@ import '../../ingestion/investments/amfi_nav.dart';
 import '../widgets/price_feed_opt_in.dart';
 import '../../core/security/app_lock.dart';
 import 'backup_screen.dart';
+import 'ai_model_screen.dart';
 
 /// Privacy controls: SMS consent revoke and permission shortcuts.
 class PrivacySettingsScreen extends StatefulWidget {
@@ -111,6 +112,18 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
                       child: const Text('System settings'),
                     ),
                   ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.memory_outlined),
+                  title: const Text('On-device AI model'),
+                  subtitle: const Text('Download, check or remove'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const AiModelScreen(),
+                    ),
+                  ),
+                ),
                 const Divider(),
                 const AppLockTiles(),
                 ListTile(

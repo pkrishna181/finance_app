@@ -30,7 +30,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
   }
 
   Future<void> _init() async {
-    final db = widget.database ?? await ArthDatabase.openEncrypted();
+    final db = widget.database ?? await ArthDatabase.shared();
     _svc = ReminderService(db, scheduler: widget.scheduler);
     await _load();
   }

@@ -46,7 +46,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       return;
     }
     try {
-      final db = await ArthDatabase.openEncrypted();
+      final db = await ArthDatabase.shared();
       if (!mounted) return;
       setState(() => _db = db);
       _syncReminders(db);

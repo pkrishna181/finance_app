@@ -73,7 +73,7 @@ class _ImportScreenState extends State<ImportScreen> {
       return;
     }
     try {
-      final db = await ArthDatabase.openEncrypted();
+      final db = await ArthDatabase.shared();
       if (mounted) setState(() => _db = db);
     } catch (_) {}
   }
@@ -147,7 +147,7 @@ class _ImportScreenState extends State<ImportScreen> {
     }
 
     if (source is StatementFileSource) {
-      final db = widget.database ?? await ArthDatabase.openEncrypted();
+      final db = widget.database ?? await ArthDatabase.shared();
       if (!context.mounted) return;
 
       final picked = await (widget.pickFiles ?? _pickStatementFiles)();

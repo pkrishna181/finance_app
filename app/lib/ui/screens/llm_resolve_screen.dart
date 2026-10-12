@@ -1,15 +1,13 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart' show OrderingTerm;
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/db/database.dart';
 import '../../llm/anchoring.dart';
 import '../../llm/jobs/llm_batch_coordinator.dart';
-import '../../llm/llama_cpp_engine.dart';
 import '../../llm/llm_review_service.dart';
-import 'llm_debug_settings_screen.dart';
+import 'ai_model_screen.dart';
 
 /// Review LLM-suggested transactions before ledger insert.
 class LlmResolveScreen extends StatelessWidget {
@@ -96,16 +94,11 @@ class _ResolveBody extends StatelessWidget {
           final skipped = coordinator?.state.skipped;
           if (skipped == 'model_not_downloaded') {
             return _ModelRequiredPane(
-              onOpenDebug: kDebugMode &&
-                      coordinator?.engine is LlamaCppEngine
-                  ? () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => LlmDebugSettingsScreen(
-                            engine: coordinator!.engine as LlamaCppEngine,
-                          ),
-                        ),
-                      )
-                  : null,
+              onOpenDebug: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const AiModelScreen(),
+                ),
+              ),
             );
           }
           return const Center(child: Text('No pending suggestions.'));
@@ -204,15 +197,15 @@ class _ModelRequiredPane extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Download and load the on-device model before Arth can '
-              'parse unrecognized SMS.',
+              'Download the on-device AI model so Arth can read the messages '
+              'its built-in rules don\'t recognise.',
               textAlign: TextAlign.center,
             ),
             if (onOpenDebug != null) ...[
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: onOpenDebug,
-                child: const Text('Open LLM settings'),
+                child: const Text('Get the AI model'),
               ),
             ],
           ],

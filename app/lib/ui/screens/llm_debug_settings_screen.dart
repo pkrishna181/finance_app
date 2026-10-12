@@ -43,9 +43,8 @@ class _LlmDebugSettingsScreenState extends State<LlmDebugSettingsScreen> {
 
   Future<void> _openDb() async {
     try {
-      final db = await ArthDatabase.openEncrypted();
+      final db = await ArthDatabase.shared();
       final counts = await db.countLlmDisagreementsByField();
-      await db.close();
       if (mounted) {
         setState(() => _disagreementCounts = counts);
       }
