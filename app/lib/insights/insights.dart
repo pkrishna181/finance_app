@@ -35,4 +35,6 @@ export 'schedule_al_repository.dart';
 export 'tax_harvest.dart';
 export 'transfer_pairing.dart';
 export 'txn_query.dart';
+export 'upcoming.dart';
+export 'upcoming_repository.dart';
 export 'yearly.dart';

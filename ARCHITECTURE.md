@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 11.2 — encrypted backup
+Last updated: Phase 11.3 — upcoming payments
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -1106,6 +1106,20 @@ UI: Privacy → Backup & restore (passphrase ≥ 10 characters typed twice, a
 showing what the file contains). Files are written where the user chooses;
 nothing is uploaded. Tests: `test/core/backup_test.dart`,
 `test/ui/backup_screen_test.dart`.
+
+### Upcoming payments calendar (Phase 11.3)
+
+`UpcomingCalendar` (pure, `insights/upcoming.dart`) merges, for a window
+(default 60 days): loan EMIs from the amortisation schedule (authoritative);
+active recurring series stepped by cadence from the mandate date (exact) or
+the predicted next date (marked expected), skipping ones a loan EMI already
+covers (±3 days, ±1% amount); and card bills that are due or overdue. Expected
+items up to 7 days late show as overdue today; older ones are dropped.
+
+UI: `UpcomingScreen` (30-day total, month grid with dots, red when overdue;
+tap a day to filter; this month and next), from the "Subscriptions & EMIs"
+card on Insights and from Loans. Feeds the reminders in 11.4.
+Tests: `test/insights/upcoming_test.dart`.
 
 ---
 

@@ -13,6 +13,7 @@ import 'investments_screen.dart';
 import 'net_worth_screen.dart';
 import 'manual_transaction_screen.dart';
 import 'search_screen.dart';
+import 'upcoming_screen.dart';
 import 'yearly_screen.dart';
 
 /// Donut / legend color: categorical slot by rank; gray for "Uncategorized"
@@ -199,6 +200,14 @@ class _InsightsScreenState extends State<InsightsScreen> {
       ),
     );
     if (saved == true && mounted) await _load();
+  }
+
+  void _openUpcoming() {
+    final db = widget.database;
+    if (db == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => UpcomingScreen(database: db)),
+    );
   }
 
   Future<void> _openNetWorth() async {
@@ -401,7 +410,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
             ],
             if (snap.activeRecurring.isNotEmpty) ...[
               const SizedBox(height: 12),
-              _RecurringCard(snapshot: snap),
+              _RecurringCard(snapshot: snap, onCalendar: _openUpcoming),
             ],
             const SizedBox(height: 12),
             _MerchantsCard(snapshot: snap),
@@ -828,8 +837,9 @@ class _MerchantsCard extends StatelessWidget {
 }
 
 class _RecurringCard extends StatelessWidget {
-  const _RecurringCard({required this.snapshot});
+  const _RecurringCard({required this.snapshot, this.onCalendar});
   final InsightsSnapshot snapshot;
+  final VoidCallback? onCalendar;
 
   static String _cadence(Cadence c) => switch (c) {
         Cadence.weekly => 'weekly',
@@ -852,7 +862,19 @@ class _RecurringCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Subscriptions & EMIs', style: t.titleMedium),
+            Row(
+              children: [
+                Expanded(
+                  child: Text('Subscriptions & EMIs', style: t.titleMedium),
+                ),
+                if (onCalendar != null)
+                  TextButton.icon(
+                    onPressed: onCalendar,
+                    icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                    label: const Text('Calendar'),
+                  ),
+              ],
+            ),
             const SizedBox(height: 4),
             Text(
               '≈ ${inrWhole(snapshot.monthlyCommitmentPaise)} / month '
