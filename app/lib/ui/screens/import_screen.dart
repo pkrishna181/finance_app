@@ -7,15 +7,17 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/db/database.dart';
-import '../../core/result/result.dart';
 import '../../ingestion/registry.dart';
 import '../../ingestion/sms/consent_screen.dart';
 import '../../ingestion/sms/sms_source.dart';
 import '../../ingestion/source.dart';
 import '../../ingestion/statement/file_source.dart';
-import '../../ingestion/statement/pdf/password_hints.dart';
+import '../../ingestion/statement/batch_import.dart';
+import '../../ingestion/statement/pdf/password_vault.dart';
 import '../../llm/jobs/llm_batch_coordinator.dart';
 import '../../llm/llm_resolve_flow.dart';
+import '../widgets/pdf_password_dialog.dart';
+import 'batch_import_screen.dart';
 import 'sms_historical_scan_screen.dart';
 import 'statement_preview_screen.dart';
 
@@ -27,6 +29,8 @@ class ImportScreen extends StatefulWidget {
     this.consentStore,
     this.coordinator,
     this.showUnparsedBadge = true,
+    this.vault,
+    this.pickFiles,
   });
 
   /// Optional injected DB (tests). Production opens encrypted on demand.
@@ -43,6 +47,12 @@ class ImportScreen extends StatefulWidget {
 
   /// When false, skips the unresolved-SMS badge stream (widget tests).
   final bool showUnparsedBadge;
+
+  /// Statement password vault override (tests).
+  final PdfPasswordVault? vault;
+
+  /// File picker override (tests). Returns null when cancelled.
+  final Future<List<StatementFile>?> Function()? pickFiles;
 
   @override
   State<ImportScreen> createState() => _ImportScreenState();
@@ -140,55 +150,56 @@ class _ImportScreenState extends State<ImportScreen> {
       final db = widget.database ?? await ArthDatabase.openEncrypted();
       if (!context.mounted) return;
 
-      final picked = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: const ['csv', 'xls', 'xlsx', 'pdf'],
-        withData: true,
-      );
-      if (picked == null || picked.files.isEmpty) return;
-      final file = picked.files.single;
-      final bytes = file.bytes ??
-          (file.path != null ? await File(file.path!).readAsBytes() : null);
-      if (bytes == null) {
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not read file.')),
+      final picked = await (widget.pickFiles ?? _pickStatementFiles)();
+      if (picked == null || picked.isEmpty || !context.mounted) return;
+      final vault = widget.vault ?? PdfPasswordVault();
+
+      if (picked.length > 1) {
+        await Navigator.of(context).push<int>(
+          MaterialPageRoute(
+            builder: (_) => BatchImportScreen(
+              files: picked,
+              db: db,
+              source: source,
+              vault: vault,
+            ),
+          ),
         );
         return;
       }
 
-      if (!context.mounted) return;
+      final file = picked.single;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Parsing statement…')),
       );
-
-      Result<StatementImportPreview> preview = const Err('not_started');
-      var bankHint = passwordHintForBank(null);
-
-      while (true) {
-        preview = await source.previewBytes(
-          db: db,
-          bytes: Uint8List.fromList(bytes),
-          fileName: file.name,
-          passwordProvider: file.name.toLowerCase().endsWith('.pdf')
-              ? (_) async {
-                  if (!context.mounted) return null;
-                  return _promptPdfPassword(context, bankHint);
-                }
-              : null,
-        );
-        if (!context.mounted) return;
-        if (preview.isOk) break;
-        final code = preview.errorOrNull;
-        if (code == 'pdf_password_required') {
-          bankHint = passwordHintForBank(null);
-          continue;
-        }
-        break;
-      }
+      late final PdfUnlockSession session;
+      session = PdfUnlockSession(
+        vault: vault,
+        fileName: file.name,
+        ask: (failed) async {
+          if (!context.mounted) return null;
+          return showPdfPasswordDialog(
+            context,
+            fileName: file.name,
+            failedAsks: failed,
+            savedTried: session.savedTried,
+          );
+        },
+      );
+      final preview = await source.previewBytes(
+        db: db,
+        bytes: file.bytes,
+        fileName: file.name,
+        passwordProvider: file.name.toLowerCase().endsWith('.pdf')
+            ? session.provide
+            : null,
+      );
+      if (!context.mounted) return;
 
       await preview.when(
         ok: (p) async {
+          await session.commit(bankCode: p.columnMap.bankCode);
+          if (!context.mounted) return;
           await Navigator.of(context).push<void>(
             MaterialPageRoute<void>(
               builder: (_) => StatementPreviewScreen(
@@ -203,7 +214,10 @@ class _ImportScreenState extends State<ImportScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                statementImportErrorMessage(msg, bankCode: bankHint),
+                statementImportErrorMessage(
+                  msg,
+                  bankCode: guessIssuer(file.name),
+                ),
               ),
             ),
           );
@@ -300,51 +314,23 @@ class _ImportScreenState extends State<ImportScreen> {
     );
   }
 
-  Future<String?> _promptPdfPassword(
-    BuildContext context,
-    String? hint,
-  ) async {
-    final controller = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text('PDF password'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (hint != null) ...[
-                Text(hint),
-                const SizedBox(height: 12),
-              ],
-              TextField(
-                controller: controller,
-                obscureText: true,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                ),
-                onSubmitted: (_) =>
-                    Navigator.of(ctx).pop(controller.text.trim()),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () =>
-                  Navigator.of(ctx).pop(controller.text.trim()),
-              child: const Text('Unlock'),
-            ),
-          ],
-        );
-      },
+  static Future<List<StatementFile>?> _pickStatementFiles() async {
+    final picked = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['csv', 'xls', 'xlsx', 'pdf'],
+      allowMultiple: true,
+      withData: true,
     );
+    if (picked == null) return null;
+    final out = <StatementFile>[];
+    for (final f in picked.files) {
+      final bytes = f.bytes ??
+          (f.path != null ? await File(f.path!).readAsBytes() : null);
+      if (bytes != null) {
+        out.add((name: f.name, bytes: Uint8List.fromList(bytes)));
+      }
+    }
+    return out;
   }
 
   IconData _iconFor(String id) {

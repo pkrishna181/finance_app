@@ -86,7 +86,7 @@ class StatementFileSource implements IngestionSource {
   String get id => 'statement';
 
   @override
-  String get displayName => 'CSV / Excel / PDF statement';
+  String get displayName => 'Bank & card statements (CSV, Excel, PDF)';
 
   @override
   SourceAvailability get availability => SourceAvailability.available;

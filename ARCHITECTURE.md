@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 7.3 — search and bulk edit
+Last updated: Phase 8.0 — saved statement passwords, batch import
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -648,6 +648,37 @@ merchant" option as the drill-down, now shared as
 "Change category". Insights reloads after each change.
 
 Tests: `test/insights/search_test.dart`, `test/ui/insights_screen_test.dart`.
+
+### Saved statement passwords and batch import (Phase 8.0)
+
+Indian banks, card issuers and CAS providers lock statement PDFs with a fixed
+per-issuer password (PAN, DOB, …). `PdfPasswordVault`
+(`ingestion/statement/pdf/password_vault.dart`) stores the ones the user
+chooses to remember as one JSON entry in **flutter_secure_storage**
+(`arth_pdf_passwords_v1`; Android Keystore / iOS Keychain). Passwords are never
+written to the encrypted DB, logs, or shown again in the UI.
+
+- We can't tell which issuer a locked PDF is from until it opens, so
+  `PdfUnlockSession.provide` (passed to the loader as the password provider)
+  tries **every** saved password, ordered by file-name match (label words or
+  learnt bank code; generic words like "statement" ignored) then most recent
+  use. pdfrx keeps calling the provider until one works.
+- Only when none work is the user asked (up to 3 tries; "Skip" gives up). The
+  prompt names the file, shows the issuer hint, and has "Remember for future
+  statements" on by default with a suggested label ("AXIS credit card").
+- `commit(bankCode)` after a successful open marks the saved entry used and
+  records the detected bank, or saves the typed password if asked to.
+- Manage: Privacy → Statement passwords (add, rename, forget; names only).
+
+**Batch import:** the statement picker allows many files. One file keeps the
+preview screen; several go to `BatchImportScreen`, which runs
+`StatementBatchImporter` sequentially (no per-file preview) and lists each
+file's outcome: imported (new / already had / to review), already imported
+(same file hash), skipped (locked, no password), or failed (e.g. scanned PDF).
+Overlapping statements and SMS rows dedupe through the usual `dedupe_hash`.
+
+Tests: `test/ingestion/password_vault_test.dart` (unlocks the real encrypted
+golden PDF), `test/ui/import_screen_test.dart`.
 
 ---
 

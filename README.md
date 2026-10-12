@@ -15,6 +15,10 @@ crash reporting. Two optional downloads exist, both off until you turn them on:
   investments. Arth downloads the **whole** list and looks up your holdings on
   the phone, so the request reveals nothing about what you own.
 
+Statement PDF passwords you choose to remember are kept in the phone's secure
+storage (Android Keystore / iOS Keychain), are never shown again, and can be
+removed any time under Privacy → Statement passwords.
+
 ## Quick start
 
 ```bash

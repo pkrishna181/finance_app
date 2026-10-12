@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../ingestion/sms/consent_screen.dart';
+import 'saved_passwords_screen.dart';
 
 /// Privacy controls: SMS consent revoke and permission shortcuts.
 class PrivacySettingsScreen extends StatefulWidget {
@@ -106,6 +107,20 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
                       child: const Text('System settings'),
                     ),
                   ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.key_outlined),
+                  title: const Text('Statement passwords'),
+                  subtitle: const Text(
+                    'Saved in secure storage to unlock statement PDFs',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const SavedPasswordsScreen(),
+                    ),
+                  ),
+                ),
                 const Divider(),
                 const ListTile(
                   title: Text('Data stays on-device'),
