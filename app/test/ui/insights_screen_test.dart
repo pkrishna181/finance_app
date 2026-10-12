@@ -13,6 +13,13 @@ Future<void> _settle(WidgetTester tester) async {
   }
 }
 
+/// Tall surface so the lazily built Insights list renders every card.
+void _tallView(WidgetTester tester) {
+  tester.view.physicalSize = const Size(800, 4000);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+}
+
 void main() {
   testWidgets('shows empty state with no transactions', (tester) async {
     final db = ArthDatabase.memory();
@@ -28,6 +35,7 @@ void main() {
 
   testWidgets('renders summary, uncategorized banner and categories',
       (tester) async {
+    _tallView(tester);
     final db = ArthDatabase.memory();
     addTearDown(() => tester.runAsync(db.close));
 
@@ -62,5 +70,58 @@ void main() {
     expect(find.text('Groceries'), findsOneWidget);
     expect(find.textContaining('1 uncategorized'), findsOneWidget);
     expect(find.text('Spend trend'), findsOneWidget);
+  });
+
+  testWidgets('drill-down recategorizes a row and reloads insights',
+      (tester) async {
+    _tallView(tester);
+    final db = ArthDatabase.memory();
+    addTearDown(() => tester.runAsync(db.close));
+
+    await tester.runAsync(() async {
+      final now = DateTime.now();
+      final at = DateTime(now.year, now.month, 2, 12);
+      for (final h in ['u1', 'u2']) {
+        await db.into(db.transactions).insert(TransactionsCompanion.insert(
+              amountPaise: 50000,
+              direction: 'debit',
+              txnType: 'upi',
+              bookedAt: at,
+              bankCode: 'HDFC',
+              rawMerchant: 'UPI-SWIGGY-$h',
+              rawDescription: 'x',
+              dedupeHash: h,
+            ));
+      }
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(home: InsightsScreen(database: db)),
+    );
+    await _settle(tester);
+    expect(find.textContaining('2 uncategorized'), findsOneWidget);
+
+    await tester.tap(find.textContaining('2 uncategorized'));
+    await _settle(tester);
+    await tester.pumpAndSettle();
+    expect(find.text('UPI-SWIGGY-u1'), findsOneWidget);
+
+    await tester.tap(find.text('UPI-SWIGGY-u1'));
+    await _settle(tester);
+    await tester.pumpAndSettle();
+    expect(find.text('Also apply to 1 other transaction'), findsOneWidget);
+    await tester.tap(find.text('Also apply to 1 other transaction'));
+    await tester.pump();
+    await tester.tap(find.text('Food Delivery'));
+    await _settle(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Moved 2 transactions to Food Delivery'), findsOneWidget);
+
+    await tester.pageBack();
+    await _settle(tester);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('uncategorized'), findsNothing);
+    expect(find.text('Food Delivery'), findsWidgets);
   });
 }

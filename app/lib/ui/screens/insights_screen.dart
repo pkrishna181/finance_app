@@ -120,6 +120,19 @@ class _InsightsScreenState extends State<InsightsScreen> {
     if (mounted) await _load();
   }
 
+  void _openTxns(String title, List<InsightTxn> txns) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CategoryTransactionsScreen(
+          title: title,
+          txns: txns,
+          database: widget.database,
+          onChanged: _load,
+        ),
+      ),
+    );
+  }
+
   void _step(int delta) {
     final i = _months.indexOf(_selected!);
     // _months is newest first: older month = higher index.
@@ -182,14 +195,14 @@ class _InsightsScreenState extends State<InsightsScreen> {
             ],
             if (snap.summary.uncategorizedCount > 0) ...[
               const SizedBox(height: 12),
-              _UncategorizedBanner(snapshot: snap),
+              _UncategorizedBanner(snapshot: snap, onOpen: _openTxns),
             ],
             const SizedBox(height: 12),
             if (snap.forecast != null) ...[
               _ForecastCard(forecast: snap.forecast!),
               const SizedBox(height: 12),
             ],
-            _CategoryCard(snapshot: snap),
+            _CategoryCard(snapshot: snap, onOpen: _openTxns),
             if (snap.changes.isNotEmpty) ...[
               const SizedBox(height: 12),
               _ChangesCard(changes: snap.changes),
@@ -344,8 +357,9 @@ class _Tile extends StatelessWidget {
 }
 
 class _UncategorizedBanner extends StatelessWidget {
-  const _UncategorizedBanner({required this.snapshot});
+  const _UncategorizedBanner({required this.snapshot, required this.onOpen});
   final InsightsSnapshot snapshot;
+  final void Function(String title, List<InsightTxn> txns) onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -359,15 +373,11 @@ class _UncategorizedBanner extends StatelessWidget {
             '(${inrWhole(s.uncategorizedPaise)})'),
         subtitle: const Text('Totals above include them as-is.'),
         trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => CategoryTransactionsScreen(
-              title: 'Uncategorized',
-              txns: snapshot.aggregator.transactionsIn(
-                snapshot.month,
-                categorySlug: kUncategorizedSlug,
-              ),
-            ),
+        onTap: () => onOpen(
+          'Uncategorized',
+          snapshot.aggregator.transactionsIn(
+            snapshot.month,
+            categorySlug: kUncategorizedSlug,
           ),
         ),
       ),
@@ -376,10 +386,11 @@ class _UncategorizedBanner extends StatelessWidget {
 }
 
 class _CategoryCard extends StatelessWidget {
-  const _CategoryCard({required this.snapshot});
+  const _CategoryCard({required this.snapshot, required this.onOpen});
   final InsightsSnapshot snapshot;
+  final void Function(String title, List<InsightTxn> txns) onOpen;
 
-  void _open(BuildContext context, CategorySlice slice) {
+  void _open(CategorySlice slice) {
     final agg = snapshot.aggregator;
     final month = snapshot.month;
     final List<InsightTxn> txns;
@@ -395,14 +406,7 @@ class _CategoryCard extends StatelessWidget {
     } else {
       txns = agg.transactionsIn(month, categorySlug: slice.slug);
     }
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => CategoryTransactionsScreen(
-          title: slice.name,
-          txns: txns,
-        ),
-      ),
-    );
+    onOpen(slice.name, txns);
   }
 
   @override
@@ -457,7 +461,7 @@ class _CategoryCard extends StatelessWidget {
               const SizedBox(height: 8),
               for (var i = 0; i < slices.length; i++)
                 InkWell(
-                  onTap: () => _open(context, slices[i]),
+                  onTap: () => _open(slices[i]),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Row(

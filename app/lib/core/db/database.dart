@@ -11,6 +11,7 @@ import 'package:sqlite3/common.dart' show CommonDatabase;
 
 import '../crypto/db_key_store.dart';
 import '../models/category_defaults.dart';
+import '../models/merchant_label.dart';
 import '../../llm/jobs/llm_job_types.dart';
 import '../../parsing/sms/template.dart' show buildDedupeKey;
 import 'tables.dart';
@@ -178,6 +179,9 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
     if (existing == null) {
       txnId = await into(transactions).insert(row);
       inserted = true;
+      if (row.categoryId.value == null) {
+        await _applyMerchantCategoryRule(txnId, row.rawMerchant.value);
+      }
     } else {
       txnId = existing.id;
     }
@@ -190,6 +194,36 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
       mode: InsertMode.insertOrIgnore,
     );
     return UpsertResult(transactionId: txnId, inserted: inserted);
+  }
+
+  /// Latest merchant-wide category rule for [rawMerchant]: a `category`
+  /// correction with no transaction id whose normalized raw label matches.
+  Future<String?> merchantCategoryRule(String rawMerchant) async {
+    final key = normalizeMerchantLabel(rawMerchant);
+    if (key.length < 3) return null;
+    final rules = await (select(userCorrections)
+          ..where((t) => t.transactionId.isNull())
+          ..where((t) => t.field.equals('category'))
+          ..orderBy([(t) => OrderingTerm.desc(t.id)]))
+        .get();
+    for (final r in rules) {
+      if (normalizeMerchantLabel(r.rawMerchant) == key) return r.newValue;
+    }
+    return null;
+  }
+
+  Future<void> _applyMerchantCategoryRule(int txnId, String rawMerchant) async {
+    final slug = await merchantCategoryRule(rawMerchant);
+    if (slug == null) return;
+    final cat = await categoryBySlug(slug);
+    if (cat == null) return;
+    await (update(transactions)..where((t) => t.id.equals(txnId))).write(
+      TransactionsCompanion(
+        categoryId: Value(cat.id),
+        suggestedCategorySlug: Value(slug),
+        categorySource: const Value('user_correction'),
+      ),
+    );
   }
 
   Future<Import?> findImportByHash(String contentHash) {

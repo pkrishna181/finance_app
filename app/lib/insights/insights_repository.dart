@@ -1,5 +1,4 @@
-import 'package:drift/drift.dart' show Value, Variable;
-
+import 'package:drift/drift.dart' show OrderingTerm, QueryRow, Value, Variable;
 
 import '../core/db/database.dart';
 import 'insight_models.dart';
@@ -170,4 +169,112 @@ ORDER BY t.booked_at ASC, t.id ASC
           ),
         );
   }
+
+  /// Categories in display order, for the recategorize picker.
+  Future<List<Category>> pickableCategories() {
+    return (_db.select(_db.categories)
+          ..orderBy([(c) => OrderingTerm.asc(c.sortOrder)]))
+        .get();
+  }
+
+  /// Other rows from the same merchant as [t] (same `merchant_id`, else same
+  /// normalized raw label) that the user has not categorized by hand.
+  Future<List<int>> similarTransactionIds(InsightTxn t) async {
+    final List<QueryRow> rows;
+    if (t.merchantId != null) {
+      rows = await _db.customSelect(
+        'SELECT id, raw_merchant, category_source FROM transactions '
+        'WHERE merchant_id = ? AND id <> ?',
+        variables: [Variable<int>(t.merchantId!), Variable<int>(t.id)],
+        readsFrom: {_db.transactions},
+      ).get();
+    } else {
+      rows = await _db.customSelect(
+        'SELECT id, raw_merchant, category_source FROM transactions '
+        'WHERE merchant_id IS NULL AND id <> ?',
+        variables: [Variable<int>(t.id)],
+        readsFrom: {_db.transactions},
+      ).get();
+    }
+    final key = RecurringDetector.normalizeLabel(t.rawMerchant);
+    if (t.merchantId == null && key.length < 3) return const [];
+    return [
+      for (final r in rows)
+        if (!_isUserSource(r.readNullable<String>('category_source')) &&
+            (t.merchantId != null ||
+                RecurringDetector.normalizeLabel(
+                      r.read<String>('raw_merchant'),
+                    ) ==
+                    key))
+          r.read<int>('id'),
+    ];
+  }
+
+  /// Sets [t]'s category to [slug] (`category_source = 'user'`) and records a
+  /// `user_corrections` row. With [applyToMerchant], also recategorizes
+  /// [similarTransactionIds] and stores a merchant-wide rule (correction with
+  /// no transaction id) that `CategoryRuleEngine` applies to future rows.
+  /// Returns the number of transactions changed.
+  Future<int> recategorize(
+    InsightTxn t,
+    String slug, {
+    bool applyToMerchant = false,
+  }) async {
+    final cat = await _db.categoryBySlug(slug);
+    if (cat == null) throw ArgumentError.value(slug, 'slug', 'unknown category');
+    final similar =
+        applyToMerchant ? await similarTransactionIds(t) : const <int>[];
+    final ids = [t.id, ...similar];
+    await _db.transaction(() async {
+      for (var i = 0; i < ids.length; i += 500) {
+        final chunk =
+            ids.sublist(i, i + 500 > ids.length ? ids.length : i + 500);
+        final marks = List.filled(chunk.length, '?').join(',');
+        await _db.customUpdate(
+          'UPDATE transactions SET category_id = ?, '
+          "category_source = 'user', suggested_category_slug = ?, "
+          'updated_at = ? WHERE id IN ($marks)',
+          variables: [
+            Variable<int>(cat.id),
+            Variable<String>(slug),
+            Variable<DateTime>(DateTime.now()),
+            for (final id in chunk) Variable<int>(id),
+          ],
+          updates: {_db.transactions},
+        );
+      }
+      await _db.into(_db.userCorrections).insert(
+            UserCorrectionsCompanion.insert(
+              transactionId: Value(t.id),
+              rawMerchant: t.rawMerchant,
+              field: 'category',
+              oldValue: Value(t.categorySlug),
+              newValue: slug,
+            ),
+          );
+      if (applyToMerchant) {
+        await _db.into(_db.userCorrections).insert(
+              UserCorrectionsCompanion.insert(
+                rawMerchant: t.rawMerchant,
+                field: 'category',
+                oldValue: Value(t.categorySlug),
+                newValue: slug,
+              ),
+            );
+        if (t.merchantId != null) {
+          await (_db.update(_db.merchants)
+                ..where((m) => m.id.equals(t.merchantId!)))
+              .write(
+            MerchantsCompanion(
+              defaultCategoryId: Value(cat.id),
+              updatedAt: Value(DateTime.now()),
+            ),
+          );
+        }
+      }
+    });
+    return ids.length;
+  }
+
+  static bool _isUserSource(String? s) => s == 'user' || s == 'user_correction';
 }

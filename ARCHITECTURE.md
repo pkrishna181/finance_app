@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 6.5 — cash-flow and forecast
+Last updated: Phase 6.6 — category editing
 
 ---
 
@@ -523,8 +523,32 @@ MoM spend delta, 6-month trend, category slices with tail folded into
   text `Semantics` summary.
 - Uncategorized banner drills into the uncategorized list (it does **not** open
   the SMS resolve flow, which handles unparsed SMS, not categories).
-- Category editing from these lists is Phase 6.6.
+- Drill-down lists are editable (Phase 6.6, below).
 - Tests: `test/insights/insights_snapshot_test.dart`,
+  `test/ui/insights_screen_test.dart`.
+
+### Category editing (Phase 6.6)
+
+Tapping a row in `CategoryTransactionsScreen` opens a category picker.
+`InsightsRepository.recategorize`:
+
+- Sets `category_id`, `category_source = 'user'`, `suggested_category_slug`
+  and records a `user_corrections` row (`field = 'category'`, old → new).
+- **"Also apply to N other transactions"** (off by default) recategorizes
+  `similarTransactionIds` — same `merchant_id`, else same normalized raw label
+  (`normalizeMerchantLabel`, shared with recurring detection) — skipping rows
+  whose source is already `user`/`user_correction`. It also stores a
+  **merchant-wide rule**: a `category` correction with `transaction_id` NULL,
+  and sets `merchants.default_category_id` when the row has a merchant.
+- Merchant-wide rules apply to newly inserted rows in
+  `upsertTransactionWithProvenance` (only when the row has no category;
+  `category_source = 'user_correction'`) and in `CategoryRuleEngine` after the
+  per-transaction correction. Latest rule wins. Matching is exact on the
+  normalized label, so a merchant whose raw text varies in letters (not just
+  digits/punctuation) needs one rule per variant.
+- `TransferPairing` treats `user_correction` like `user`.
+- Insights reloads via `onChanged` after each edit.
+- Tests: `test/insights/recategorize_test.dart`,
   `test/ui/insights_screen_test.dart`.
 
 ---

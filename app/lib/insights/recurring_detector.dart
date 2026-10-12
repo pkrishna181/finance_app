@@ -1,3 +1,4 @@
+import '../core/models/merchant_label.dart';
 import 'insight_models.dart';
 
 enum Cadence {
@@ -153,12 +154,7 @@ class RecurringDetector {
     return n.length < 3 ? null : 'r$n';
   }
 
-  static String normalizeLabel(String s) => s
-      .toLowerCase()
-      .replaceAll(RegExp(r'[0-9]+'), ' ')
-      .replaceAll(RegExp(r'[^a-z ]'), ' ')
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
+  static String normalizeLabel(String s) => normalizeMerchantLabel(s);
 
   RecurringSeries? _analyse(String key, List<InsightTxn> raw, DateTime asOf) {
     if (raw.length < 2) return null;

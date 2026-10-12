@@ -155,10 +155,13 @@ void main() {
   });
 
   test('results are ranked by impact and capped', () {
+    // Distinct alphabetic names: digits are stripped from merchant keys.
+    const m = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot',
+        'Golf', 'Hotel'];
     final txns = [
       for (var i = 0; i < 8; i++) ...[
-        tx(1000 + i * 100, DateTime(2026, 9, 1 + i, 9), merchant: 'M$i'),
-        tx(1000 + i * 100, DateTime(2026, 9, 1 + i, 10), merchant: 'M$i'),
+        tx(1000 + i * 100, DateTime(2026, 9, 1 + i, 9), merchant: m[i]),
+        tx(1000 + i * 100, DateTime(2026, 9, 1 + i, 10), merchant: m[i]),
       ],
     ];
     final a = detector.detect(InsightsAggregator(txns), sep, limit: 5);
