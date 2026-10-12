@@ -432,8 +432,9 @@ class _Parser {
         final cat = _s(a, 0);
         final months = (cat == null ? _n(a, 0, fn, 3) : _n(a, 1, fn, 3))
             .toInt();
-        if (months <= 0)
+        if (months <= 0) {
           throw const SheetError('avg_spend: months must be > 0');
+        }
         var s = 0.0;
         for (var k = 1; k <= months; k++) {
           s += data.spend(cat, k);

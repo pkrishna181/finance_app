@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:drift/drift.dart';
 
@@ -28,11 +27,11 @@ class BackupSummary {
 /// Exports every table to an encrypted file and restores it, replacing all
 /// data. The file never leaves the phone unless the user moves it.
 class BackupService {
-  BackupService(this._db, {PdfPasswordVault? vault, this.iterations})
-    : _vault = vault;
+  BackupService(this._db, {this.vault, this.iterations});
 
   final ArthDatabase _db;
-  final PdfPasswordVault? _vault;
+  /// Saved statement passwords to include / restore (optional).
+  final PdfPasswordVault? vault;
 
   /// PBKDF2 iterations (tests use fewer).
   final int? iterations;
@@ -69,14 +68,16 @@ class BackupService {
         ],
       };
     }
+    final v = vault;
+    final passwords = includePasswords && v != null ? await v.list() : null;
     final payload = {
       'format': format,
       'app': 'arth',
       'schemaVersion': _db.schemaVersion,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
       'tables': tables,
-      if (includePasswords && _vault != null)
-        'pdfPasswords': [for (final p in await _vault.list()) p.toJson()],
+      if (passwords != null)
+        'pdfPasswords': [for (final p in passwords) p.toJson()],
     };
     final gz = GZipCodec().encode(utf8.encode(jsonEncode(payload)));
     return BackupCrypto.encrypt(
@@ -173,12 +174,13 @@ class BackupService {
     _db.notifyUpdates({for (final t in _db.allTables) TableUpdate.onTable(t)});
 
     final pw = m['pdfPasswords'] as List?;
-    if (pw != null && _vault != null) {
+    final v = vault;
+    if (pw != null && v != null) {
       for (final j in pw) {
         final p = SavedPdfPassword.fromJson(
           Map<String, Object?>.from(j as Map),
         );
-        await _vault.add(p.label, p.password, bankCode: p.bankCode);
+        await v.add(p.label, p.password, bankCode: p.bankCode);
       }
     }
     return _summary(m);
