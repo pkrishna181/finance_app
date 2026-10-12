@@ -95,6 +95,7 @@ class CasHolding {
     required this.priceE4,
     required this.valuePaise,
     this.account,
+    this.folio,
   });
 
   final String isin;
@@ -103,8 +104,11 @@ class CasHolding {
   final int priceE4;
   final int valuePaise;
 
-  /// Demat account (`DP ID / Client ID`) or folio, when printed nearby.
+  /// Demat account (`DP ID / Client ID` or BO ID), when printed nearby.
   final String? account;
+
+  /// Mutual-fund folio printed on the row (NSDL lists non-demat folios).
+  final String? folio;
 
   bool get isMutualFund => isin.startsWith('INF');
 }
@@ -583,9 +587,10 @@ class CasParser {
         RegExp(r'^[A-Z]{2,}\d+$').hasMatch(nameTokens.first)) {
       nameTokens.removeAt(0);
     }
+    String? folio;
     if (nameTokens.length > 1 &&
         RegExp(r'^\d+(/\d+)?$').hasMatch(nameTokens.last)) {
-      nameTokens.removeLast();
+      folio = nameTokens.removeLast();
     }
     final name = nameTokens
         .join(' ')
@@ -614,6 +619,7 @@ class CasParser {
               priceE4: price,
               valuePaise: value,
               account: account,
+              folio: isin.startsWith('INF') ? folio : null,
             );
           }
         }

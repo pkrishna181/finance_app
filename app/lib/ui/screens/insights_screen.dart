@@ -9,6 +9,7 @@ import 'category_transactions_screen.dart';
 import 'credit_cards_screen.dart';
 import 'doctor_screen.dart';
 import 'goals_screen.dart';
+import 'investments_screen.dart';
 import 'manual_transaction_screen.dart';
 import 'search_screen.dart';
 import 'yearly_screen.dart';
@@ -50,6 +51,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
   Object? _error;
   List<CardStatus> _cards = const [];
   List<GoalProgress> _goals = const [];
+  PortfolioSummary? _portfolio;
   int _cardSuggestions = 0;
 
   @override
@@ -105,11 +107,13 @@ class _InsightsScreenState extends State<InsightsScreen> {
       final cards = await cardRepo.statuses(DateTime.now());
       final cardSuggestions = (await cardRepo.suggestions()).length;
       final goals = await GoalRepository(db).progressAll(DateTime.now());
+      final portfolio = await PortfolioRepository(db).summary(DateTime.now());
       if (!mounted) return;
       setState(() {
         _cards = cards;
         _cardSuggestions = cardSuggestions;
         _goals = goals;
+        _portfolio = portfolio;
         _months = months;
         _selected = selected;
         _snapshot = InsightsSnapshot.build(
@@ -191,6 +195,15 @@ class _InsightsScreenState extends State<InsightsScreen> {
       ),
     );
     if (saved == true && mounted) await _load();
+  }
+
+  Future<void> _openInvestments() async {
+    final db = widget.database;
+    if (db == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => InvestmentsScreen(database: db)),
+    );
+    if (mounted) await _load();
   }
 
   Future<void> _openGoals() async {
@@ -316,6 +329,13 @@ class _InsightsScreenState extends State<InsightsScreen> {
             const SizedBox(height: 12),
             if (snap.forecast != null) ...[
               _ForecastCard(forecast: snap.forecast!),
+              const SizedBox(height: 12),
+            ],
+            if (_portfolio != null && !_portfolio!.isEmpty) ...[
+              PortfolioSummaryCard(
+                summary: _portfolio!,
+                onTap: _openInvestments,
+              ),
               const SizedBox(height: 12),
             ],
             if (_cards.isNotEmpty || _cardSuggestions > 0) ...[

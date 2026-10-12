@@ -106,6 +106,9 @@ class CasImporter {
             'mf',
             amc: folio.amc,
           );
+          if (s.openingE4 > 0) {
+            await _opening(accountId, secId, s, st, importId);
+          }
           for (final t in s.txns) {
             final hash = sha256
                 .convert(
@@ -180,11 +183,15 @@ class CasImporter {
       for (final h in st.holdings) {
         final date = asOf;
         if (date == null) continue;
-        final accountId = await _account(
-          h.isMutualFund && h.account == null ? 'folio' : 'demat',
-          h.account ?? '$provider holdings',
-          provider,
-        );
+        // A fund row with a folio is that folio (the same one a CAMS /
+        // KFintech CAS reports), not part of the demat account.
+        final accountId = h.folio != null
+            ? await _account('folio', h.folio!, provider)
+            : await _account(
+                h.isMutualFund && h.account == null ? 'folio' : 'demat',
+                h.account ?? '$provider holdings',
+                provider,
+              );
         final secId = await _security(
           h.isin,
           h.name,
@@ -228,6 +235,54 @@ class CasImporter {
       );
     });
     return (result: result, error: null);
+  }
+
+  /// Units held before the statement period, recorded as an `opening`
+  /// transaction at the period start, priced at the first NAV seen (an
+  /// estimate, so XIRR covers the statement period). Only the earliest
+  /// opening per holding is kept, so overlapping statements don't add up.
+  Future<void> _opening(
+    int accountId,
+    int secId,
+    CasScheme s,
+    CasStatement st,
+    int importId,
+  ) async {
+    final date = st.periodFrom ??
+        (s.txns.isEmpty ? null : s.txns.first.date) ??
+        s.navDate;
+    if (date == null) return;
+    final existing = await (_db.select(_db.investmentTxns)
+          ..where((t) => t.accountId.equals(accountId))
+          ..where((t) => t.securityId.equals(secId))
+          ..where((t) => t.type.equals('opening')))
+        .get();
+    if (existing.any((t) => !t.date.isAfter(date))) return;
+    for (final e in existing) {
+      await (_db.delete(_db.investmentTxns)..where((t) => t.id.equals(e.id)))
+          .go();
+    }
+    final nav = s.txns
+            .map((t) => t.navE4)
+            .whereType<int>()
+            .where((n) => n > 0)
+            .firstOrNull ??
+        s.navE4;
+    await _db.into(_db.investmentTxns).insert(
+          InvestmentTxnsCompanion.insert(
+            accountId: accountId,
+            securityId: secId,
+            date: date,
+            type: 'opening',
+            description: 'Opening balance (value estimated)',
+            amountPaise:
+                Value(nav == null ? null : (s.openingE4 * nav / 1e6).round()),
+            unitsE4: Value(s.openingE4),
+            navE4: Value(nav),
+            importId: Value(importId),
+            dedupeHash: 'opening:$accountId:$secId:${date.toIso8601String()}',
+          ),
+        );
   }
 
   Future<int> _account(

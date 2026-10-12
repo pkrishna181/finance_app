@@ -59,7 +59,13 @@ void main() {
     final again = await CasImporter(db)
         .store(st, fileName: 'cas2.pdf', contentHash: 'h2');
     expect(again.result!.newTxns, 0);
-    expect(await db.select(db.investmentTxns).get(), hasLength(11));
+    // 11 statement rows + 1 opening balance (HDFC held 10 units before).
+    final all = await db.select(db.investmentTxns).get();
+    expect(all, hasLength(12));
+    final opening = all.singleWhere((t) => t.type == 'opening');
+    expect(opening.unitsE4, 100000);
+    expect(opening.date, DateTime(2025, 4, 1));
+    expect(opening.amountPaise, 1999900); // 10 units × first NAV 1,999.90
     expect(await db.select(db.holdingSnapshots).get(), hasLength(3));
 
     // Identical file: refused.
@@ -114,6 +120,18 @@ void main() {
           ..where((a) => a.kind.equals('demat')))
         .get();
     expect(demat.single.number, 'IN303028/12345678');
+
+    // The NSDL fund row names folio 1234567/89: it joins that folio rather
+    // than appearing as a second holding.
+    final folios = await (db.select(db.investmentAccounts)
+          ..where((a) => a.kind.equals('folio')))
+        .get();
+    expect(folios.map((a) => a.number).toSet(),
+        {'1234567/89', '7788990011', '55443322'});
+    final hdfcSnaps = await (db.select(db.holdingSnapshots)
+          ..where((h) => h.unitsE4.equals(121000)))
+        .get();
+    expect(hdfcSnaps, hasLength(1));
 
     // Saved password learnt which provider it opens.
     expect((await vault.list()).single.bankCode, 'CAMS');

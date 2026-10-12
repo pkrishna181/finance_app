@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 9.1 — investment statements (CAS)
+Last updated: Phase 9.3 — investment returns
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -826,11 +826,44 @@ casparser project (MIT) for reference; the code is our own.
 bank / card preview using the same pages. Batch and single import both use it;
 a single CAS shows a summary dialog instead of the preview.
 
+- **Fund rows in demat CAS** that print a folio (NSDL lists non-demat
+  folios) are stored under that folio, so the same fund from a CAMS CAS and an
+  NSDL CAS is one holding, not two.
+- **Opening balance:** units held before the statement period are stored as an
+  `opening` transaction at the period start, valued at the first NAV in the
+  statement (an estimate). Only the earliest opening per holding is kept, so
+  overlapping statements don't double it.
+
 Fixtures: `test/golden/cas/*.txt` (synthetic, modelled on real layouts) and
 PDFs from `app/tool/generate_cas_pdfs.py` (CAMS one locked with
 `ABCDE1234F`). Tests: `test/ingestion/investments/`.
 **Known gap:** the synthetic fixtures can't cover every real template; check
 against real statements and add failing ones as fixtures.
+
+### Investment returns (Phase 9.3)
+
+`PortfolioCalculator` (pure, `insights/portfolio.dart`), per account +
+security:
+
+- **Units now** = latest snapshot + later transactions (else the sum of
+  transactions); **price** = latest known price (CAS NAVs, statement closing
+  prices; AMFI in 9.4).
+- **Invested** = FIFO cost of the units still held (purchases, SIPs, switch-in,
+  IDCW reinvest, opening); the statement's "Total Cost Value" wins when nothing
+  happened after that statement. Holdings without history (demat snapshot)
+  have unknown cost and are left out of gain totals.
+- **Booked gains** = sale proceeds − FIFO cost; reversals undo their purchase.
+- **XIRR** (`xirr()`): Newton from 10%, bisection fallback on (−99.99%,
+  10000%); needs ≥ 2 flows of both signs over ≥ 7 days. Flows: buys negative,
+  sales and IDCW payouts positive, current value at the valuation date.
+  Portfolio XIRR pools flows of all holdings with history.
+
+UI: `InvestmentsScreen` (value, gain on invested, XIRR, booked gains, split by
+mutual funds / shares; holdings with value, gain %, XIRR; holding detail with
+units, price date, transactions) and an Investments card on Insights.
+
+Tests: `test/insights/portfolio_test.dart` (XIRR against closed-form values,
+FIFO, the CAS fixture end to end).
 
 ---
 

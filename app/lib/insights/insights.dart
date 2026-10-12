@@ -17,6 +17,8 @@ export 'insights_aggregator.dart';
 export 'insights_repository.dart';
 export 'insights_snapshot.dart';
 export 'manual_transactions.dart';
+export 'portfolio.dart';
+export 'portfolio_repository.dart';
 export 'recurring_detector.dart';
 export 'transfer_pairing.dart';
 export 'txn_query.dart';
