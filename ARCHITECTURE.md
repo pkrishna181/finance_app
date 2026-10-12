@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 10.6 — Schedule AL (roadmap phases 7–10 complete)
+Last updated: Phase 11.5 — sheets (phase 11 complete)
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -26,7 +26,7 @@ reimplement from docs/ideas only, never copy code).
 | 8 ✅ | Credit cards (cycle, due date, utilization, bill vs paid); manual transactions; savings goals; data "doctor" |
 | 9 ✅ | Holdings layer: CAMS/KFintech + NSDL/CDSL CAS PDF import, manual assets (gold, FD, EPF/PPF, property); net worth; XIRR; opt-in price lists |
 | 10 ✅ | Capital gains (FIFO lots, current Indian rules — verify at build time), tax harvesting, Schedule AL, allocation targets, retirement goal, loans |
-| later | Notepad calculator ("sheets"); biometric app lock |
+| 11 ✅ | App lock; encrypted backup / restore; upcoming-payments calendar; reminders; notepad calculator ("sheets") |
 
 Not adopted: plain-text journal editor, ledger/hledger/beancount backends,
 handlebars import templates (bank profiles cover this).
@@ -1060,6 +1060,108 @@ Items valued rather than costed (property, gold, vehicles, unknown-cost
 shares) are flagged "value, not cost — check". UI: Net worth → Schedule AL.
 
 Tests: `test/insights/schedule_al_test.dart`, `test/ui/tax_screens_test.dart`.
+
+### App lock (Phase 11.1)
+
+`local_auth` 3.x (`DeviceAuthenticator`, biometrics with the phone's PIN /
+pattern as fallback). Android: `MainActivity` is now a
+`FlutterFragmentActivity`, `USE_BIOMETRIC` permission, AppCompat launch /
+normal themes (+ `androidx.appcompat` dependency) as the plugin requires.
+
+`AppLockGate` wraps `HomeShell`: when enabled the app is locked at launch and
+again after the chosen time in the background (immediately / 1 / 5 / 30 min,
+default 1 min). The app stays alive underneath (`Offstage`); lifecycle events
+caused by the auth prompt itself are ignored. Turning the lock on requires a
+successful unlock first (and a device screen lock), so users can't lock
+themselves out.
+
+"Hide in recent apps" sets `FLAG_SECURE` through the
+`com.arth.arth/window` channel (blank app-switcher preview, no screenshots).
+Settings live in shared preferences (on/off and timing only). UI: Privacy →
+App lock. Tests: `test/ui/app_lock_test.dart`.
+
+### Encrypted backup and restore (Phase 11.2)
+
+`core/backup/`: `BackupService.export` dumps **every** table (from
+`sqlite_master`, so raw tables like `llm_disagreements` are included) as JSON
+`{format, app, schemaVersion, createdAt, tables: {name: {columns, rows}}}`,
+optionally plus the saved statement passwords (off by default), gzips it and
+seals it with `BackupCrypto`:
+
+- `ARTHBAK1` | PBKDF2 iterations | 16-byte salt | 12-byte nonce | AES-256-GCM
+  ciphertext + tag; the header is the GCM associated data, so a wrong
+  passphrase, tampering or a non-Arth file all fail cleanly.
+- Key = PBKDF2-HMAC-SHA256(passphrase, salt, 600,000) (OWASP 2023), run in an
+  isolate (~1.7 s on a desktop JIT; a few seconds on a phone). `pointycastle`
+  4.x (MIT, pure Dart) provides PBKDF2 and GCM.
+
+`restore` refuses backups from a newer schema, wipes all tables (foreign keys
+off), inserts each backed-up table's rows for the columns that still exist
+(older backups get defaults for newer columns), checks
+`PRAGMA foreign_key_check`, notifies drift streams, and merges saved passwords
+into the vault. `inspect` shows date / counts before anything is replaced.
+
+UI: Privacy → Backup & restore (passphrase ≥ 10 characters typed twice, a
+"no recovery if forgotten" warning; restore asks for confirmation after
+showing what the file contains). Files are written where the user chooses;
+nothing is uploaded. Tests: `test/core/backup_test.dart`,
+`test/ui/backup_screen_test.dart`.
+
+### Upcoming payments calendar (Phase 11.3)
+
+`UpcomingCalendar` (pure, `insights/upcoming.dart`) merges, for a window
+(default 60 days): loan EMIs from the amortisation schedule (authoritative);
+active recurring series stepped by cadence from the mandate date (exact) or
+the predicted next date (marked expected), skipping ones a loan EMI already
+covers (±3 days, ±1% amount); and card bills that are due or overdue. Expected
+items up to 7 days late show as overdue today; older ones are dropped.
+
+UI: `UpcomingScreen` (30-day total, month grid with dots, red when overdue;
+tap a day to filter; this month and next), from the "Subscriptions & EMIs"
+card on Insights and from Loans. Feeds the reminders in 11.4.
+Tests: `test/insights/upcoming_test.dart`.
+
+### Reminders (Phase 11.4)
+
+`flutter_local_notifications` 22 + `timezone` / `flutter_timezone`. Android:
+`POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, the plugin's scheduled /
+boot receivers, core-library desugaring. Inexact scheduling
+(`inexactAllowWhileIdle`) at about 9 am, so no exact-alarm permission.
+
+`ReminderPlanner` (pure, `insights/reminders.dart`) from the 11.3 calendar:
+card bills 3 days before and on the due day (overdue: today), EMIs / mandates
+the day before, SIPs / renewals the day before ("about" when predicted). A
+reminder whose time passed earlier today goes out in a minute; older ones are
+dropped. IDs are FNV-1a hashes of (what, day), so re-planning never
+duplicates. Budget alerts (80% and over) are sent immediately, once per
+level per month (state in shared prefs).
+
+`ReminderService.sync` (off until the user enables it and grants permission)
+cancels and re-schedules the next 30 days; `HomeShell` calls it on start and
+resume. Groups: bills, subscriptions & SIPs, budgets. Notifications use
+private visibility (content hidden on a secure lock screen). UI: Home → bell
+→ Reminders. Tests: `test/insights/reminders_test.dart` (fake scheduler).
+
+### Sheets — calculator notepad (Phase 11.5)
+
+Schema v17: `sheets` (title, body, updated). `SheetEvaluator` (pure,
+`insights/sheets.dart`) evaluates each line with a recursive-descent parser:
+`+ - * / ^` (right-assoc power), brackets, unary minus, `%` and `x% of y`,
+Indian units (`k`, `L` / `lakh`, `cr` / `crore`) and grouped numbers (Indian
+`40,00,000` or western `4,000,000`; a comma not followed by a proper group is
+an argument separator), `name = expr` variables, `sum` / `total` of the
+current block (reset by blank lines and `#` headings, not `//` comments).
+Functions: `emi(P, rate%, years)`, `sip(monthly, rate%, years)` (annuity
+due), `fv`, `pv`, `round`, `min`, `max`, `abs`, `sqrt`; user data from a
+precomputed `SheetData` (`SheetRepository.data`): `networth`, `investments`,
+`cash`, `spend("category" | "all", monthsAgo)`, `income(monthsAgo)`,
+`avg_spend(category, months)`. Errors are per line and never stop later lines.
+
+UI: Home → calculator icon → Sheets (example sheet on first use). The editor
+aligns results with each logical line by measuring wrapped heights with the
+field's own theme-merged style, strut and text scaling; headings bold,
+comments muted, tap a result to copy, autosave after 600 ms, help sheet.
+Tests: `test/insights/sheets_test.dart`, `test/ui/sheets_screen_test.dart`.
 
 ---
 

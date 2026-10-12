@@ -526,3 +526,11 @@ class RetirementPlans extends Table {
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
+
+/// Calculator notepads (Phase 11.5).
+class Sheets extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get title => text()();
+  TextColumn get body => text()();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+}

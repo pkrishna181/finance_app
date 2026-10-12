@@ -7,6 +7,8 @@ import '../../ingestion/sms/consent_screen.dart';
 import 'saved_passwords_screen.dart';
 import '../../ingestion/investments/amfi_nav.dart';
 import '../widgets/price_feed_opt_in.dart';
+import '../../core/security/app_lock.dart';
+import 'backup_screen.dart';
 
 /// Privacy controls: SMS consent revoke and permission shortcuts.
 class PrivacySettingsScreen extends StatefulWidget {
@@ -110,6 +112,19 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
                     ),
                   ),
                 const Divider(),
+                const AppLockTiles(),
+                ListTile(
+                  leading: const Icon(Icons.backup_outlined),
+                  title: const Text('Backup & restore'),
+                  subtitle: const Text('Encrypted with your passphrase'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const BackupScreen(),
+                    ),
+                  ),
+                ),
+                const Divider(),
                 const _PriceFeedTile(),
                 const Divider(),
                 ListTile(
@@ -190,6 +205,107 @@ class _PriceFeedTileState extends State<_PriceFeedTile> {
         'Downloads AMFI\'s public list of all fund NAVs; nothing about you is '
         'sent.${l == null ? '' : ' Last updated ${l.day}/${l.month}/${l.year}.'}',
       ),
+    );
+  }
+}
+
+/// App lock on/off, re-lock timeout, and hiding the app in recents.
+class AppLockTiles extends StatefulWidget {
+  const AppLockTiles({super.key, this.settings, this.authenticator});
+
+  final AppLockSettings? settings;
+  final Authenticator? authenticator;
+
+  @override
+  State<AppLockTiles> createState() => _AppLockTilesState();
+}
+
+class _AppLockTilesState extends State<AppLockTiles> {
+  late final _settings = widget.settings ?? AppLockSettings();
+  late final _auth = widget.authenticator ?? DeviceAuthenticator();
+  bool? _enabled;
+  int _timeout = 60;
+  bool _secure = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final e = await _settings.isEnabled();
+    final t = await _settings.timeoutSeconds();
+    final s = await _settings.secureWindow();
+    if (!mounted) return;
+    setState(() {
+      _enabled = e;
+      _timeout = t;
+      _secure = s;
+    });
+  }
+
+  Future<void> _toggle(bool on) async {
+    if (on) {
+      if (!await _auth.isAvailable()) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Set up a screen lock or fingerprint on your phone '
+              'first.'),
+        ));
+        return;
+      }
+      // Prove it works before relying on it.
+      if (!await _auth.authenticate('Confirm to turn on app lock')) return;
+    }
+    await _settings.setEnabled(on);
+    await _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = _enabled ?? false;
+    return Column(
+      children: [
+        SwitchListTile(
+          secondary: const Icon(Icons.fingerprint),
+          value: enabled,
+          onChanged: _enabled == null ? null : _toggle,
+          title: const Text('App lock'),
+          subtitle: const Text(
+            'Unlock with fingerprint, face or your phone\'s PIN',
+          ),
+        ),
+        if (enabled)
+          ListTile(
+            leading: const SizedBox(width: 24),
+            title: const Text('Lock again'),
+            trailing: DropdownButton<int>(
+              value: _timeout,
+              items: [
+                for (final e in AppLockSettings.timeouts.entries)
+                  DropdownMenuItem(value: e.key, child: Text(e.value)),
+              ],
+              onChanged: (v) async {
+                if (v == null) return;
+                await _settings.setTimeoutSeconds(v);
+                await _load();
+              },
+            ),
+          ),
+        SwitchListTile(
+          secondary: const Icon(Icons.visibility_off_outlined),
+          value: _secure,
+          onChanged: (v) async {
+            await _settings.setSecureWindow(v);
+            await _load();
+          },
+          title: const Text('Hide in recent apps'),
+          subtitle: const Text(
+            'Blanks Arth in the app switcher and blocks screenshots',
+          ),
+        ),
+      ],
     );
   }
 }

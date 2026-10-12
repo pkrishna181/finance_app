@@ -48,6 +48,11 @@ dependencies:
   # Insights charts. Checked 2026-09: fl_chart 1.x — pure Dart/Flutter, MIT,
   # actively maintained (imfuzzy/fl_chart); no network or native code.
   fl_chart: ^1.0.0
+  local_auth: ^3.0.2
+  pointycastle: ^4.0.0
+  flutter_local_notifications: ^22.3.2
+  timezone: ^0.11.2
+  flutter_timezone: ^5.1.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

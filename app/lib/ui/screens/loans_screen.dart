@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/db/database.dart';
 import '../../insights/insights.dart';
+import 'upcoming_screen.dart';
 
 String _d(DateTime d) => '${d.day} ${monthShort(d.month)} ${d.year}';
 String _m(DateTime d) => monthLabel(d.year, d.month);
@@ -48,7 +49,20 @@ class _LoansScreenState extends State<LoansScreen> {
     final t = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Loans')),
+      appBar: AppBar(
+        title: const Text('Loans'),
+        actions: [
+          IconButton(
+            tooltip: 'Upcoming payments',
+            icon: const Icon(Icons.calendar_month_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => UpcomingScreen(database: widget.database),
+              ),
+            ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _open(LoanEditScreen(database: widget.database)),
         icon: const Icon(Icons.add),
