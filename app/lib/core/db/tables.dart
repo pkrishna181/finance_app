@@ -502,3 +502,27 @@ class AllocationTargets extends Table {
   @override
   Set<Column<Object>> get primaryKey => {bucket};
 }
+
+/// The user's retirement assumptions; single row with id 1 (Phase 10.5).
+class RetirementPlans extends Table {
+  IntColumn get id => integer()();
+  IntColumn get currentAge => integer()();
+  IntColumn get retireAge => integer()();
+  IntColumn get lifeExpectancy => integer().withDefault(const Constant(85))();
+
+  /// Null = use the average monthly spend from the ledger.
+  IntColumn get monthlyExpensePaise => integer().nullable()();
+  IntColumn get inflationBp => integer().withDefault(const Constant(600))();
+  IntColumn get returnPreBp => integer().withDefault(const Constant(1000))();
+  IntColumn get returnPostBp => integer().withDefault(const Constant(700))();
+
+  /// Safe withdrawal rate; null = plan to last until [lifeExpectancy].
+  IntColumn get swrBp => integer().nullable()();
+
+  /// Comma-separated asset classes counted as retirement money.
+  TextColumn get classes =>
+      text().withDefault(const Constant('equity,debt,gold,other'))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}

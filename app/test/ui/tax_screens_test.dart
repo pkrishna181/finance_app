@@ -6,6 +6,7 @@ import 'package:arth/ingestion/investments/cas_parser.dart';
 import 'package:arth/ui/screens/allocation_screen.dart';
 import 'package:arth/ui/screens/capital_gains_screen.dart';
 import 'package:arth/ui/screens/loans_screen.dart';
+import 'package:arth/ui/screens/retirement_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -118,5 +119,28 @@ void main() {
     // Fixture: ~60% equity, ~40% debt, no gold → off target.
     expect(find.textContaining('consider rebalancing'), findsOneWidget);
     expect(find.textContaining('add ₹'), findsWidgets);
+  });
+
+  testWidgets('retirement: enter assumptions and see the plan', (tester) async {
+    final db = await dbWithCas(tester);
+    await tester.pumpWidget(MaterialApp(
+      home: RetirementScreen(database: db, now: DateTime(2026, 9, 30)),
+    ));
+    await settle(tester);
+    expect(find.text('Calculate'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextField, 'Age now'), '35');
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Monthly expenses today'), '60000');
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Safe withdrawal rate (optional)'), '3.5');
+    await tester.pump();
+    await tester.tap(find.text('Calculate'));
+    await settle(tester);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('You need ₹'), findsOneWidget);
+    expect(find.textContaining("in today's money"), findsOneWidget);
+    expect(find.textContaining('a month from now to close the gap'),
+        findsOneWidget);
+    expect(find.text('Update'), findsOneWidget);
   });
 }

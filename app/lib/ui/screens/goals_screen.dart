@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/db/database.dart';
 import '../../insights/insights.dart';
+import 'retirement_screen.dart';
 
 /// Savings goals with progress, the monthly amount needed, and the date the
 /// goal is reached at the recent pace.
@@ -56,7 +57,20 @@ class _GoalsScreenState extends State<GoalsScreen> {
   Widget build(BuildContext context) {
     final goals = _goals;
     return Scaffold(
-      appBar: AppBar(title: const Text('Goals')),
+      appBar: AppBar(
+        title: const Text('Goals'),
+        actions: [
+          TextButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => RetirementScreen(database: widget.database),
+              ),
+            ),
+            icon: const Icon(Icons.beach_access_outlined),
+            label: const Text('Retirement'),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _edit(),
         icon: const Icon(Icons.add),

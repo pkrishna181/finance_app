@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 10.4 — asset allocation
+Last updated: Phase 10.5 — retirement plan
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -1014,6 +1014,30 @@ trim amounts; target editor with presets 70/20/10, 60/30/10, 40/50/10) and a
 note to rebalance with new money first because selling can be taxed.
 
 Tests: `test/insights/allocation_test.dart`, `test/ui/tax_screens_test.dart`.
+
+### Retirement plan (Phase 10.5)
+
+Schema v16: `retirement_plans` (single row: ages, life expectancy, optional
+monthly expenses, inflation, returns before / after retiring, optional safe
+withdrawal rate, asset classes counted).
+
+`RetirementCalculator` (pure, `insights/retirement.dart`):
+- Expense at retirement = monthly × 12 × (1 + inflation)^years.
+- Corpus = expense / SWR when a SWR is set; otherwise the value of yearly
+  withdrawals (start of year) growing with inflation until the planned age at
+  the post-retirement return (= years × expense when return = inflation).
+- Current corpus = value of the chosen asset classes (10.4), grown at the
+  pre-retirement return; the gap is closed by a monthly saving at the
+  equivalent monthly rate (month-end).
+- Expenses default to the average monthly spend of the last 12 months with
+  data; "on track" compares the needed saving with the recent average monthly
+  income − spend.
+
+UI: Goals → Retirement (result card with the amount needed in future and
+today's rupees, % funded, monthly saving needed, recent saving; assumptions
+form with asset-class chips).
+
+Tests: `test/insights/retirement_test.dart`, `test/ui/tax_screens_test.dart`.
 
 ---
 

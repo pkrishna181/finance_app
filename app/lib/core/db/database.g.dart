@@ -14513,6 +14513,627 @@ class AllocationTargetsCompanion extends UpdateCompanion<AllocationTarget> {
   }
 }
 
+class $RetirementPlansTable extends RetirementPlans
+    with TableInfo<$RetirementPlansTable, RetirementPlan> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RetirementPlansTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _currentAgeMeta = const VerificationMeta(
+    'currentAge',
+  );
+  @override
+  late final GeneratedColumn<int> currentAge = GeneratedColumn<int>(
+    'current_age',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _retireAgeMeta = const VerificationMeta(
+    'retireAge',
+  );
+  @override
+  late final GeneratedColumn<int> retireAge = GeneratedColumn<int>(
+    'retire_age',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lifeExpectancyMeta = const VerificationMeta(
+    'lifeExpectancy',
+  );
+  @override
+  late final GeneratedColumn<int> lifeExpectancy = GeneratedColumn<int>(
+    'life_expectancy',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(85),
+  );
+  static const VerificationMeta _monthlyExpensePaiseMeta =
+      const VerificationMeta('monthlyExpensePaise');
+  @override
+  late final GeneratedColumn<int> monthlyExpensePaise = GeneratedColumn<int>(
+    'monthly_expense_paise',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _inflationBpMeta = const VerificationMeta(
+    'inflationBp',
+  );
+  @override
+  late final GeneratedColumn<int> inflationBp = GeneratedColumn<int>(
+    'inflation_bp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(600),
+  );
+  static const VerificationMeta _returnPreBpMeta = const VerificationMeta(
+    'returnPreBp',
+  );
+  @override
+  late final GeneratedColumn<int> returnPreBp = GeneratedColumn<int>(
+    'return_pre_bp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1000),
+  );
+  static const VerificationMeta _returnPostBpMeta = const VerificationMeta(
+    'returnPostBp',
+  );
+  @override
+  late final GeneratedColumn<int> returnPostBp = GeneratedColumn<int>(
+    'return_post_bp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(700),
+  );
+  static const VerificationMeta _swrBpMeta = const VerificationMeta('swrBp');
+  @override
+  late final GeneratedColumn<int> swrBp = GeneratedColumn<int>(
+    'swr_bp',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _classesMeta = const VerificationMeta(
+    'classes',
+  );
+  @override
+  late final GeneratedColumn<String> classes = GeneratedColumn<String>(
+    'classes',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('equity,debt,gold,other'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    currentAge,
+    retireAge,
+    lifeExpectancy,
+    monthlyExpensePaise,
+    inflationBp,
+    returnPreBp,
+    returnPostBp,
+    swrBp,
+    classes,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'retirement_plans';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RetirementPlan> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('current_age')) {
+      context.handle(
+        _currentAgeMeta,
+        currentAge.isAcceptableOrUnknown(data['current_age']!, _currentAgeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_currentAgeMeta);
+    }
+    if (data.containsKey('retire_age')) {
+      context.handle(
+        _retireAgeMeta,
+        retireAge.isAcceptableOrUnknown(data['retire_age']!, _retireAgeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_retireAgeMeta);
+    }
+    if (data.containsKey('life_expectancy')) {
+      context.handle(
+        _lifeExpectancyMeta,
+        lifeExpectancy.isAcceptableOrUnknown(
+          data['life_expectancy']!,
+          _lifeExpectancyMeta,
+        ),
+      );
+    }
+    if (data.containsKey('monthly_expense_paise')) {
+      context.handle(
+        _monthlyExpensePaiseMeta,
+        monthlyExpensePaise.isAcceptableOrUnknown(
+          data['monthly_expense_paise']!,
+          _monthlyExpensePaiseMeta,
+        ),
+      );
+    }
+    if (data.containsKey('inflation_bp')) {
+      context.handle(
+        _inflationBpMeta,
+        inflationBp.isAcceptableOrUnknown(
+          data['inflation_bp']!,
+          _inflationBpMeta,
+        ),
+      );
+    }
+    if (data.containsKey('return_pre_bp')) {
+      context.handle(
+        _returnPreBpMeta,
+        returnPreBp.isAcceptableOrUnknown(
+          data['return_pre_bp']!,
+          _returnPreBpMeta,
+        ),
+      );
+    }
+    if (data.containsKey('return_post_bp')) {
+      context.handle(
+        _returnPostBpMeta,
+        returnPostBp.isAcceptableOrUnknown(
+          data['return_post_bp']!,
+          _returnPostBpMeta,
+        ),
+      );
+    }
+    if (data.containsKey('swr_bp')) {
+      context.handle(
+        _swrBpMeta,
+        swrBp.isAcceptableOrUnknown(data['swr_bp']!, _swrBpMeta),
+      );
+    }
+    if (data.containsKey('classes')) {
+      context.handle(
+        _classesMeta,
+        classes.isAcceptableOrUnknown(data['classes']!, _classesMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RetirementPlan map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RetirementPlan(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      currentAge: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}current_age'],
+      )!,
+      retireAge: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}retire_age'],
+      )!,
+      lifeExpectancy: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}life_expectancy'],
+      )!,
+      monthlyExpensePaise: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}monthly_expense_paise'],
+      ),
+      inflationBp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}inflation_bp'],
+      )!,
+      returnPreBp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}return_pre_bp'],
+      )!,
+      returnPostBp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}return_post_bp'],
+      )!,
+      swrBp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}swr_bp'],
+      ),
+      classes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}classes'],
+      )!,
+    );
+  }
+
+  @override
+  $RetirementPlansTable createAlias(String alias) {
+    return $RetirementPlansTable(attachedDatabase, alias);
+  }
+}
+
+class RetirementPlan extends DataClass implements Insertable<RetirementPlan> {
+  final int id;
+  final int currentAge;
+  final int retireAge;
+  final int lifeExpectancy;
+
+  /// Null = use the average monthly spend from the ledger.
+  final int? monthlyExpensePaise;
+  final int inflationBp;
+  final int returnPreBp;
+  final int returnPostBp;
+
+  /// Safe withdrawal rate; null = plan to last until [lifeExpectancy].
+  final int? swrBp;
+
+  /// Comma-separated asset classes counted as retirement money.
+  final String classes;
+  const RetirementPlan({
+    required this.id,
+    required this.currentAge,
+    required this.retireAge,
+    required this.lifeExpectancy,
+    this.monthlyExpensePaise,
+    required this.inflationBp,
+    required this.returnPreBp,
+    required this.returnPostBp,
+    this.swrBp,
+    required this.classes,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['current_age'] = Variable<int>(currentAge);
+    map['retire_age'] = Variable<int>(retireAge);
+    map['life_expectancy'] = Variable<int>(lifeExpectancy);
+    if (!nullToAbsent || monthlyExpensePaise != null) {
+      map['monthly_expense_paise'] = Variable<int>(monthlyExpensePaise);
+    }
+    map['inflation_bp'] = Variable<int>(inflationBp);
+    map['return_pre_bp'] = Variable<int>(returnPreBp);
+    map['return_post_bp'] = Variable<int>(returnPostBp);
+    if (!nullToAbsent || swrBp != null) {
+      map['swr_bp'] = Variable<int>(swrBp);
+    }
+    map['classes'] = Variable<String>(classes);
+    return map;
+  }
+
+  RetirementPlansCompanion toCompanion(bool nullToAbsent) {
+    return RetirementPlansCompanion(
+      id: Value(id),
+      currentAge: Value(currentAge),
+      retireAge: Value(retireAge),
+      lifeExpectancy: Value(lifeExpectancy),
+      monthlyExpensePaise: monthlyExpensePaise == null && nullToAbsent
+          ? const Value.absent()
+          : Value(monthlyExpensePaise),
+      inflationBp: Value(inflationBp),
+      returnPreBp: Value(returnPreBp),
+      returnPostBp: Value(returnPostBp),
+      swrBp: swrBp == null && nullToAbsent
+          ? const Value.absent()
+          : Value(swrBp),
+      classes: Value(classes),
+    );
+  }
+
+  factory RetirementPlan.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RetirementPlan(
+      id: serializer.fromJson<int>(json['id']),
+      currentAge: serializer.fromJson<int>(json['currentAge']),
+      retireAge: serializer.fromJson<int>(json['retireAge']),
+      lifeExpectancy: serializer.fromJson<int>(json['lifeExpectancy']),
+      monthlyExpensePaise: serializer.fromJson<int?>(
+        json['monthlyExpensePaise'],
+      ),
+      inflationBp: serializer.fromJson<int>(json['inflationBp']),
+      returnPreBp: serializer.fromJson<int>(json['returnPreBp']),
+      returnPostBp: serializer.fromJson<int>(json['returnPostBp']),
+      swrBp: serializer.fromJson<int?>(json['swrBp']),
+      classes: serializer.fromJson<String>(json['classes']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'currentAge': serializer.toJson<int>(currentAge),
+      'retireAge': serializer.toJson<int>(retireAge),
+      'lifeExpectancy': serializer.toJson<int>(lifeExpectancy),
+      'monthlyExpensePaise': serializer.toJson<int?>(monthlyExpensePaise),
+      'inflationBp': serializer.toJson<int>(inflationBp),
+      'returnPreBp': serializer.toJson<int>(returnPreBp),
+      'returnPostBp': serializer.toJson<int>(returnPostBp),
+      'swrBp': serializer.toJson<int?>(swrBp),
+      'classes': serializer.toJson<String>(classes),
+    };
+  }
+
+  RetirementPlan copyWith({
+    int? id,
+    int? currentAge,
+    int? retireAge,
+    int? lifeExpectancy,
+    Value<int?> monthlyExpensePaise = const Value.absent(),
+    int? inflationBp,
+    int? returnPreBp,
+    int? returnPostBp,
+    Value<int?> swrBp = const Value.absent(),
+    String? classes,
+  }) => RetirementPlan(
+    id: id ?? this.id,
+    currentAge: currentAge ?? this.currentAge,
+    retireAge: retireAge ?? this.retireAge,
+    lifeExpectancy: lifeExpectancy ?? this.lifeExpectancy,
+    monthlyExpensePaise: monthlyExpensePaise.present
+        ? monthlyExpensePaise.value
+        : this.monthlyExpensePaise,
+    inflationBp: inflationBp ?? this.inflationBp,
+    returnPreBp: returnPreBp ?? this.returnPreBp,
+    returnPostBp: returnPostBp ?? this.returnPostBp,
+    swrBp: swrBp.present ? swrBp.value : this.swrBp,
+    classes: classes ?? this.classes,
+  );
+  RetirementPlan copyWithCompanion(RetirementPlansCompanion data) {
+    return RetirementPlan(
+      id: data.id.present ? data.id.value : this.id,
+      currentAge: data.currentAge.present
+          ? data.currentAge.value
+          : this.currentAge,
+      retireAge: data.retireAge.present ? data.retireAge.value : this.retireAge,
+      lifeExpectancy: data.lifeExpectancy.present
+          ? data.lifeExpectancy.value
+          : this.lifeExpectancy,
+      monthlyExpensePaise: data.monthlyExpensePaise.present
+          ? data.monthlyExpensePaise.value
+          : this.monthlyExpensePaise,
+      inflationBp: data.inflationBp.present
+          ? data.inflationBp.value
+          : this.inflationBp,
+      returnPreBp: data.returnPreBp.present
+          ? data.returnPreBp.value
+          : this.returnPreBp,
+      returnPostBp: data.returnPostBp.present
+          ? data.returnPostBp.value
+          : this.returnPostBp,
+      swrBp: data.swrBp.present ? data.swrBp.value : this.swrBp,
+      classes: data.classes.present ? data.classes.value : this.classes,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RetirementPlan(')
+          ..write('id: $id, ')
+          ..write('currentAge: $currentAge, ')
+          ..write('retireAge: $retireAge, ')
+          ..write('lifeExpectancy: $lifeExpectancy, ')
+          ..write('monthlyExpensePaise: $monthlyExpensePaise, ')
+          ..write('inflationBp: $inflationBp, ')
+          ..write('returnPreBp: $returnPreBp, ')
+          ..write('returnPostBp: $returnPostBp, ')
+          ..write('swrBp: $swrBp, ')
+          ..write('classes: $classes')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    currentAge,
+    retireAge,
+    lifeExpectancy,
+    monthlyExpensePaise,
+    inflationBp,
+    returnPreBp,
+    returnPostBp,
+    swrBp,
+    classes,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RetirementPlan &&
+          other.id == this.id &&
+          other.currentAge == this.currentAge &&
+          other.retireAge == this.retireAge &&
+          other.lifeExpectancy == this.lifeExpectancy &&
+          other.monthlyExpensePaise == this.monthlyExpensePaise &&
+          other.inflationBp == this.inflationBp &&
+          other.returnPreBp == this.returnPreBp &&
+          other.returnPostBp == this.returnPostBp &&
+          other.swrBp == this.swrBp &&
+          other.classes == this.classes);
+}
+
+class RetirementPlansCompanion extends UpdateCompanion<RetirementPlan> {
+  final Value<int> id;
+  final Value<int> currentAge;
+  final Value<int> retireAge;
+  final Value<int> lifeExpectancy;
+  final Value<int?> monthlyExpensePaise;
+  final Value<int> inflationBp;
+  final Value<int> returnPreBp;
+  final Value<int> returnPostBp;
+  final Value<int?> swrBp;
+  final Value<String> classes;
+  const RetirementPlansCompanion({
+    this.id = const Value.absent(),
+    this.currentAge = const Value.absent(),
+    this.retireAge = const Value.absent(),
+    this.lifeExpectancy = const Value.absent(),
+    this.monthlyExpensePaise = const Value.absent(),
+    this.inflationBp = const Value.absent(),
+    this.returnPreBp = const Value.absent(),
+    this.returnPostBp = const Value.absent(),
+    this.swrBp = const Value.absent(),
+    this.classes = const Value.absent(),
+  });
+  RetirementPlansCompanion.insert({
+    this.id = const Value.absent(),
+    required int currentAge,
+    required int retireAge,
+    this.lifeExpectancy = const Value.absent(),
+    this.monthlyExpensePaise = const Value.absent(),
+    this.inflationBp = const Value.absent(),
+    this.returnPreBp = const Value.absent(),
+    this.returnPostBp = const Value.absent(),
+    this.swrBp = const Value.absent(),
+    this.classes = const Value.absent(),
+  }) : currentAge = Value(currentAge),
+       retireAge = Value(retireAge);
+  static Insertable<RetirementPlan> custom({
+    Expression<int>? id,
+    Expression<int>? currentAge,
+    Expression<int>? retireAge,
+    Expression<int>? lifeExpectancy,
+    Expression<int>? monthlyExpensePaise,
+    Expression<int>? inflationBp,
+    Expression<int>? returnPreBp,
+    Expression<int>? returnPostBp,
+    Expression<int>? swrBp,
+    Expression<String>? classes,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (currentAge != null) 'current_age': currentAge,
+      if (retireAge != null) 'retire_age': retireAge,
+      if (lifeExpectancy != null) 'life_expectancy': lifeExpectancy,
+      if (monthlyExpensePaise != null)
+        'monthly_expense_paise': monthlyExpensePaise,
+      if (inflationBp != null) 'inflation_bp': inflationBp,
+      if (returnPreBp != null) 'return_pre_bp': returnPreBp,
+      if (returnPostBp != null) 'return_post_bp': returnPostBp,
+      if (swrBp != null) 'swr_bp': swrBp,
+      if (classes != null) 'classes': classes,
+    });
+  }
+
+  RetirementPlansCompanion copyWith({
+    Value<int>? id,
+    Value<int>? currentAge,
+    Value<int>? retireAge,
+    Value<int>? lifeExpectancy,
+    Value<int?>? monthlyExpensePaise,
+    Value<int>? inflationBp,
+    Value<int>? returnPreBp,
+    Value<int>? returnPostBp,
+    Value<int?>? swrBp,
+    Value<String>? classes,
+  }) {
+    return RetirementPlansCompanion(
+      id: id ?? this.id,
+      currentAge: currentAge ?? this.currentAge,
+      retireAge: retireAge ?? this.retireAge,
+      lifeExpectancy: lifeExpectancy ?? this.lifeExpectancy,
+      monthlyExpensePaise: monthlyExpensePaise ?? this.monthlyExpensePaise,
+      inflationBp: inflationBp ?? this.inflationBp,
+      returnPreBp: returnPreBp ?? this.returnPreBp,
+      returnPostBp: returnPostBp ?? this.returnPostBp,
+      swrBp: swrBp ?? this.swrBp,
+      classes: classes ?? this.classes,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (currentAge.present) {
+      map['current_age'] = Variable<int>(currentAge.value);
+    }
+    if (retireAge.present) {
+      map['retire_age'] = Variable<int>(retireAge.value);
+    }
+    if (lifeExpectancy.present) {
+      map['life_expectancy'] = Variable<int>(lifeExpectancy.value);
+    }
+    if (monthlyExpensePaise.present) {
+      map['monthly_expense_paise'] = Variable<int>(monthlyExpensePaise.value);
+    }
+    if (inflationBp.present) {
+      map['inflation_bp'] = Variable<int>(inflationBp.value);
+    }
+    if (returnPreBp.present) {
+      map['return_pre_bp'] = Variable<int>(returnPreBp.value);
+    }
+    if (returnPostBp.present) {
+      map['return_post_bp'] = Variable<int>(returnPostBp.value);
+    }
+    if (swrBp.present) {
+      map['swr_bp'] = Variable<int>(swrBp.value);
+    }
+    if (classes.present) {
+      map['classes'] = Variable<String>(classes.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RetirementPlansCompanion(')
+          ..write('id: $id, ')
+          ..write('currentAge: $currentAge, ')
+          ..write('retireAge: $retireAge, ')
+          ..write('lifeExpectancy: $lifeExpectancy, ')
+          ..write('monthlyExpensePaise: $monthlyExpensePaise, ')
+          ..write('inflationBp: $inflationBp, ')
+          ..write('returnPreBp: $returnPreBp, ')
+          ..write('returnPostBp: $returnPostBp, ')
+          ..write('swrBp: $swrBp, ')
+          ..write('classes: $classes')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$ArthDatabase extends GeneratedDatabase {
   _$ArthDatabase(QueryExecutor e) : super(e);
   $ArthDatabaseManager get managers => $ArthDatabaseManager(this);
@@ -14561,6 +15182,9 @@ abstract class _$ArthDatabase extends GeneratedDatabase {
   );
   late final $AllocationTargetsTable allocationTargets =
       $AllocationTargetsTable(this);
+  late final $RetirementPlansTable retirementPlans = $RetirementPlansTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -14594,6 +15218,7 @@ abstract class _$ArthDatabase extends GeneratedDatabase {
     loans,
     loanPrepayments,
     allocationTargets,
+    retirementPlans,
   ];
 }
 
@@ -26979,6 +27604,313 @@ typedef $$AllocationTargetsTableProcessedTableManager =
       AllocationTarget,
       PrefetchHooks Function()
     >;
+typedef $$RetirementPlansTableCreateCompanionBuilder =
+    RetirementPlansCompanion Function({
+      Value<int> id,
+      required int currentAge,
+      required int retireAge,
+      Value<int> lifeExpectancy,
+      Value<int?> monthlyExpensePaise,
+      Value<int> inflationBp,
+      Value<int> returnPreBp,
+      Value<int> returnPostBp,
+      Value<int?> swrBp,
+      Value<String> classes,
+    });
+typedef $$RetirementPlansTableUpdateCompanionBuilder =
+    RetirementPlansCompanion Function({
+      Value<int> id,
+      Value<int> currentAge,
+      Value<int> retireAge,
+      Value<int> lifeExpectancy,
+      Value<int?> monthlyExpensePaise,
+      Value<int> inflationBp,
+      Value<int> returnPreBp,
+      Value<int> returnPostBp,
+      Value<int?> swrBp,
+      Value<String> classes,
+    });
+
+class $$RetirementPlansTableFilterComposer
+    extends Composer<_$ArthDatabase, $RetirementPlansTable> {
+  $$RetirementPlansTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get currentAge => $composableBuilder(
+    column: $table.currentAge,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get retireAge => $composableBuilder(
+    column: $table.retireAge,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lifeExpectancy => $composableBuilder(
+    column: $table.lifeExpectancy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get monthlyExpensePaise => $composableBuilder(
+    column: $table.monthlyExpensePaise,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get inflationBp => $composableBuilder(
+    column: $table.inflationBp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get returnPreBp => $composableBuilder(
+    column: $table.returnPreBp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get returnPostBp => $composableBuilder(
+    column: $table.returnPostBp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get swrBp => $composableBuilder(
+    column: $table.swrBp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get classes => $composableBuilder(
+    column: $table.classes,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RetirementPlansTableOrderingComposer
+    extends Composer<_$ArthDatabase, $RetirementPlansTable> {
+  $$RetirementPlansTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get currentAge => $composableBuilder(
+    column: $table.currentAge,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get retireAge => $composableBuilder(
+    column: $table.retireAge,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lifeExpectancy => $composableBuilder(
+    column: $table.lifeExpectancy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get monthlyExpensePaise => $composableBuilder(
+    column: $table.monthlyExpensePaise,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get inflationBp => $composableBuilder(
+    column: $table.inflationBp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get returnPreBp => $composableBuilder(
+    column: $table.returnPreBp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get returnPostBp => $composableBuilder(
+    column: $table.returnPostBp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get swrBp => $composableBuilder(
+    column: $table.swrBp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get classes => $composableBuilder(
+    column: $table.classes,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RetirementPlansTableAnnotationComposer
+    extends Composer<_$ArthDatabase, $RetirementPlansTable> {
+  $$RetirementPlansTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get currentAge => $composableBuilder(
+    column: $table.currentAge,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get retireAge =>
+      $composableBuilder(column: $table.retireAge, builder: (column) => column);
+
+  GeneratedColumn<int> get lifeExpectancy => $composableBuilder(
+    column: $table.lifeExpectancy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get monthlyExpensePaise => $composableBuilder(
+    column: $table.monthlyExpensePaise,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get inflationBp => $composableBuilder(
+    column: $table.inflationBp,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get returnPreBp => $composableBuilder(
+    column: $table.returnPreBp,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get returnPostBp => $composableBuilder(
+    column: $table.returnPostBp,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get swrBp =>
+      $composableBuilder(column: $table.swrBp, builder: (column) => column);
+
+  GeneratedColumn<String> get classes =>
+      $composableBuilder(column: $table.classes, builder: (column) => column);
+}
+
+class $$RetirementPlansTableTableManager
+    extends
+        RootTableManager<
+          _$ArthDatabase,
+          $RetirementPlansTable,
+          RetirementPlan,
+          $$RetirementPlansTableFilterComposer,
+          $$RetirementPlansTableOrderingComposer,
+          $$RetirementPlansTableAnnotationComposer,
+          $$RetirementPlansTableCreateCompanionBuilder,
+          $$RetirementPlansTableUpdateCompanionBuilder,
+          (
+            RetirementPlan,
+            BaseReferences<
+              _$ArthDatabase,
+              $RetirementPlansTable,
+              RetirementPlan
+            >,
+          ),
+          RetirementPlan,
+          PrefetchHooks Function()
+        > {
+  $$RetirementPlansTableTableManager(
+    _$ArthDatabase db,
+    $RetirementPlansTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RetirementPlansTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RetirementPlansTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RetirementPlansTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> currentAge = const Value.absent(),
+                Value<int> retireAge = const Value.absent(),
+                Value<int> lifeExpectancy = const Value.absent(),
+                Value<int?> monthlyExpensePaise = const Value.absent(),
+                Value<int> inflationBp = const Value.absent(),
+                Value<int> returnPreBp = const Value.absent(),
+                Value<int> returnPostBp = const Value.absent(),
+                Value<int?> swrBp = const Value.absent(),
+                Value<String> classes = const Value.absent(),
+              }) => RetirementPlansCompanion(
+                id: id,
+                currentAge: currentAge,
+                retireAge: retireAge,
+                lifeExpectancy: lifeExpectancy,
+                monthlyExpensePaise: monthlyExpensePaise,
+                inflationBp: inflationBp,
+                returnPreBp: returnPreBp,
+                returnPostBp: returnPostBp,
+                swrBp: swrBp,
+                classes: classes,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int currentAge,
+                required int retireAge,
+                Value<int> lifeExpectancy = const Value.absent(),
+                Value<int?> monthlyExpensePaise = const Value.absent(),
+                Value<int> inflationBp = const Value.absent(),
+                Value<int> returnPreBp = const Value.absent(),
+                Value<int> returnPostBp = const Value.absent(),
+                Value<int?> swrBp = const Value.absent(),
+                Value<String> classes = const Value.absent(),
+              }) => RetirementPlansCompanion.insert(
+                id: id,
+                currentAge: currentAge,
+                retireAge: retireAge,
+                lifeExpectancy: lifeExpectancy,
+                monthlyExpensePaise: monthlyExpensePaise,
+                inflationBp: inflationBp,
+                returnPreBp: returnPreBp,
+                returnPostBp: returnPostBp,
+                swrBp: swrBp,
+                classes: classes,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RetirementPlansTableProcessedTableManager =
+    ProcessedTableManager<
+      _$ArthDatabase,
+      $RetirementPlansTable,
+      RetirementPlan,
+      $$RetirementPlansTableFilterComposer,
+      $$RetirementPlansTableOrderingComposer,
+      $$RetirementPlansTableAnnotationComposer,
+      $$RetirementPlansTableCreateCompanionBuilder,
+      $$RetirementPlansTableUpdateCompanionBuilder,
+      (
+        RetirementPlan,
+        BaseReferences<_$ArthDatabase, $RetirementPlansTable, RetirementPlan>,
+      ),
+      RetirementPlan,
+      PrefetchHooks Function()
+    >;
 
 class $ArthDatabaseManager {
   final _$ArthDatabase _db;
@@ -27039,4 +27971,6 @@ class $ArthDatabaseManager {
       $$LoanPrepaymentsTableTableManager(_db, _db.loanPrepayments);
   $$AllocationTargetsTableTableManager get allocationTargets =>
       $$AllocationTargetsTableTableManager(_db, _db.allocationTargets);
+  $$RetirementPlansTableTableManager get retirementPlans =>
+      $$RetirementPlansTableTableManager(_db, _db.retirementPlans);
 }
