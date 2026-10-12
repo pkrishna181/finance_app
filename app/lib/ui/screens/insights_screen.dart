@@ -7,6 +7,7 @@ import '../theme/chart_colors.dart';
 import 'budgets_screen.dart';
 import 'category_transactions_screen.dart';
 import 'credit_cards_screen.dart';
+import 'manual_transaction_screen.dart';
 import 'search_screen.dart';
 import 'yearly_screen.dart';
 
@@ -158,6 +159,15 @@ class _InsightsScreenState extends State<InsightsScreen> {
     );
   }
 
+  Future<void> _addManual() async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => ManualTransactionScreen(database: widget.database!),
+      ),
+    );
+    if (saved == true && mounted) await _load();
+  }
+
   Future<void> _openCards() async {
     final db = widget.database;
     if (db == null) return;
@@ -196,6 +206,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
       appBar: AppBar(
         title: const Text('Insights'),
         actions: [
+          if (widget.database != null)
+            IconButton(
+              tooltip: 'Add transaction',
+              icon: const Icon(Icons.add),
+              onPressed: _addManual,
+            ),
           if (widget.database != null)
             IconButton(
               tooltip: 'Search transactions',

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/db/database.dart';
 import '../../insights/insights.dart';
 import '../widgets/category_picker.dart';
+import 'manual_transaction_screen.dart';
 
 /// The transactions behind an Insights number. With a [database], tapping a
 /// row recategorizes it (optionally every row from the same merchant).
@@ -54,10 +55,31 @@ class _CategoryTransactionsScreenState
     return s;
   }
 
+  Future<void> _editManual(int index) async {
+    final db = widget.database!;
+    final t = _txns[index];
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => ManualTransactionScreen(database: db, editId: t.id),
+      ),
+    );
+    if (changed != true || !mounted) return;
+    final fresh = await InsightsRepository(db).loadByIds([t.id]);
+    if (!mounted) return;
+    setState(() {
+      _txns = [
+        for (final x in _txns)
+          if (x.id != t.id) x else ...fresh,
+      ];
+    });
+    widget.onChanged?.call();
+  }
+
   Future<void> _edit(int index) async {
     final db = widget.database;
     if (db == null || _busy || _categories.isEmpty) return;
     final t = _txns[index];
+    if (t.isManual) return _editManual(index);
     final repo = InsightsRepository(db);
     final similar = await repo.similarTransactionIds(t);
     if (!mounted) return;
@@ -172,4 +194,5 @@ InsightTxn _withCategory(InsightTxn t, String slug) => InsightTxn(
       rawMerchant: t.rawMerchant,
       balanceAfterPaise: t.balanceAfterPaise,
       accountKind: t.accountKind,
+      isManual: t.isManual,
     );

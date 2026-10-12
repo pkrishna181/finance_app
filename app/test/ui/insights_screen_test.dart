@@ -275,4 +275,27 @@ void main() {
         .search(TxnQuery.parse('cat:food_delivery')));
     expect(rows, hasLength(2));
   });
+
+  testWidgets('adds a cash transaction from an empty Insights', (tester) async {
+    _tallView(tester);
+    final db = ArthDatabase.memory();
+    addTearDown(() => tester.runAsync(db.close));
+    await tester.pumpWidget(MaterialApp(home: InsightsScreen(database: db)));
+    await _settle(tester);
+    expect(find.textContaining('No transactions yet'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Add transaction'));
+    await _settle(tester);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Amount'), '250');
+    await tester.enterText(find.widgetWithText(TextField, 'What for'), 'Chai');
+    await tester.pump();
+    await tester.tap(find.text('Save'));
+    await _settle(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add transaction'), findsNothing);
+    expect(find.textContaining('No transactions yet'), findsNothing);
+    expect(find.text('Spending by category'), findsOneWidget);
+  });
 }

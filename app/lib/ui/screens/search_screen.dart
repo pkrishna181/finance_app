@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/db/database.dart';
 import '../../insights/insights.dart';
 import '../widgets/category_picker.dart';
+import 'manual_transaction_screen.dart';
 
 /// Search all transactions with [TxnQuery] syntax. Tap a row to change its
 /// category; long-press to select rows and change them together.
@@ -100,6 +101,19 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _editOne(InsightTxn t) async {
+    if (t.isManual) {
+      final changed = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) =>
+              ManualTransactionScreen(database: widget.database, editId: t.id),
+        ),
+      );
+      if (changed == true) {
+        widget.onChanged?.call();
+        await _run();
+      }
+      return;
+    }
     if (_categories.isEmpty) return;
     final similar = await _repo.similarTransactionIds(t);
     if (!mounted) return;

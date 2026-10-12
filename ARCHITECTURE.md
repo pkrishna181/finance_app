@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 8.1 — credit cards
+Last updated: Phase 8.2 — manual transactions
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -719,6 +719,25 @@ note mentions the common 30% guideline.
 Tests: `test/ingestion/statement_summary_test.dart`,
 `test/insights/credit_cards_test.dart` (includes importing the HDFC card
 golden statement end to end).
+
+### Manual transactions (Phase 8.2)
+
+`ManualTransactionRepository` adds / edits / deletes rows the user types in.
+They are ordinary `transactions` rows with `dedupe_hash = 'manual:<random>'`
+(never collides with imports), `txn_type = 'other'`, and a user category
+(`category_source = 'user'`). Cash rows use bank code `CASH` and
+`account_kind = 'cash'`. Only `manual:` rows can be edited or deleted (also
+removing their `user_corrections`). `InsightTxn.isManual` comes from the hash
+prefix.
+
+UI: "+" on Insights → `ManualTransactionScreen` (spent / received, amount,
+what for, category, paid with Cash or a known bank, date). Tapping a manual row
+in a drill-down or search opens the editor instead of the category picker.
+The cash form warns that ATM withdrawals already count as spending (mark them
+Transfers (self) to avoid double counting); the data check-up flags this too.
+
+Tests: `test/insights/manual_transactions_test.dart`,
+`test/ui/insights_screen_test.dart`.
 
 ---
 

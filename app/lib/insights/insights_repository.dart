@@ -74,6 +74,16 @@ class InsightsRepository {
     );
   }
 
+  /// Rows with these ids (missing ids are skipped).
+  Future<List<InsightTxn>> loadByIds(List<int> ids) {
+    if (ids.isEmpty) return Future.value(const []);
+    return _select(
+      't.id IN (${List.filled(ids.length, '?').join(',')})',
+      [for (final id in ids) Variable<int>(id)],
+      order: 'ASC',
+    );
+  }
+
   /// Rows from a credit card in `[from, to)`: the bank's rows with
   /// `account_hint = last4`, or (no [last4]) its rows marked as card.
   Future<List<InsightTxn>> cardTransactions(
@@ -120,6 +130,7 @@ SELECT t.id AS id,
        t.raw_merchant AS raw_merchant,
        t.balance_after_paise AS balance_after_paise,
        t.account_kind AS account_kind,
+       (t.dedupe_hash LIKE 'manual:%') AS is_manual,
        c.slug AS category_slug,
        m.canonical_name AS merchant_name
 FROM transactions t
@@ -150,6 +161,7 @@ ${limit == null ? '' : 'LIMIT $limit'}
           rawMerchant: r.read<String>('raw_merchant'),
           balanceAfterPaise: r.readNullable<int>('balance_after_paise'),
           accountKind: r.readNullable<String>('account_kind'),
+          isManual: r.read<int>('is_manual') == 1,
         ),
     ];
   }

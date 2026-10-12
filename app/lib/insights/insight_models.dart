@@ -50,6 +50,7 @@ class InsightTxn {
     this.rawMerchant = '',
     this.balanceAfterPaise,
     this.accountKind,
+    this.isManual = false,
   });
 
   final int id;
@@ -78,6 +79,9 @@ class InsightTxn {
   final String? accountKind;
 
   bool get isCardAccount => accountKind == 'card';
+
+  /// Entered by the user (editable), not imported.
+  final bool isManual;
 
   String get accountKey => '$bankCode|${accountHint ?? ''}';
 
