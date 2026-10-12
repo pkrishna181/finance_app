@@ -4,7 +4,32 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 6.5 — cash-flow and forecast
+Last updated: Phase 10.6 — Schedule AL (roadmap phases 7–10 complete)
+
+**Network exception (price data, Phase 9+):** the only planned network use is an
+**opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
+Only full lists are fetched — never per-fund/per-symbol lookups — so a request
+reveals nothing about what the user holds. Nothing user-derived is ever sent.
+Off by default; the opt-in screen and Privacy settings must say exactly what is
+downloaded, from where, and that no user data is sent.
+
+---
+
+## Roadmap (feature parity with Paisa, adapted)
+
+Ideas drawn from [Paisa](https://github.com/ananthakumaran/paisa) (AGPL-3.0 —
+reimplement from docs/ideas only, never copy code).
+
+| Phase | Scope |
+|---|---|
+| 7 ✅ | Budgets (per-category, rollover, alerts); yearly views + income statement (cash-flow sankey, spend heatmap); transaction search + bulk edit |
+| 8 ✅ | Credit cards (cycle, due date, utilization, bill vs paid); manual transactions; savings goals; data "doctor" |
+| 9 ✅ | Holdings layer: CAMS/KFintech + NSDL/CDSL CAS PDF import, manual assets (gold, FD, EPF/PPF, property); net worth; XIRR; opt-in price lists |
+| 10 ✅ | Capital gains (FIFO lots, current Indian rules — verify at build time), tax harvesting, Schedule AL, allocation targets, retirement goal, loans |
+| later | Notepad calculator ("sheets"); biometric app lock |
+
+Not adopted: plain-text journal editor, ledger/hledger/beancount backends,
+handlebars import templates (bank profiles cover this).
 
 ---
 
@@ -493,8 +518,8 @@ affect categorization. Tests: `test/insights/anomaly_detector_test.dart`.
   balance, carried forward on quiet days; an account joins from its first known
   balance. Accounts with < 3 balance points are ignored. **Uses all rows
   including transfers** (balances don't care about spend semantics).
-  Caveat: credit-card statements may report outstanding/limit rather than a
-  balance and would distort the sum; not special-cased yet.
+  Rows with `account_kind = 'card'` are skipped (card statements report
+  outstanding, not money you hold) — Phase 8.1.
 - **`CashflowForecaster`** (current calendar month only) — projected spend =
   spent so far + recurring charges still due (from 6.3 series; mandate date
   wins over the estimate; weekly series can fall due repeatedly; overdue ones
@@ -523,9 +548,518 @@ MoM spend delta, 6-month trend, category slices with tail folded into
   text `Semantics` summary.
 - Uncategorized banner drills into the uncategorized list (it does **not** open
   the SMS resolve flow, which handles unparsed SMS, not categories).
-- Category editing from these lists is Phase 6.6.
+- Drill-down lists are editable (Phase 6.6, below).
 - Tests: `test/insights/insights_snapshot_test.dart`,
   `test/ui/insights_screen_test.dart`.
+
+### Category editing (Phase 6.6)
+
+Tapping a row in `CategoryTransactionsScreen` opens a category picker.
+`InsightsRepository.recategorize`:
+
+- Sets `category_id`, `category_source = 'user'`, `suggested_category_slug`
+  and records a `user_corrections` row (`field = 'category'`, old → new).
+- **"Also apply to N other transactions"** (off by default) recategorizes
+  `similarTransactionIds` — same `merchant_id`, else same normalized raw label
+  (`normalizeMerchantLabel`, shared with recurring detection) — skipping rows
+  whose source is already `user`/`user_correction`. It also stores a
+  **merchant-wide rule**: a `category` correction with `transaction_id` NULL,
+  and sets `merchants.default_category_id` when the row has a merchant.
+- Merchant-wide rules apply to newly inserted rows in
+  `upsertTransactionWithProvenance` (only when the row has no category;
+  `category_source = 'user_correction'`) and in `CategoryRuleEngine` after the
+  per-transaction correction. Latest rule wins. Matching is exact on the
+  normalized label, so a merchant whose raw text varies in letters (not just
+  digits/punctuation) needs one rule per variant.
+- `TransferPairing` treats `user_correction` like `user`.
+- Insights reloads via `onChanged` after each edit.
+- Tests: `test/insights/recategorize_test.dart`,
+  `test/ui/insights_screen_test.dart`.
+
+### Budgets (Phase 7.1)
+
+Schema v8 adds `budgets` (one per category: `limit_paise`, `rollover`,
+`start_month` yyyy-MM). `BudgetRepository` upserts by category (an edit keeps
+the original start month). `BudgetCalculator` (pure, `lib/insights/budget.dart`):
+
+- Spent = the aggregator's category spend (debits net of refunds, transfers
+  excluded). Income, transfer and uncategorized slugs can't be budgeted.
+- Status: `over` when spent > available, `warning` at ≥ 80%, else `ok`.
+- **Rollover** (envelope): available = limit + Σ(limit − spent) for months from
+  `start_month`, at most 6 back (the Insights aggregator holds 7). Overspending
+  carries forward as a negative amount.
+- Pace hint (current month only): "spending fast" when the fraction used is
+  more than 10 points ahead of the fraction of the month elapsed.
+- Suggested limit = average of the last 3 months that have data, rounded up to
+  ₹100.
+
+UI: "Budgets" card on Insights (summary + top 5, over-budget first) →
+`BudgetsScreen` (edit/remove, add with suggested amount). Alerts are in-app
+only for now; there is no notification plugin yet.
+Tests: `test/insights/budget_test.dart`, `test/ui/insights_screen_test.dart`.
+
+### Yearly view (Phase 7.2)
+
+`lib/insights/yearly.dart` (pure): `FinancialYear` (Indian FY, Apr–Mar,
+"FY 2026-27") and `YearSummary.build(agg, fy)`:
+
+- Totals are the sum of the 12 monthly summaries, so they always match the
+  monthly Insights numbers (refunds net per month, transfers excluded).
+- Income by source: `salary`, `interest`, and uncategorized credits as
+  `other_income`.
+- `dailySpend` = **gross** debits per day (refunds don't reduce a day).
+- Heatmap levels: quantiles of non-zero days (`quantileThresholds`, 4 levels).
+
+`InsightsRepository.yearAggregator` loads the FY ± 7 days. `YearlyScreen`
+(opened from the month title on Insights): totals, "Where the income went"
+(one stacked bar of the top 5 categories + Other as a share of income; the
+unfilled remainder is savings; the legend with amounts doubles as the table),
+a daily-spend heatmap (one row per month, tap a day for its amount), the
+income statement, and a month-by-month table whose rows jump back to that
+month on Insights.
+
+Chart colors live in `lib/ui/theme/chart_colors.dart`: the dataviz reference
+categorical slots 1–6, with separate light and dark steps (validated with
+`validate_palette.js` in both modes; light slots 3–5 are below 3:1 contrast,
+so these charts always show labeled legends with amounts). They replace the
+6.2 donut palette, whose dark green failed the chroma check. The sequential
+ramp is a single blue hue; in dark mode it runs from dark to light.
+
+Tests: `test/insights/yearly_test.dart`, `test/ui/insights_screen_test.dart`.
+
+### Search and bulk edit (Phase 7.3)
+
+`TxnQuery.parse` (pure, `lib/insights/txn_query.dart`) turns one line into
+filters: free words (merchant, description or canonical name contains), quoted
+phrases, `cat:<slug or name prefix>` / `cat:none`, `>`, `>=`, `<`, `<=`, `=`
+amounts in ₹, `from:` / `to:` (yyyy-mm-dd, inclusive), `in:yyyy-mm`,
+`debit` / `credit`, `bank:`, `type:` (txn type, e.g. `type:atm`; 8.4).
+Invalid dates and unknown keys fall back to text.
+
+`InsightsRepository.search` builds one parameterized SQL query (all terms
+ANDed; `LIKE` wildcards in user text are escaped), newest first, capped at 500
+rows. It shares `_select` with `loadRange`. `recategorizeMany` sets
+`category_source = 'user'` on each row and logs one correction per row
+(no merchant-wide rule: a bulk selection isn't one merchant).
+
+`SearchScreen` (search icon on Insights): example chips, result count with
+money out/in, tap a row to recategorize it (same picker and "apply to the same
+merchant" option as the drill-down, now shared as
+`ui/widgets/category_picker.dart`), long-press to select, "Select all", then
+"Change category". Insights reloads after each change.
+
+Tests: `test/insights/search_test.dart`, `test/ui/insights_screen_test.dart`.
+
+### Saved statement passwords and batch import (Phase 8.0)
+
+Indian banks, card issuers and CAS providers lock statement PDFs with a fixed
+per-issuer password (PAN, DOB, …). `PdfPasswordVault`
+(`ingestion/statement/pdf/password_vault.dart`) stores the ones the user
+chooses to remember as one JSON entry in **flutter_secure_storage**
+(`arth_pdf_passwords_v1`; Android Keystore / iOS Keychain). Passwords are never
+written to the encrypted DB, logs, or shown again in the UI.
+
+- We can't tell which issuer a locked PDF is from until it opens, so
+  `PdfUnlockSession.provide` (passed to the loader as the password provider)
+  tries **every** saved password, ordered by file-name match (label words or
+  learnt bank code; generic words like "statement" ignored) then most recent
+  use. pdfrx keeps calling the provider until one works.
+- Only when none work is the user asked (up to 3 tries; "Skip" gives up). The
+  prompt names the file, shows the issuer hint, and has "Remember for future
+  statements" on by default with a suggested label ("AXIS credit card").
+- `commit(bankCode)` after a successful open marks the saved entry used and
+  records the detected bank, or saves the typed password if asked to.
+- Manage: Privacy → Statement passwords (add, rename, forget; names only).
+
+**Batch import:** the statement picker allows many files. One file keeps the
+preview screen; several go to `BatchImportScreen`, which runs
+`StatementBatchImporter` sequentially (no per-file preview) and lists each
+file's outcome: imported (new / already had / to review), already imported
+(same file hash), skipped (locked, no password), or failed (e.g. scanned PDF).
+Overlapping statements and SMS rows dedupe through the usual `dedupe_hash`.
+
+Tests: `test/ingestion/password_vault_test.dart` (unlocks the real encrypted
+golden PDF), `test/ui/import_screen_test.dart`.
+
+### Credit cards (Phase 8.1)
+
+Schema v9: `transactions.account_kind` (`bank` | `card` | null),
+`statement_summaries` (one per statement import), `credit_cards`.
+
+**On import** `extractStatementSummary` (pure,
+`ingestion/statement/statement_summary.dart`) scans the whole grid for the
+card/account last 4 (masked numbers, "ending 1234", "Account No: …"; several
+different numbers → none) and card bill facts (statement date, payment due
+date, total / minimum due, credit limit; value in the same row after the label,
+else the same column of the next row). The preview stamps `last4` onto rows
+without an `account_hint`; `confirmImport` sets `account_kind` from the layout
+(card profiles → `card`), fills `account_kind` / `account_hint` on rows already
+known from SMS, and stores the summary. No false positives across the golden
+statements; CSV and PDF of the same statement agree.
+
+**Card status** (`CardCycleCalculator`, pure, `insights/credit_cards.dart`):
+cycle from the card's statement day (clamped to short months), else the latest
+printed bill's statement date / last transaction. The printed total due and due
+date win when that bill closed within 5 days of the cycle; otherwise the bill is
+estimated as spends − refunds in the previous cycle, and the due date comes from
+the due day. Credits whose text looks like a payment (payment, thank you, BBPS,
+NEFT, autopay, …) count as paid; other credits are refunds. Outstanding = unpaid
+bill + unbilled; utilization = outstanding / limit (card's, else statement's).
+States: due, overdue, paid, no bill.
+
+`CreditCardRepository`: tracked cards (bank + optional last 4, limit,
+statement / due day); suggestions = card rows grouped by bank + last 4 that
+aren't tracked yet; `statuses(asOf)` sorted overdue → due soonest. A card with
+no last 4 matches all of that bank's card rows.
+
+UI: `CreditCardsScreen` (status tiles, "Found in your statements → Track",
+add/edit/remove) and a "Credit cards" card on Insights (total outstanding and
+up to two bills due), shown once a card is tracked or found. The utilization
+note mentions the common 30% guideline.
+
+Tests: `test/ingestion/statement_summary_test.dart`,
+`test/insights/credit_cards_test.dart` (includes importing the HDFC card
+golden statement end to end).
+
+### Manual transactions (Phase 8.2)
+
+`ManualTransactionRepository` adds / edits / deletes rows the user types in.
+They are ordinary `transactions` rows with `dedupe_hash = 'manual:<random>'`
+(never collides with imports), `txn_type = 'other'`, and a user category
+(`category_source = 'user'`). Cash rows use bank code `CASH` and
+`account_kind = 'cash'`. Only `manual:` rows can be edited or deleted (also
+removing their `user_corrections`). `InsightTxn.isManual` comes from the hash
+prefix.
+
+UI: "+" on Insights → `ManualTransactionScreen` (spent / received, amount,
+what for, category, paid with Cash or a known bank, date). Tapping a manual row
+in a drill-down or search opens the editor instead of the category picker.
+The cash form warns that ATM withdrawals already count as spending (mark them
+Transfers (self) to avoid double counting); the data check-up flags this too.
+
+Tests: `test/insights/manual_transactions_test.dart`,
+`test/ui/insights_screen_test.dart`.
+
+### Savings goals (Phase 8.3)
+
+Schema v10: `goals` (target, optional target date, start date, already-saved
+amount, expected yearly return in basis points, source, source ref) and
+`goal_contributions`.
+
+Progress source (no holdings until Phase 9):
+- **manual** — already saved + contributions logged in the app;
+- **account** — latest `balance_after_paise` of one bank account
+  (`BANK|last4`; cards excluded);
+- **category** — already saved + net debits in a category since the start date
+  (e.g. `investments_sip`; credits such as redemptions subtract).
+
+`GoalCalculator` (pure, `insights/goals.dart`): required monthly saving is the
+annuity payment that grows the current amount to the target by the target date
+at `return / 12` per month (straight division at 0%; never negative). Recent
+pace = last 3 months of contributions / 3 (account: balance growth over 3
+months / 3). States: reached, on track (pace ≥ required), behind, no deadline.
+Projected date = months until the target at the recent pace (capped at 100
+years).
+
+UI: `GoalsScreen` (progress, needed per month, recent pace → projected month,
+"Add money" for manual goals), `GoalEditScreen` (source picker; account list
+shows current balances; logged contributions can be removed), and a Goals card
+on Insights.
+
+Tests: `test/insights/goals_test.dart`, `test/ui/insights_screen_test.dart`.
+
+### Data check-up (Phase 8.4)
+
+`DataDoctor` (pure, `insights/doctor.dart`) over the last 13 months
+(`runDataDoctor` loads rows + counts). Findings, warnings first:
+
+| Check | Rule |
+|---|---|
+| Balance doesn't add up | Per bank account with a last 4 (cards, cash, manual excluded): previous day-closing balance + net movement of the following days ≠ next closing balance (± ₹1). Compared across days because row order within a day is unreliable. |
+| No data for N months | Calendar months with no rows between an account's first and last month. |
+| Nothing since … | Account's latest row older than 45 days. |
+| Uncategorized share | ≥ 20% of the last 3 months' spend (self-transfers excluded) → search `cat:none debit`. |
+| Possible duplicates | Same bank, direction, amount (≥ ₹500) and day more than once → search for that day and amount. |
+| Cash counted twice | Logged manual cash spending in a month that also has ATM withdrawals not marked Transfers (self) → search `type:atm debit`. |
+| Unread messages / skipped rows | Unresolved unparsed SMS / statement rows. |
+| Cards not tracked | Card suggestions from 8.1. |
+
+`DoctorScreen` (heart-shield icon on Insights) links each finding to a
+pre-filled search, the cards screen, or the Import tab (`InsightsScreen.
+onOpenImport`, wired by `HomeShell`).
+
+Tests: `test/insights/doctor_test.dart`, `test/ui/insights_screen_test.dart`.
+
+### Investment statements — CAS (Phase 9.1)
+
+Schema v11: `securities` (ISIN, name, mf / equity), `investment_accounts`
+(folio or demat, provider), `investment_txns` (units / NAV × 10⁴, signed paise,
+content-hash dedupe), `holding_snapshots` (units, price, value, cost per
+account + security + date), `security_prices`.
+
+`CasParser` (pure, `ingestion/investments/cas_parser.dart`) works on text lines
+(`LayoutToGrid.textLines`). Formats were checked against the open-source
+casparser project (MIT) for reference; the code is our own.
+
+- **Detection:** "Consolidated Account Statement/Summary" heading plus folio /
+  demat markers. Provider from the `CAMSCASWS` / `KFINCASWS` watermark, NSDL /
+  CDSL header text, or "Registrar : CAMS/KFINTECH".
+- **Detailed CAMS / KFintech:** AMC line → `Folio No:` (+ PAN) → scheme header
+  (from the scheme-code line or the ISIN line; may wrap) → `Opening Unit
+  Balance` → dated rows → `Closing Unit Balance … NAV on … Total Cost Value …
+  Market Value on …` (may wrap). Rows: trailing decimal numbers (parentheses =
+  negative); 4 → amount, units, NAV, balance; 3 / 2 disambiguated by whether
+  units carry the running balance; 1 → amount (stamp duty, STT, IDCW paid).
+  Types: purchase, SIP, redemption, switch in/out (incl. STP), IDCW payout /
+  reinvest, tax, reversal, misc. Units that don't add up to the closing
+  balance produce a warning.
+- **Holdings tables** (NSDL / CDSL / summary CAS): an ISIN line whose trailing
+  numbers contain quantity … price … value with quantity × price ≈ value
+  (±0.5%); the value is taken from the rightmost column and the quantity from
+  the leftmost, so face value / balance / average-cost columns in between are
+  skipped. ISINs already covered by detailed schemes are ignored. Account from
+  `DP ID / Client ID` or `BO ID`; date from the period or "as on".
+
+`CasImporter` stores a statement in one DB transaction; `openStatementFile`
+(in `batch_import.dart`) opens a PDF **once** (saved passwords via
+`PdfUnlockSession`), routes CAS to `CasImporter` and everything else to the
+bank / card preview using the same pages. Batch and single import both use it;
+a single CAS shows a summary dialog instead of the preview.
+
+- **Fund rows in demat CAS** that print a folio (NSDL lists non-demat
+  folios) are stored under that folio, so the same fund from a CAMS CAS and an
+  NSDL CAS is one holding, not two.
+- **Opening balance:** units held before the statement period are stored as an
+  `opening` transaction at the period start, valued at the first NAV in the
+  statement (an estimate). Only the earliest opening per holding is kept, so
+  overlapping statements don't double it.
+
+Fixtures: `test/golden/cas/*.txt` (synthetic, modelled on real layouts) and
+PDFs from `app/tool/generate_cas_pdfs.py` (CAMS one locked with
+`ABCDE1234F`). Tests: `test/ingestion/investments/`.
+**Known gap:** the synthetic fixtures can't cover every real template; check
+against real statements and add failing ones as fixtures.
+
+### Investment returns (Phase 9.3)
+
+`PortfolioCalculator` (pure, `insights/portfolio.dart`), per account +
+security:
+
+- **Units now** = latest snapshot + later transactions (else the sum of
+  transactions); **price** = latest known price (CAS NAVs, statement closing
+  prices; AMFI in 9.4).
+- **Invested** = FIFO cost of the units still held (purchases, SIPs, switch-in,
+  IDCW reinvest, opening); the statement's "Total Cost Value" wins when nothing
+  happened after that statement. Holdings without history (demat snapshot)
+  have unknown cost and are left out of gain totals.
+- **Booked gains** = sale proceeds − FIFO cost; reversals undo their purchase.
+- **XIRR** (`xirr()`): Newton from 10%, bisection fallback on (−99.99%,
+  10000%); needs ≥ 2 flows of both signs over ≥ 7 days. Flows: buys negative,
+  sales and IDCW payouts positive, current value at the valuation date.
+  Portfolio XIRR pools flows of all holdings with history.
+
+UI: `InvestmentsScreen` (value, gain on invested, XIRR, booked gains, split by
+mutual funds / shares; holdings with value, gain %, XIRR; holding detail with
+units, price date, transactions) and an Investments card on Insights.
+
+Tests: `test/insights/portfolio_test.dart` (XIRR against closed-form values,
+FIFO, the CAS fixture end to end).
+
+### Net worth (Phase 9.2)
+
+Schema v12: `manual_assets` (name, kind: gold, fd, ppf, epf, nps, property,
+vehicle, cash, other, loan; FD rate / start / maturity) and
+`manual_asset_values` (value from a date on; history kept, one per day).
+
+`NetWorthRepository.netWorth(on)`: bank accounts (latest
+`balance_after_paise` per bank + last 4 on or before the date; cards excluded)
++ investments (`PortfolioRepository`) + manual assets − credit-card outstanding
+(8.1, today only) − loans. FDs with a rate grow from the last recorded value,
+compounded quarterly, capped at maturity (`fdValue`). `history()` = month-end
+values for 12 months (card dues left out, leading empty months dropped).
+
+UI: `NetWorthScreen` (total, owned / owed, month-end line chart with tap
+tooltips, groups with items and "as of" dates, stale > 45 days flagged; add /
+update / remove assets and loans) and a Net worth card at the top of Insights.
+When there are no bank transactions yet, Insights still shows net worth and
+investments.
+
+Tests: `test/insights/net_worth_test.dart`, `test/ui/insights_screen_test.dart`.
+
+### Fund prices from AMFI (Phase 9.4) — the only data download
+
+`AmfiNavUpdater` (`ingestion/investments/amfi_nav.dart`) implements the
+network exception at the top of this document:
+
+- **Off by default.** `PriceFeedSettings` (shared preferences: on/off + last
+  update time only). Turning it on — from Privacy or the Investments "Update
+  fund prices" button — shows `showPriceFeedOptIn`, which states what is
+  downloaded, from where, that nothing about the user is sent, and that shares
+  aren't covered.
+- **Request:** a plain GET of `https://portal.amfiindia.com/spages/NAVAll.txt`
+  (public, every scheme, no parameters / cookies / identifiers).
+- **Parsing:** `parseAmfiNav` reads ISINs from columns 2–3 and NAV + date from
+  the last two columns, so the 6- and 8-column layouts both work (checked
+  against the live file: 14,378 rows, 17,866 ISINs).
+- **Matching** happens on the phone: only funds already in `securities` get a
+  `security_prices` row (`source = 'amfi'`, upsert per day). Portfolio and net
+  worth pick up the newest price automatically.
+- **When:** "Update fund prices" on Investments, or `updateIfStale` (≥ 20 h)
+  when the Investments screen opens and the feed is on. Failures are reported
+  and write nothing. Tests inject a fake fetch; nothing in the test suite hits
+  the network.
+- Share prices are not downloaded (no bulk feed fits the policy cleanly yet);
+  they refresh from the next demat CAS.
+
+### Capital gains (Phase 10.1)
+
+`insights/capital_gains.dart` (pure). Rules checked Oct 2026 (Budget 2026
+made no capital-gains changes for FY 2026-27); all dates and rates live in
+`CapitalGainsRules` — update there when the law changes.
+
+| Category | Long-term after | Short-term | Long-term |
+|---|---|---|---|
+| Equity (shares, equity-oriented funds incl. arbitrage / ELSS) | > 12 months | 20% (15% before 23 Jul 2024) | 12.5% above ₹1.25 L a year (10% / ₹1 L earlier) |
+| Debt fund bought ≥ 1 Apr 2023 (s. 50AA; > 65% debt from 1 Apr 2026) | never | slab | — |
+| Debt bought earlier, other (gold, international, hybrid) | > 24 months (36 for sales before 23 Jul 2024) | slab | 12.5% (20% earlier; indexation not computed) |
+
+- Category: `guessTaxCategory` from the fund name (arbitrage → equity;
+  gold / international / FoF → other; liquid / bond / gilt / duration … →
+  debt; otherwise equity), overridable per security
+  (`securities.tax_category`, schema v13).
+- Sales are matched FIFO against lots; a purchase **reversal** cancels the
+  newest lots instead (fixed in the portfolio calculator too). Each slice is a
+  `SaleLeg` with holding period, kind and gain; legs from `opening` lots are
+  marked estimated.
+- Grandfathering: equity bought before 1 Feb 2018 sold long-term uses
+  max(cost, min(31 Jan 2018 price, sale value)) when that price is in
+  `security_prices`; otherwise flagged.
+- Set-off within the year: short-term losses against slab, equity STCG, other
+  LTCG, equity LTCG (in that order); long-term losses against other LTCG then
+  equity LTCG. Then the equity exemption and the estimate (no cess /
+  surcharge; slab-rate gains reported separately; leftover losses shown as
+  carry-forward).
+
+UI: Investments → "Capital gains & tax": year selector (current year always
+shown for planning), gains by kind, exemption used / left, estimated tax,
+sales list, editable fund categories, and a clear "estimate, not tax advice"
+note.
+
+Tests: `test/insights/capital_gains_test.dart`, `test/ui/tax_screens_test.dart`.
+
+### Tax harvesting (Phase 10.2)
+
+`TaxHarvester` (pure, `insights/tax_harvest.dart`) for the current financial
+year, on the open FIFO lots (`CapitalGainsCalculator.openLots`) at today's
+price:
+
+- **Exempt gains:** equity holdings only; take lots from the oldest while they
+  are long-term and in profit (stop at the first short-term or loss lot,
+  because redemptions are FIFO), biggest gains first, until the year's unused
+  ₹1.25 L exemption is used; the last one is a proportional slice.
+- **Losses:** only when this year has gains that would be taxed. Lots from the
+  oldest while below cost; short-term losses offset slab / equity STCG first,
+  then long-term gains; long-term losses offset only long-term gains. Tax
+  saved is estimated at 20% (short-term) / 12.5% (long-term).
+- ELSS (name contains ELSS / tax saver) lots within their 3-year lock-in are
+  not sellable (and block later lots, FIFO).
+
+Shown as "Save tax this year" on the capital-gains screen (current year), with
+caveats about exit loads and costs; India has no wash-sale rule.
+
+Tests: `test/insights/tax_harvest_test.dart`.
+
+### Loans (Phase 10.3)
+
+Schema v14: `loans` (kind, lender, principal, rate in bp, tenure months, first
+EMI date, optional lender EMI) and `loan_prepayments` (date, amount, mode:
+`tenure` keeps the EMI and finishes sooner, `emi` keeps the end date and
+recomputes the EMI).
+
+`LoanCalculator` (pure, `insights/loans.dart`): reducing-balance monthly
+schedule (EMI = P·r·(1+r)ⁿ / ((1+r)ⁿ − 1), r = rate / 12; the lender's EMI wins
+when entered; prepayments apply before the next EMI; rounding residue under 1%
+of an EMI is folded into the last one). `status(asOf)`: outstanding, EMIs paid
+/ left, next and last EMI, interest still to pay. `year(fy)`: interest and
+principal paid in a financial year. `prepayEffect`: interest and EMIs saved,
+or the new EMI.
+
+`LoanRepository.emisSeen`: bank debits within ±1% of the EMI since the first
+EMI. Outstanding loans are liabilities in net worth (and its history).
+
+UI: Net worth → Loans (total outstanding and monthly EMIs, % repaid), loan
+detail (status, interest / principal by year with the 24(b) / 80C note for
+home loans, EMIs seen, prepayment calculator with "I made this payment"), and
+add / edit with the calculated EMI shown.
+
+Tests: `test/insights/loans_test.dart` (textbook EMI and balance values),
+`test/ui/tax_screens_test.dart`.
+
+### Asset allocation (Phase 10.4)
+
+Schema v15: `allocation_targets` (asset class → basis points; must add to
+100% or be empty).
+
+`insights/allocation.dart` (pure): asset classes equity, debt, gold, cash,
+real estate, other. Funds map from their tax category (10.1) with name hints
+(gold / silver → gold; international / Nasdaq / S&P … → equity even though
+taxed as "other"); shares → equity; bank balances → cash; manual FD / PPF /
+EPF → debt, gold → gold, property → real estate, cash → cash, NPS / other →
+other; vehicles and liabilities are not counted. Percentages, drift and
+add / trim amounts are over the **planned** classes only, so e.g. property can
+stay out. Rebalancing is suggested at ≥ 5 points of drift.
+
+UI: Net worth → Asset allocation (bars with a target marker, drift, add /
+trim amounts; target editor with presets 70/20/10, 60/30/10, 40/50/10) and a
+note to rebalance with new money first because selling can be taxed.
+
+Tests: `test/insights/allocation_test.dart`, `test/ui/tax_screens_test.dart`.
+
+### Retirement plan (Phase 10.5)
+
+Schema v16: `retirement_plans` (single row: ages, life expectancy, optional
+monthly expenses, inflation, returns before / after retiring, optional safe
+withdrawal rate, asset classes counted).
+
+`RetirementCalculator` (pure, `insights/retirement.dart`):
+- Expense at retirement = monthly × 12 × (1 + inflation)^years.
+- Corpus = expense / SWR when a SWR is set; otherwise the value of yearly
+  withdrawals (start of year) growing with inflation until the planned age at
+  the post-retirement return (= years × expense when return = inflation).
+- Current corpus = value of the chosen asset classes (10.4), grown at the
+  pre-retirement return; the gap is closed by a monthly saving at the
+  equivalent monthly rate (month-end).
+- Expenses default to the average monthly spend of the last 12 months with
+  data; "on track" compares the needed saving with the recent average monthly
+  income − spend.
+
+UI: Goals → Retirement (result card with the amount needed in future and
+today's rupees, % funded, monthly saving needed, recent saving; assumptions
+form with asset-class chips).
+
+Tests: `test/insights/retirement_test.dart`, `test/ui/tax_screens_test.dart`.
+
+### Schedule AL (Phase 10.6)
+
+`insights/schedule_al.dart` + `ScheduleAlRepository`: a draft of ITR Schedule
+AL (required when total income exceeds ₹1 crore from AY 2025-26; ₹50 lakh
+before) as on 31 March of the chosen year (default: last completed year).
+
+| Section | From |
+|---|---|
+| A immovable | manual property |
+| B(1)(i) jewellery, bullion | manual gold |
+| B(1)(iii) vehicles | manual vehicles |
+| B(1)(iv)(a) bank incl. deposits | bank balances on / before 31 Mar, FD principal, PPF, EPF |
+| B(1)(iv)(b) shares & securities | holdings at FIFO cost (value when cost unknown, flagged), NPS |
+| B(1)(iv)(e) cash | manual cash |
+| D liabilities | loans outstanding, manual loans, card dues |
+| unclassified | manual "other" |
+
+Items valued rather than costed (property, gold, vehicles, unknown-cost
+shares) are flagged "value, not cost — check". UI: Net worth → Schedule AL.
+
+Tests: `test/insights/schedule_al_test.dart`, `test/ui/tax_screens_test.dart`.
 
 ---
 

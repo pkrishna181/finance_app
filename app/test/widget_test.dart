@@ -13,7 +13,7 @@ void main() {
 
     expect(find.text('Choose a source'), findsOneWidget);
     expect(find.text('Transaction SMS'), findsOneWidget);
-    expect(find.text('CSV / Excel / PDF statement'), findsOneWidget);
+    expect(find.text('Statements: bank, card & investments (CAS)'), findsOneWidget);
   });
 
   testWidgets('bottom nav has four destinations', (tester) async {

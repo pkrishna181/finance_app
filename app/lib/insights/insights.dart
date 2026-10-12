@@ -1,12 +1,38 @@
 /// Categorization, recurring detection, anomalies, cash-flow (Phase 6+).
 library;
 
+export 'allocation.dart';
+export 'allocation_repository.dart';
 export 'anomaly_detector.dart';
+export 'budget.dart';
+export 'capital_gains.dart';
+export 'capital_gains_repository.dart';
+export 'budget_repository.dart';
 export 'cashflow.dart';
+export 'credit_card_repository.dart';
+export 'credit_cards.dart';
+export 'doctor.dart';
+export 'doctor_repository.dart';
+export 'goal_repository.dart';
+export 'goals.dart';
 export 'insight_format.dart';
 export 'insight_models.dart';
 export 'insights_aggregator.dart';
 export 'insights_repository.dart';
 export 'insights_snapshot.dart';
+export 'loan_repository.dart';
+export 'loans.dart';
+export 'manual_transactions.dart';
+export 'net_worth.dart';
+export 'net_worth_repository.dart';
+export 'portfolio.dart';
+export 'portfolio_repository.dart';
 export 'recurring_detector.dart';
+export 'retirement.dart';
+export 'retirement_repository.dart';
+export 'schedule_al.dart';
+export 'schedule_al_repository.dart';
+export 'tax_harvest.dart';
 export 'transfer_pairing.dart';
+export 'txn_query.dart';
+export 'yearly.dart';

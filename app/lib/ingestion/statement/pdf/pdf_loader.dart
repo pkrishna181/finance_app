@@ -73,7 +73,11 @@ class PdfStatementLoader {
     );
     if (pagesResult.isErr) return Err(pagesResult.errorOrNull!);
 
-    final pages = pagesResult.okOrNull!;
+    return gridFromPages(pagesResult.okOrNull!);
+  }
+
+  /// [TableGrid] from already-extracted pages (scanned PDFs declined).
+  Result<TableGrid> gridFromPages(List<PdfPageTextContent> pages) {
     final scanned = _scanned.declineReason(pages);
     if (scanned != null) {
       return Err(scanned);

@@ -42,6 +42,15 @@ class LayoutToGrid {
     return out;
   }
 
+  /// Plain text lines in reading order (words left to right, single
+  /// spaces), for parsers that work on lines rather than a grid.
+  List<String> textLines(List<PdfPageTextContent> pages) => [
+        for (final l in _allLines(pages))
+          ([...l.words]..sort((a, b) => a.x.compareTo(b.x)))
+              .map((w) => w.text)
+              .join(' '),
+      ];
+
   List<_TextLine> _allLines(List<PdfPageTextContent> pages) {
     final lines = <_TextLine>[];
     for (final page in pages) {

@@ -11,6 +11,7 @@ import 'package:sqlite3/common.dart' show CommonDatabase;
 
 import '../crypto/db_key_store.dart';
 import '../models/category_defaults.dart';
+import '../models/merchant_label.dart';
 import '../../llm/jobs/llm_job_types.dart';
 import '../../parsing/sms/template.dart' show buildDedupeKey;
 import 'tables.dart';
@@ -38,6 +39,22 @@ class UpsertResult {
     UnparsedStatementRows,
     LlmJobs,
     LlmReviewItems,
+    Budgets,
+    StatementSummaries,
+    CreditCards,
+    Goals,
+    GoalContributions,
+    Securities,
+    InvestmentAccounts,
+    InvestmentTxns,
+    HoldingSnapshots,
+    SecurityPrices,
+    ManualAssets,
+    ManualAssetValues,
+    Loans,
+    LoanPrepayments,
+    AllocationTargets,
+    RetirementPlans,
   ],
 )
 class ArthDatabase extends _$ArthDatabase {
@@ -66,7 +83,7 @@ class ArthDatabase extends _$ArthDatabase {
   }
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -119,6 +136,42 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
           }
           if (from < 7) {
             await _createInsightIndexes();
+          }
+          if (from < 8) {
+            await m.createTable(budgets);
+          }
+          if (from < 9) {
+            await m.addColumn(transactions, transactions.accountKind);
+            await m.createTable(statementSummaries);
+            await m.createTable(creditCards);
+          }
+          if (from < 10) {
+            await m.createTable(goals);
+            await m.createTable(goalContributions);
+          }
+          if (from < 11) {
+            await m.createTable(securities);
+            await m.createTable(investmentAccounts);
+            await m.createTable(investmentTxns);
+            await m.createTable(holdingSnapshots);
+            await m.createTable(securityPrices);
+          }
+          if (from < 12) {
+            await m.createTable(manualAssets);
+            await m.createTable(manualAssetValues);
+          }
+          if (from < 13) {
+            await m.addColumn(securities, securities.taxCategory);
+          }
+          if (from < 14) {
+            await m.createTable(loans);
+            await m.createTable(loanPrepayments);
+          }
+          if (from < 15) {
+            await m.createTable(allocationTargets);
+          }
+          if (from < 16) {
+            await m.createTable(retirementPlans);
           }
         },
         beforeOpen: (details) async {
@@ -178,6 +231,9 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
     if (existing == null) {
       txnId = await into(transactions).insert(row);
       inserted = true;
+      if (row.categoryId.value == null) {
+        await _applyMerchantCategoryRule(txnId, row.rawMerchant.value);
+      }
     } else {
       txnId = existing.id;
     }
@@ -190,6 +246,36 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
       mode: InsertMode.insertOrIgnore,
     );
     return UpsertResult(transactionId: txnId, inserted: inserted);
+  }
+
+  /// Latest merchant-wide category rule for [rawMerchant]: a `category`
+  /// correction with no transaction id whose normalized raw label matches.
+  Future<String?> merchantCategoryRule(String rawMerchant) async {
+    final key = normalizeMerchantLabel(rawMerchant);
+    if (key.length < 3) return null;
+    final rules = await (select(userCorrections)
+          ..where((t) => t.transactionId.isNull())
+          ..where((t) => t.field.equals('category'))
+          ..orderBy([(t) => OrderingTerm.desc(t.id)]))
+        .get();
+    for (final r in rules) {
+      if (normalizeMerchantLabel(r.rawMerchant) == key) return r.newValue;
+    }
+    return null;
+  }
+
+  Future<void> _applyMerchantCategoryRule(int txnId, String rawMerchant) async {
+    final slug = await merchantCategoryRule(rawMerchant);
+    if (slug == null) return;
+    final cat = await categoryBySlug(slug);
+    if (cat == null) return;
+    await (update(transactions)..where((t) => t.id.equals(txnId))).write(
+      TransactionsCompanion(
+        categoryId: Value(cat.id),
+        suggestedCategorySlug: Value(slug),
+        categorySource: const Value('user_correction'),
+      ),
+    );
   }
 
   Future<Import?> findImportByHash(String contentHash) {

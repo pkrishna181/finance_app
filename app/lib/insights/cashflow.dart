@@ -23,7 +23,8 @@ class BalanceSeries {
   }) {
     final byAccount = <String, List<InsightTxn>>{};
     for (final t in txns) {
-      if (t.balanceAfterPaise == null) continue;
+      // Card statements report outstanding, not a balance you hold.
+      if (t.balanceAfterPaise == null || t.isCardAccount) continue;
       byAccount.putIfAbsent(t.accountKey, () => []).add(t);
     }
     byAccount.removeWhere((_, v) => v.length < minPointsPerAccount);

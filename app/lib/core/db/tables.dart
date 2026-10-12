@@ -114,6 +114,9 @@ class Transactions extends Table {
   /// subscription | sip | enach | other | null
   TextColumn get recurringKind => text().nullable()();
 
+  /// bank | card | null (unknown) — which kind of account the row is from.
+  TextColumn get accountKind => text().nullable()();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
@@ -241,4 +244,285 @@ class LlmDisagreements extends Table {
   TextColumn get llmValue => text()();
   TextColumn get resolvedValue => text()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Monthly spending limit per category (Phase 7.1).
+class Budgets extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get categoryId =>
+      integer().unique().references(Categories, #id)();
+  IntColumn get limitPaise => integer()();
+
+  /// Envelope mode: unspent / overspent amounts carry into the next month.
+  BoolColumn get rollover => boolean().withDefault(const Constant(false))();
+
+  /// First month (yyyy-MM) the budget applies to.
+  TextColumn get startMonth => text()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Facts printed on an imported statement (Phase 8.1): card/account number
+/// and, for cards, the bill.
+@DataClassName('StatementSummaryRow')
+class StatementSummaries extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get importId => integer().unique().references(Imports, #id)();
+  TextColumn get bankCode => text()();
+
+  /// bank | card
+  TextColumn get accountKind => text()();
+  TextColumn get last4 => text().nullable()();
+  DateTimeColumn get statementDate => dateTime().nullable()();
+  DateTimeColumn get dueDate => dateTime().nullable()();
+  IntColumn get totalDuePaise => integer().nullable()();
+  IntColumn get minDuePaise => integer().nullable()();
+  IntColumn get creditLimitPaise => integer().nullable()();
+
+  /// Latest transaction date on the statement (fallback statement date).
+  DateTimeColumn get periodEnd => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Credit cards the user tracks (Phase 8.1).
+class CreditCards extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get bankCode => text()();
+
+  /// Last four digits; null matches the bank's card rows without a number.
+  TextColumn get last4 => text().nullable()();
+  TextColumn get name => text()();
+  IntColumn get creditLimitPaise => integer().nullable()();
+
+  /// Day of month the statement is generated (1–31).
+  IntColumn get statementDay => integer().nullable()();
+
+  /// Day of month payment is due (1–31).
+  IntColumn get dueDay => integer().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => [
+        {bankCode, last4},
+      ];
+}
+
+/// Savings goals (Phase 8.3).
+class Goals extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+  IntColumn get targetPaise => integer()();
+  DateTimeColumn get targetDate => dateTime().nullable()();
+  DateTimeColumn get startDate => dateTime()();
+  IntColumn get startPaise => integer().withDefault(const Constant(0))();
+
+  /// Expected yearly return in basis points (700 = 7%).
+  IntColumn get annualReturnBp => integer().withDefault(const Constant(0))();
+
+  /// manual | account | category
+  TextColumn get source => text().withDefault(const Constant('manual'))();
+
+  /// account: `BANK|last4`; category: slug.
+  TextColumn get sourceRef => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Money the user logs toward a manual goal.
+class GoalContributions extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get goalId => integer().references(Goals, #id)();
+  IntColumn get amountPaise => integer()();
+  DateTimeColumn get date => dateTime()();
+  TextColumn get note => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// A fund, share or other security (Phase 9).
+class Securities extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get isin => text().unique()();
+  TextColumn get name => text()();
+
+  /// mf | equity | other
+  TextColumn get kind => text()();
+  TextColumn get amc => text().nullable()();
+
+  /// User override of the tax category: equity | debt | other (Phase 10.1).
+  TextColumn get taxCategory => text().nullable()();
+}
+
+/// A mutual-fund folio or demat account (Phase 9).
+class InvestmentAccounts extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  /// folio | demat
+  TextColumn get kind => text()();
+
+  /// Folio number or `DP ID/Client ID` / BO ID.
+  TextColumn get number => text()();
+
+  /// CAMS | KFINTECH | NSDL | CDSL | UNKNOWN
+  TextColumn get provider => text()();
+  TextColumn get amc => text().nullable()();
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => [
+        {kind, number},
+      ];
+}
+
+/// Mutual-fund transactions from detailed CAS (Phase 9). Units / NAV are
+/// scaled by 10⁴; amounts are signed paise (redemptions negative).
+class InvestmentTxns extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get accountId => integer().references(InvestmentAccounts, #id)();
+  IntColumn get securityId => integer().references(Securities, #id)();
+  DateTimeColumn get date => dateTime()();
+
+  /// See `CasTxnType` names.
+  TextColumn get type => text()();
+  TextColumn get description => text()();
+  IntColumn get amountPaise => integer().nullable()();
+  IntColumn get unitsE4 => integer().nullable()();
+  IntColumn get navE4 => integer().nullable()();
+  IntColumn get balanceE4 => integer().nullable()();
+  IntColumn get importId => integer().nullable().references(Imports, #id)();
+  TextColumn get dedupeHash => text().unique()();
+}
+
+/// Units held on a date (closing balance from CAS) (Phase 9).
+class HoldingSnapshots extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get accountId => integer().references(InvestmentAccounts, #id)();
+  IntColumn get securityId => integer().references(Securities, #id)();
+  DateTimeColumn get asOf => dateTime()();
+  IntColumn get unitsE4 => integer()();
+  IntColumn get priceE4 => integer()();
+  IntColumn get valuePaise => integer()();
+  IntColumn get costPaise => integer().nullable()();
+  IntColumn get importId => integer().nullable().references(Imports, #id)();
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => [
+        {accountId, securityId, asOf},
+      ];
+}
+
+/// Price / NAV of a security on a date (Phase 9).
+class SecurityPrices extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get securityId => integer().references(Securities, #id)();
+  DateTimeColumn get date => dateTime()();
+  IntColumn get priceE4 => integer()();
+
+  /// cas | amfi
+  TextColumn get source => text()();
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => [
+        {securityId, date},
+      ];
+}
+
+/// Assets and liabilities the user enters by hand (Phase 9.2).
+class ManualAssets extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+
+  /// gold | fd | ppf | epf | nps | property | vehicle | cash | other |
+  /// loan (liability)
+  TextColumn get kind => text()();
+
+  /// FD only: yearly interest in basis points, compounded quarterly from
+  /// [startDate] on the latest recorded value.
+  IntColumn get interestBp => integer().nullable()();
+  DateTimeColumn get startDate => dateTime().nullable()();
+  DateTimeColumn get maturityDate => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Value of a manual asset / liability from a date on (Phase 9.2).
+class ManualAssetValues extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get assetId => integer().references(ManualAssets, #id)();
+  DateTimeColumn get date => dateTime()();
+
+  /// Always positive; liabilities are subtracted by kind.
+  IntColumn get valuePaise => integer()();
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => [
+        {assetId, date},
+      ];
+}
+
+/// Loans with an amortising EMI (Phase 10.3).
+class Loans extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+
+  /// home | car | personal | education | gold | other
+  TextColumn get kind => text()();
+  TextColumn get lender => text().nullable()();
+  IntColumn get principalPaise => integer()();
+
+  /// Yearly interest in basis points (850 = 8.5%).
+  IntColumn get rateBp => integer()();
+  IntColumn get tenureMonths => integer()();
+
+  /// Month of the first EMI.
+  DateTimeColumn get firstEmiDate => dateTime()();
+
+  /// As charged by the lender; computed from the terms when null.
+  IntColumn get emiPaise => integer().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Extra payments toward a loan (Phase 10.3).
+class LoanPrepayments extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get loanId => integer().references(Loans, #id)();
+  DateTimeColumn get date => dateTime()();
+  IntColumn get amountPaise => integer()();
+
+  /// tenure (keep EMI, finish sooner) | emi (keep end date, lower EMI)
+  TextColumn get mode => text().withDefault(const Constant('tenure'))();
+}
+
+/// Target share per asset class (Phase 10.4).
+class AllocationTargets extends Table {
+  /// equity | debt | gold | cash | realEstate | other
+  TextColumn get bucket => text()();
+
+  /// Basis points of the planned portfolio (6000 = 60%).
+  IntColumn get targetBp => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {bucket};
+}
+
+/// The user's retirement assumptions; single row with id 1 (Phase 10.5).
+class RetirementPlans extends Table {
+  IntColumn get id => integer()();
+  IntColumn get currentAge => integer()();
+  IntColumn get retireAge => integer()();
+  IntColumn get lifeExpectancy => integer().withDefault(const Constant(85))();
+
+  /// Null = use the average monthly spend from the ledger.
+  IntColumn get monthlyExpensePaise => integer().nullable()();
+  IntColumn get inflationBp => integer().withDefault(const Constant(600))();
+  IntColumn get returnPreBp => integer().withDefault(const Constant(1000))();
+  IntColumn get returnPostBp => integer().withDefault(const Constant(700))();
+
+  /// Safe withdrawal rate; null = plan to last until [lifeExpectancy].
+  IntColumn get swrBp => integer().nullable()();
+
+  /// Comma-separated asset classes counted as retirement money.
+  TextColumn get classes =>
+      text().withDefault(const Constant('equity,debt,gold,other'))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
 }

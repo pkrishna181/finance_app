@@ -76,7 +76,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         index: _index,
         children: [
           HomeScreen(coordinator: _coordinator, database: db),
-          InsightsScreen(database: db, reloadToken: _insightsTick),
+          InsightsScreen(
+            database: db,
+            reloadToken: _insightsTick,
+            onOpenImport: () => setState(() => _index = 2),
+          ),
           ImportScreen(
             database: db,
             coordinator: _coordinator,

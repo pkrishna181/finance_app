@@ -17,7 +17,8 @@ class CategoryRuleMatch {
   final double confidence;
 }
 
-/// Deterministic categorization: user corrections > merchant map > keywords.
+/// Deterministic categorization: user corrections (this transaction, then
+/// merchant-wide) > merchant map > keywords.
 class CategoryRuleEngine {
   CategoryRuleEngine({
     required this.merchantMap,
@@ -62,6 +63,11 @@ class CategoryRuleEngine {
           source: 'user_correction',
         );
       }
+    }
+
+    final merchantRule = await db.merchantCategoryRule(rawMerchant);
+    if (merchantRule != null) {
+      return CategoryRuleMatch(slug: merchantRule, source: 'user_correction');
     }
 
     for (final entry in merchantMap.entries) {

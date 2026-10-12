@@ -1,5 +1,6 @@
 import 'insight_models.dart';
 import 'anomaly_detector.dart';
+import 'budget.dart';
 import 'cashflow.dart';
 import 'insights_aggregator.dart';
 import 'recurring_detector.dart';
@@ -50,6 +51,7 @@ class InsightsSnapshot {
     this.forecast,
     this.balances = const [],
     this.changes = const [],
+    this.budgets = const [],
   });
 
   final MonthKey month;
@@ -73,6 +75,9 @@ class InsightsSnapshot {
   /// Largest category increases vs previous month.
   final List<CategoryChange> changes;
 
+  /// Budgets in effect this month, over-budget first.
+  final List<BudgetProgress> budgets;
+
   /// Active series only, for monthly-commitment totals.
   List<RecurringSeries> get activeRecurring =>
       [for (final r in recurring) if (r.active) r];
@@ -93,6 +98,7 @@ class InsightsSnapshot {
     Set<String> dismissedAnomalies = const {},
     DateTime? now,
     int balanceDays = 60,
+    List<BudgetDef> budgetDefs = const [],
   }) {
     final summary = agg.summarize(month);
     final monthEnd = month.endExclusive.subtract(const Duration(days: 1));
@@ -140,6 +146,13 @@ class InsightsSnapshot {
             ),
       balances: balances,
       changes: changes,
+      budgets: const BudgetCalculator().compute(
+        agg,
+        month,
+        budgetDefs,
+        categoryNames,
+        asOf: now,
+      ),
     );
   }
 

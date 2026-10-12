@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:arth/core/db/database.dart';
 import 'package:arth/core/result/result.dart';
@@ -7,6 +9,8 @@ import 'package:arth/ingestion/sms/consent_screen.dart';
 import 'package:arth/ingestion/sms/sms_scan_session.dart';
 import 'package:arth/ingestion/sms/sms_source.dart';
 import 'package:arth/ingestion/source.dart';
+import 'package:arth/ingestion/statement/batch_import.dart';
+import 'package:arth/ingestion/statement/file_source.dart';
 import 'package:arth/llm/fake_llm_engine.dart';
 import 'package:arth/llm/jobs/llm_batch_coordinator.dart';
 import 'package:arth/ui/screens/import_screen.dart';
@@ -237,6 +241,47 @@ void main() {
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
+    });
+  });
+
+  group('ImportScreen statements', () {
+    testWidgets('picking several files imports them all', (tester) async {
+      FlutterSecureStorage.setMockInitialValues({});
+      final db = ArthDatabase.memory();
+      addTearDown(() => tester.runAsync(db.close));
+      Directory dir() => [
+            Directory('../test/golden/statement'),
+            Directory('test/golden/statement'),
+          ].firstWhere((d) => d.existsSync());
+      StatementFile f(String n) => (
+            name: n,
+            bytes: Uint8List.fromList(
+                File('${dir().path}/$n').readAsBytesSync()),
+          );
+
+      await tester.pumpWidget(MaterialApp(
+        home: ImportScreen(
+          database: db,
+          registry: IngestionRegistry(sources: [StatementFileSource()]),
+          showUnparsedBadge: false,
+          pickFiles: () async =>
+              [f('hdfc_account.csv'), f('kotak_account.csv')],
+        ),
+      ));
+      await tester.pump();
+      await tester.tap(find.text('Statements: bank, card & investments (CAS)'));
+      for (var i = 0; i < 30 && find.text('Import finished').evaluate().isEmpty; i++) {
+        await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 100)));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(find.text('Import finished'), findsOneWidget);
+      expect(find.textContaining('from 2 of 2 files'), findsOneWidget);
+      expect(find.text('hdfc_account.csv'), findsOneWidget);
+      expect(find.text('kotak_account.csv'), findsOneWidget);
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      expect(find.text('Import'), findsOneWidget);
     });
   });
 }

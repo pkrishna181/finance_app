@@ -3,33 +3,42 @@ import 'package:flutter/material.dart';
 
 import '../../core/db/database.dart';
 import '../../insights/insights.dart';
+import '../theme/chart_colors.dart';
+import 'budgets_screen.dart';
 import 'category_transactions_screen.dart';
+import 'credit_cards_screen.dart';
+import 'doctor_screen.dart';
+import 'goals_screen.dart';
+import 'investments_screen.dart';
+import 'net_worth_screen.dart';
+import 'manual_transaction_screen.dart';
+import 'search_screen.dart';
+import 'yearly_screen.dart';
 
-/// Categorical chart colors (Okabe-Ito inspired); grey is reserved for
-/// "Uncategorized" / "Other".
-const _kSliceColors = <Color>[
-  Color(0xFF0B6E4F),
-  Color(0xFF3B6FB6),
-  Color(0xFFE08A1E),
-  Color(0xFF8E5BB5),
-  Color(0xFFD1495B),
-  Color(0xFF2AA7A0),
-];
-
+/// Donut / legend color: categorical slot by rank; gray for "Uncategorized"
+/// and "Other".
 Color sliceColor(BuildContext context, CategorySlice s, int index) {
   if (s.isOther || s.slug == kUncategorizedSlug) {
-    return Theme.of(context).colorScheme.outline;
+    return neutralSeriesColor(context);
   }
-  return _kSliceColors[index % _kSliceColors.length];
+  return categoricalColor(context, index);
 }
 
 class InsightsScreen extends StatefulWidget {
-  const InsightsScreen({super.key, this.database, this.reloadToken = 0});
+  const InsightsScreen({
+    super.key,
+    this.database,
+    this.reloadToken = 0,
+    this.onOpenImport,
+  });
 
   final ArthDatabase? database;
 
   /// Bump to force a reload (e.g. when the tab is re-selected after an import).
   final int reloadToken;
+
+  /// Switches the app to the Import tab.
+  final VoidCallback? onOpenImport;
 
   @override
   State<InsightsScreen> createState() => _InsightsScreenState();
@@ -41,6 +50,11 @@ class _InsightsScreenState extends State<InsightsScreen> {
   InsightsSnapshot? _snapshot;
   bool _loading = true;
   Object? _error;
+  List<CardStatus> _cards = const [];
+  List<GoalProgress> _goals = const [];
+  PortfolioSummary? _portfolio;
+  NetWorth? _netWorth;
+  int _cardSuggestions = 0;
 
   @override
   void initState() {
@@ -70,7 +84,11 @@ class _InsightsScreenState extends State<InsightsScreen> {
     try {
       final repo = InsightsRepository(db);
       final months = await repo.availableMonths();
+      final portfolio = await PortfolioRepository(db).summary(DateTime.now());
+      final netWorth = await NetWorthRepository(db).netWorth(DateTime.now());
       if (!mounted) return;
+      _portfolio = portfolio;
+      _netWorth = netWorth;
       if (months.isEmpty) {
         setState(() {
           _months = const [];
@@ -90,8 +108,16 @@ class _InsightsScreenState extends State<InsightsScreen> {
         asOf: monthEnd.isAfter(now) ? now : monthEnd,
       );
       final dismissed = await repo.dismissedAnomalyKeys();
+      final budgetDefs = await BudgetRepository(db).list();
+      final cardRepo = CreditCardRepository(db);
+      final cards = await cardRepo.statuses(DateTime.now());
+      final cardSuggestions = (await cardRepo.suggestions()).length;
+      final goals = await GoalRepository(db).progressAll(DateTime.now());
       if (!mounted) return;
       setState(() {
+        _cards = cards;
+        _cardSuggestions = cardSuggestions;
+        _goals = goals;
         _months = months;
         _selected = selected;
         _snapshot = InsightsSnapshot.build(
@@ -101,6 +127,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
           recurring: recurring,
           dismissedAnomalies: dismissed,
           now: now,
+          budgetDefs: budgetDefs,
         );
         _loading = false;
       });
@@ -120,6 +147,111 @@ class _InsightsScreenState extends State<InsightsScreen> {
     if (mounted) await _load();
   }
 
+  void _openTxns(String title, List<InsightTxn> txns) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CategoryTransactionsScreen(
+          title: title,
+          txns: txns,
+          database: widget.database,
+          onChanged: _load,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openBudgets() async {
+    final db = widget.database;
+    if (db == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => BudgetsScreen(database: db)),
+    );
+    if (mounted) await _load();
+  }
+
+  void _openSearch() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SearchScreen(
+          database: widget.database!,
+          onChanged: _load,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openDoctor() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => DoctorScreen(
+          database: widget.database!,
+          onOpenImport: widget.onOpenImport,
+        ),
+      ),
+    );
+    if (mounted) await _load();
+  }
+
+  Future<void> _addManual() async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => ManualTransactionScreen(database: widget.database!),
+      ),
+    );
+    if (saved == true && mounted) await _load();
+  }
+
+  Future<void> _openNetWorth() async {
+    final db = widget.database;
+    if (db == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => NetWorthScreen(database: db)),
+    );
+    if (mounted) await _load();
+  }
+
+  Future<void> _openInvestments() async {
+    final db = widget.database;
+    if (db == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => InvestmentsScreen(database: db)),
+    );
+    if (mounted) await _load();
+  }
+
+  Future<void> _openGoals() async {
+    final db = widget.database;
+    if (db == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => GoalsScreen(database: db)),
+    );
+    if (mounted) await _load();
+  }
+
+  Future<void> _openCards() async {
+    final db = widget.database;
+    if (db == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => CreditCardsScreen(database: db)),
+    );
+    if (mounted) await _load();
+  }
+
+  Future<void> _openYear() async {
+    final db = widget.database;
+    final sel = _selected;
+    if (db == null || sel == null) return;
+    final month = await Navigator.of(context).push<MonthKey>(
+      MaterialPageRoute(
+        builder: (_) => YearlyScreen(
+          database: db,
+          initial: FinancialYear.ofMonth(sel),
+        ),
+      ),
+    );
+    if (mounted) await _load(month: month);
+  }
+
   void _step(int delta) {
     final i = _months.indexOf(_selected!);
     // _months is newest first: older month = higher index.
@@ -131,7 +263,29 @@ class _InsightsScreenState extends State<InsightsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Insights')),
+      appBar: AppBar(
+        title: const Text('Insights'),
+        actions: [
+          if (widget.database != null)
+            IconButton(
+              tooltip: 'Add transaction',
+              icon: const Icon(Icons.add),
+              onPressed: _addManual,
+            ),
+          if (widget.database != null)
+            IconButton(
+              tooltip: 'Data check-up',
+              icon: const Icon(Icons.health_and_safety_outlined),
+              onPressed: _openDoctor,
+            ),
+          if (widget.database != null)
+            IconButton(
+              tooltip: 'Search transactions',
+              icon: const Icon(Icons.search),
+              onPressed: _openSearch,
+            ),
+        ],
+      ),
       body: _body(context),
     );
   }
@@ -151,8 +305,29 @@ class _InsightsScreenState extends State<InsightsScreen> {
     }
     final snap = _snapshot;
     if (snap == null) {
-      return const _Message(
-        'No transactions yet.\nImport a statement or scan SMS to see insights.',
+      final p = _portfolio;
+      final nw = _netWorth;
+      if ((p == null || p.isEmpty) && (nw == null || nw.isEmpty)) {
+        return const _Message(
+          'No transactions yet.\nImport a statement or scan SMS to see insights.',
+        );
+      }
+      // Only holdings / assets so far: show those.
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        children: [
+          if (nw != null && !nw.isEmpty) ...[
+            _NetWorthCard(netWorth: nw, onOpen: _openNetWorth),
+            const SizedBox(height: 12),
+          ],
+          if (p != null && !p.isEmpty)
+            PortfolioSummaryCard(summary: p, onTap: _openInvestments),
+          const SizedBox(height: 24),
+          const Text(
+            'Import bank statements or scan SMS to see spending insights.',
+            textAlign: TextAlign.center,
+          ),
+        ],
       );
     }
     final i = _months.indexOf(snap.month);
@@ -167,6 +342,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
             canGoNewer: i > 0,
             onOlder: () => _step(1),
             onNewer: () => _step(-1),
+            onYear: _openYear,
           ),
           const SizedBox(height: 8),
           if (snap.isEmpty)
@@ -182,14 +358,37 @@ class _InsightsScreenState extends State<InsightsScreen> {
             ],
             if (snap.summary.uncategorizedCount > 0) ...[
               const SizedBox(height: 12),
-              _UncategorizedBanner(snapshot: snap),
+              _UncategorizedBanner(snapshot: snap, onOpen: _openTxns),
             ],
             const SizedBox(height: 12),
             if (snap.forecast != null) ...[
               _ForecastCard(forecast: snap.forecast!),
               const SizedBox(height: 12),
             ],
-            _CategoryCard(snapshot: snap),
+            if (_netWorth != null && !_netWorth!.isEmpty) ...[
+              _NetWorthCard(netWorth: _netWorth!, onOpen: _openNetWorth),
+              const SizedBox(height: 12),
+            ],
+            if (_portfolio != null && !_portfolio!.isEmpty) ...[
+              PortfolioSummaryCard(
+                summary: _portfolio!,
+                onTap: _openInvestments,
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (_cards.isNotEmpty || _cardSuggestions > 0) ...[
+              _CardsCard(
+                cards: _cards,
+                suggestions: _cardSuggestions,
+                onOpen: _openCards,
+              ),
+              const SizedBox(height: 12),
+            ],
+            _BudgetCard(budgets: snap.budgets, onManage: _openBudgets),
+            const SizedBox(height: 12),
+            _GoalsCard(goals: _goals, onOpen: _openGoals),
+            const SizedBox(height: 12),
+            _CategoryCard(snapshot: snap, onOpen: _openTxns),
             if (snap.changes.isNotEmpty) ...[
               const SizedBox(height: 12),
               _ChangesCard(changes: snap.changes),
@@ -242,6 +441,7 @@ class _MonthSelector extends StatelessWidget {
     required this.canGoNewer,
     required this.onOlder,
     required this.onNewer,
+    required this.onYear,
   });
 
   final MonthKey month;
@@ -249,6 +449,7 @@ class _MonthSelector extends StatelessWidget {
   final bool canGoNewer;
   final VoidCallback onOlder;
   final VoidCallback onNewer;
+  final VoidCallback onYear;
 
   @override
   Widget build(BuildContext context) {
@@ -260,9 +461,13 @@ class _MonthSelector extends StatelessWidget {
           icon: const Icon(Icons.chevron_left),
           onPressed: canGoOlder ? onOlder : null,
         ),
-        Text(
-          monthLabel(month.year, month.month),
-          style: Theme.of(context).textTheme.titleMedium,
+        TextButton.icon(
+          onPressed: onYear,
+          icon: const Icon(Icons.calendar_view_month, size: 18),
+          label: Text(
+            monthLabel(month.year, month.month),
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
         ),
         IconButton(
           tooltip: 'Next month',
@@ -344,8 +549,9 @@ class _Tile extends StatelessWidget {
 }
 
 class _UncategorizedBanner extends StatelessWidget {
-  const _UncategorizedBanner({required this.snapshot});
+  const _UncategorizedBanner({required this.snapshot, required this.onOpen});
   final InsightsSnapshot snapshot;
+  final void Function(String title, List<InsightTxn> txns) onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -359,15 +565,11 @@ class _UncategorizedBanner extends StatelessWidget {
             '(${inrWhole(s.uncategorizedPaise)})'),
         subtitle: const Text('Totals above include them as-is.'),
         trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => CategoryTransactionsScreen(
-              title: 'Uncategorized',
-              txns: snapshot.aggregator.transactionsIn(
-                snapshot.month,
-                categorySlug: kUncategorizedSlug,
-              ),
-            ),
+        onTap: () => onOpen(
+          'Uncategorized',
+          snapshot.aggregator.transactionsIn(
+            snapshot.month,
+            categorySlug: kUncategorizedSlug,
           ),
         ),
       ),
@@ -376,10 +578,11 @@ class _UncategorizedBanner extends StatelessWidget {
 }
 
 class _CategoryCard extends StatelessWidget {
-  const _CategoryCard({required this.snapshot});
+  const _CategoryCard({required this.snapshot, required this.onOpen});
   final InsightsSnapshot snapshot;
+  final void Function(String title, List<InsightTxn> txns) onOpen;
 
-  void _open(BuildContext context, CategorySlice slice) {
+  void _open(CategorySlice slice) {
     final agg = snapshot.aggregator;
     final month = snapshot.month;
     final List<InsightTxn> txns;
@@ -395,14 +598,7 @@ class _CategoryCard extends StatelessWidget {
     } else {
       txns = agg.transactionsIn(month, categorySlug: slice.slug);
     }
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => CategoryTransactionsScreen(
-          title: slice.name,
-          txns: txns,
-        ),
-      ),
-    );
+    onOpen(slice.name, txns);
   }
 
   @override
@@ -457,7 +653,7 @@ class _CategoryCard extends StatelessWidget {
               const SizedBox(height: 8),
               for (var i = 0; i < slices.length; i++)
                 InkWell(
-                  onTap: () => _open(context, slices[i]),
+                  onTap: () => _open(slices[i]),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Row(
@@ -726,6 +922,208 @@ class _AnomalyCard extends StatelessWidget {
                   onPressed: () => onDismiss(a),
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NetWorthCard extends StatelessWidget {
+  const _NetWorthCard({required this.netWorth, required this.onOpen});
+  final NetWorth netWorth;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final nw = netWorth;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: ListTile(
+        contentPadding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+        title: Text('Net worth', style: t.titleMedium),
+        subtitle: Text(
+          '${inrWhole(nw.assetsPaise)} owned · '
+          '${inrWhole(nw.liabilitiesPaise)} owed',
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(inrWhole(nw.totalPaise), style: t.titleLarge),
+            const Icon(Icons.chevron_right),
+          ],
+        ),
+        onTap: onOpen,
+      ),
+    );
+  }
+}
+
+class _GoalsCard extends StatelessWidget {
+  const _GoalsCard({required this.goals, required this.onOpen});
+  final List<GoalProgress> goals;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 8, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text('Goals', style: t.titleMedium)),
+                TextButton(
+                  onPressed: onOpen,
+                  child: Text(goals.isEmpty ? 'Set one' : 'All goals'),
+                ),
+              ],
+            ),
+            if (goals.isEmpty)
+              Text('Save toward something and track it here.',
+                  style: t.bodySmall)
+            else
+              for (final g in goals.take(3))
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, right: 8),
+                  child: GoalTile(progress: g, compact: true),
+                ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CardsCard extends StatelessWidget {
+  const _CardsCard({
+    required this.cards,
+    required this.suggestions,
+    required this.onOpen,
+  });
+  final List<CardStatus> cards;
+  final int suggestions;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    if (cards.isEmpty) {
+      return Card(
+        margin: EdgeInsets.zero,
+        child: ListTile(
+          leading: const Icon(Icons.credit_card),
+          title: Text('$suggestions credit card'
+              '${suggestions == 1 ? '' : 's'} found in your statements'),
+          subtitle: const Text('Track bills, due dates and limit use'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: onOpen,
+        ),
+      );
+    }
+    final total = cards.fold<int>(0, (s, c) => s + c.outstandingPaise);
+    return Card(
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: Text('Credit cards', style: t.titleMedium)),
+                  Text('${inrWhole(total)} outstanding', style: t.bodySmall),
+                ],
+              ),
+              for (final c in cards.where((c) =>
+                  c.state == CardBillState.due ||
+                  c.state == CardBillState.overdue).take(2)) ...[
+                const SizedBox(height: 12),
+                CardStatusTile(status: c),
+              ],
+              if (!cards.any((c) =>
+                  c.state == CardBillState.due ||
+                  c.state == CardBillState.overdue))
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text('No bills due.', style: t.bodySmall),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BudgetCard extends StatelessWidget {
+  const _BudgetCard({required this.budgets, required this.onManage});
+  final List<BudgetProgress> budgets;
+  final VoidCallback onManage;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final over = budgets.where((b) => b.status == BudgetStatus.over).length;
+    final near = budgets.where((b) => b.status == BudgetStatus.warning).length;
+    final spent = budgets.fold<int>(0, (s, b) => s + b.spentPaise);
+    final available = budgets.fold<int>(0, (s, b) => s + b.availablePaise);
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 8, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text('Budgets', style: t.titleMedium)),
+                TextButton(
+                  onPressed: onManage,
+                  child: Text(budgets.isEmpty ? 'Set up' : 'Manage'),
+                ),
+              ],
+            ),
+            if (budgets.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  'Set a monthly limit per category to track it here.',
+                  style: t.bodySmall,
+                ),
+              )
+            else ...[
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  '${inrWhole(spent)} of ${inrWhole(available)}'
+                  '${over > 0 ? ' · $over over' : ''}'
+                  '${near > 0 ? ' · $near near limit' : ''}',
+                  style: t.bodySmall?.copyWith(
+                    color: over > 0 ? scheme.error : null,
+                  ),
+                ),
+              ),
+              for (final b in budgets.take(5))
+                Padding(
+                  padding: const EdgeInsets.only(top: 12, right: 8),
+                  child: BudgetProgressRow(progress: b),
+                ),
+              if (budgets.length > 5)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text('+${budgets.length - 5} more', style: t.bodySmall),
+                ),
+            ],
           ],
         ),
       ),

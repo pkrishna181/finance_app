@@ -70,7 +70,8 @@ class TransferPairing {
 
   static bool _eligible(InsightTxn t) {
     final slug = t.categorySlug;
-    if (t.categorySource == 'user' &&
+    if ((t.categorySource == 'user' ||
+            t.categorySource == 'user_correction') &&
         slug != null &&
         slug != kSelfTransferSlug) {
       return false;
