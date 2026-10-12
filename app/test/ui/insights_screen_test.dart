@@ -171,4 +171,53 @@ void main() {
     expect(find.textContaining('₹4,500 of ₹5,000'), findsOneWidget);
     expect(find.textContaining('1 near limit'), findsOneWidget);
   });
+
+  testWidgets('year view shows the statement and jumps back to a month',
+      (tester) async {
+    _tallView(tester);
+    final db = ArthDatabase.memory();
+    addTearDown(() => tester.runAsync(db.close));
+
+    await tester.runAsync(() async {
+      Future<int> cat(String slug) async => (await (db.select(db.categories)
+                ..where((c) => c.slug.equals(slug)))
+              .getSingle())
+          .id;
+      Future<void> add(String h, int paise, DateTime at, String slug,
+              {String d = 'debit'}) async =>
+          db.into(db.transactions).insert(TransactionsCompanion.insert(
+                amountPaise: paise,
+                direction: d,
+                txnType: 'upi',
+                bookedAt: at,
+                bankCode: 'HDFC',
+                rawMerchant: 'X',
+                rawDescription: 'X',
+                dedupeHash: h,
+                categoryId: Value(await cat(slug)),
+              ));
+      await add('s', 10000000, DateTime(2025, 5, 1, 10), 'salary', d: 'credit');
+      await add('g', 300000, DateTime(2025, 5, 3, 10), 'groceries');
+      await add('f', 100000, DateTime(2025, 8, 3, 10), 'fuel');
+    });
+
+    await tester.pumpWidget(MaterialApp(home: InsightsScreen(database: db)));
+    await _settle(tester);
+    await tester.tap(find.text('Aug 2025'));
+    await _settle(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('FY 2025-26'), findsOneWidget);
+    expect(find.text('Income statement'), findsOneWidget);
+    expect(find.text('Where the income went'), findsOneWidget);
+    expect(find.text('Daily spending'), findsOneWidget);
+    expect(find.text('Total spending'), findsOneWidget);
+    expect(find.text('96%'), findsOneWidget); // savings rate
+
+    await tester.tap(find.text('May 2025'));
+    await _settle(tester);
+    await tester.pumpAndSettle();
+    expect(find.text('Income statement'), findsNothing);
+    expect(find.text('May 2025'), findsOneWidget);
+  });
 }

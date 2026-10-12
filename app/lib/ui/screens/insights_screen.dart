@@ -3,25 +3,18 @@ import 'package:flutter/material.dart';
 
 import '../../core/db/database.dart';
 import '../../insights/insights.dart';
+import '../theme/chart_colors.dart';
 import 'budgets_screen.dart';
 import 'category_transactions_screen.dart';
+import 'yearly_screen.dart';
 
-/// Categorical chart colors (Okabe-Ito inspired); grey is reserved for
-/// "Uncategorized" / "Other".
-const _kSliceColors = <Color>[
-  Color(0xFF0B6E4F),
-  Color(0xFF3B6FB6),
-  Color(0xFFE08A1E),
-  Color(0xFF8E5BB5),
-  Color(0xFFD1495B),
-  Color(0xFF2AA7A0),
-];
-
+/// Donut / legend color: categorical slot by rank; gray for "Uncategorized"
+/// and "Other".
 Color sliceColor(BuildContext context, CategorySlice s, int index) {
   if (s.isOther || s.slug == kUncategorizedSlug) {
-    return Theme.of(context).colorScheme.outline;
+    return neutralSeriesColor(context);
   }
-  return _kSliceColors[index % _kSliceColors.length];
+  return categoricalColor(context, index);
 }
 
 class InsightsScreen extends StatefulWidget {
@@ -145,6 +138,21 @@ class _InsightsScreenState extends State<InsightsScreen> {
     if (mounted) await _load();
   }
 
+  Future<void> _openYear() async {
+    final db = widget.database;
+    final sel = _selected;
+    if (db == null || sel == null) return;
+    final month = await Navigator.of(context).push<MonthKey>(
+      MaterialPageRoute(
+        builder: (_) => YearlyScreen(
+          database: db,
+          initial: FinancialYear.ofMonth(sel),
+        ),
+      ),
+    );
+    if (mounted) await _load(month: month);
+  }
+
   void _step(int delta) {
     final i = _months.indexOf(_selected!);
     // _months is newest first: older month = higher index.
@@ -192,6 +200,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
             canGoNewer: i > 0,
             onOlder: () => _step(1),
             onNewer: () => _step(-1),
+            onYear: _openYear,
           ),
           const SizedBox(height: 8),
           if (snap.isEmpty)
@@ -269,6 +278,7 @@ class _MonthSelector extends StatelessWidget {
     required this.canGoNewer,
     required this.onOlder,
     required this.onNewer,
+    required this.onYear,
   });
 
   final MonthKey month;
@@ -276,6 +286,7 @@ class _MonthSelector extends StatelessWidget {
   final bool canGoNewer;
   final VoidCallback onOlder;
   final VoidCallback onNewer;
+  final VoidCallback onYear;
 
   @override
   Widget build(BuildContext context) {
@@ -287,9 +298,13 @@ class _MonthSelector extends StatelessWidget {
           icon: const Icon(Icons.chevron_left),
           onPressed: canGoOlder ? onOlder : null,
         ),
-        Text(
-          monthLabel(month.year, month.month),
-          style: Theme.of(context).textTheme.titleMedium,
+        TextButton.icon(
+          onPressed: onYear,
+          icon: const Icon(Icons.calendar_view_month, size: 18),
+          label: Text(
+            monthLabel(month.year, month.month),
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
         ),
         IconButton(
           tooltip: 'Next month',

@@ -12,3 +12,4 @@ export 'insights_repository.dart';
 export 'insights_snapshot.dart';
 export 'recurring_detector.dart';
 export 'transfer_pairing.dart';
+export 'yearly.dart';

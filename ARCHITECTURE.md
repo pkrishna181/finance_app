@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 7.1 — budgets
+Last updated: Phase 7.2 — yearly view
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -597,6 +597,35 @@ UI: "Budgets" card on Insights (summary + top 5, over-budget first) →
 `BudgetsScreen` (edit/remove, add with suggested amount). Alerts are in-app
 only for now; there is no notification plugin yet.
 Tests: `test/insights/budget_test.dart`, `test/ui/insights_screen_test.dart`.
+
+### Yearly view (Phase 7.2)
+
+`lib/insights/yearly.dart` (pure): `FinancialYear` (Indian FY, Apr–Mar,
+"FY 2026-27") and `YearSummary.build(agg, fy)`:
+
+- Totals are the sum of the 12 monthly summaries, so they always match the
+  monthly Insights numbers (refunds net per month, transfers excluded).
+- Income by source: `salary`, `interest`, and uncategorized credits as
+  `other_income`.
+- `dailySpend` = **gross** debits per day (refunds don't reduce a day).
+- Heatmap levels: quantiles of non-zero days (`quantileThresholds`, 4 levels).
+
+`InsightsRepository.yearAggregator` loads the FY ± 7 days. `YearlyScreen`
+(opened from the month title on Insights): totals, "Where the income went"
+(one stacked bar of the top 5 categories + Other as a share of income; the
+unfilled remainder is savings; the legend with amounts doubles as the table),
+a daily-spend heatmap (one row per month, tap a day for its amount), the
+income statement, and a month-by-month table whose rows jump back to that
+month on Insights.
+
+Chart colors live in `lib/ui/theme/chart_colors.dart`: the dataviz reference
+categorical slots 1–6, with separate light and dark steps (validated with
+`validate_palette.js` in both modes; light slots 3–5 are below 3:1 contrast,
+so these charts always show labeled legends with amounts). They replace the
+6.2 donut palette, whose dark green failed the chroma check. The sequential
+ramp is a single blue hue; in dark mode it runs from dark to light.
+
+Tests: `test/insights/yearly_test.dart`, `test/ui/insights_screen_test.dart`.
 
 ---
 

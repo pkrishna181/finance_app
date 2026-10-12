@@ -5,6 +5,7 @@ import 'insight_models.dart';
 import 'anomaly_detector.dart';
 import 'insights_aggregator.dart';
 import 'recurring_detector.dart';
+import 'yearly.dart';
 
 /// Loads slim transaction projections from the encrypted DB.
 class InsightsRepository {
@@ -73,6 +74,24 @@ ORDER BY t.booked_at ASC, t.id ASC
         .subtract(const Duration(days: 7));
     final to = end.endExclusive.add(const Duration(days: 7));
     return InsightsAggregator(await loadRange(from, to));
+  }
+
+  /// Aggregator over financial year [fy], padded a week each side so
+  /// transfers straddling the year edge still pair up.
+  Future<InsightsAggregator> yearAggregator(FinancialYear fy) async {
+    return InsightsAggregator(await loadRange(
+      fy.start.subtract(const Duration(days: 7)),
+      fy.endExclusive.add(const Duration(days: 7)),
+    ));
+  }
+
+  /// Financial years containing at least one transaction, newest first.
+  Future<List<FinancialYear>> availableYears() async {
+    final years = {
+      for (final m in await availableMonths()) FinancialYear.ofMonth(m),
+    }.toList()
+      ..sort((a, b) => b.compareTo(a));
+    return years;
   }
 
   /// slug → display name.
