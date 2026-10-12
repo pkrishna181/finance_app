@@ -1,4 +1,8 @@
+import 'dart:io';
 import 'dart:typed_data';
+
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import 'package:pdfrx_engine/pdfrx_engine.dart';
 
@@ -17,9 +21,9 @@ class PdfStatementLoader {
     ScannedPdfDetector? scannedDetector,
     LayoutToGrid? layoutToGrid,
     Future<void> Function()? ensureInitialized,
-  })  : _scanned = scannedDetector ?? const ScannedPdfDetector(),
-        _layout = layoutToGrid ?? const LayoutToGrid(),
-        _ensureInitialized = ensureInitialized ?? _defaultInit;
+  }) : _scanned = scannedDetector ?? const ScannedPdfDetector(),
+       _layout = layoutToGrid ?? const LayoutToGrid(),
+       _ensureInitialized = ensureInitialized ?? _defaultInit;
 
   final ScannedPdfDetector _scanned;
   final LayoutToGrid _layout;
@@ -29,7 +33,17 @@ class PdfStatementLoader {
 
   static Future<void> _defaultInit() async {
     if (_initialized) return;
-    await pdfrxInitialize();
+    // pdfrx's default cache dir is $HOME/.pdfrx, and Android sets no HOME —
+    // so give it the app's own temp folder (desktop tests keep the default).
+    String? tmp;
+    if (Platform.isAndroid || Platform.isIOS) {
+      final dir = Directory(
+        p.join((await getTemporaryDirectory()).path, 'pdfrx'),
+      );
+      await dir.create(recursive: true);
+      tmp = dir.path;
+    }
+    await pdfrxInitialize(tmpPath: tmp);
     _initialized = true;
   }
 
@@ -40,7 +54,7 @@ class PdfStatementLoader {
   }) async {
     await _ensureInitialized();
 
-  PdfDocument? doc;
+    PdfDocument? doc;
     try {
       doc = await _openWithPassword(bytes, passwordProvider);
       final pages = <PdfPageTextContent>[];
@@ -172,6 +186,7 @@ String pdfLoadErrorMessage(String code) {
     'pdf_empty' => 'PDF appears to be empty.',
     'xls_unsupported_export_xlsx_or_csv' =>
       'Legacy .xls could not be read — please export as XLSX or CSV.',
+    'file_read_failed' => 'Could not open this file.',
     _ => 'Could not parse this file ($code).',
   };
 }

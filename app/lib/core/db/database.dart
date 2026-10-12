@@ -61,6 +61,14 @@ class UpsertResult {
 class ArthDatabase extends _$ArthDatabase {
   ArthDatabase(super.e);
 
+  static Future<ArthDatabase>? _shared;
+
+  /// The app-wide connection. Every screen must use this rather than
+  /// [openEncrypted]: separate connections to the same file contend for
+  /// SQLite's write lock (e.g. one running migrations while another reads)
+  /// and fail with "database is locked".
+  static Future<ArthDatabase> shared() => _shared ??= openEncrypted();
+
   static Future<ArthDatabase> openEncrypted({DbKeyStore? keyStore}) async {
     final store = keyStore ?? DbKeyStore();
     final key = await store.getOrCreateKey();
@@ -541,6 +549,8 @@ void applyEncryptionKey(CommonDatabase db, String key) {
   final escaped = key.replaceAll("'", "''");
   db.execute("PRAGMA key = '$escaped'");
   db.execute('SELECT count(*) FROM sqlite_master');
+  // Wait for a competing writer instead of failing straight away.
+  db.execute('PRAGMA busy_timeout = 5000');
 }
 
 String buildDedupeHash({

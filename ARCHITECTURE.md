@@ -1163,6 +1163,35 @@ field's own theme-merged style, strut and text scaling; headings bold,
 comments muted, tap a result to copy, autosave after 600 ms, help sheet.
 Tests: `test/insights/sheets_test.dart`, `test/ui/sheets_screen_test.dart`.
 
+### Release-build fixes (found on the emulator, Oct 2026)
+
+Tests run on the desktop VM, so these only showed up in a release APK:
+
+- **One database connection.** Screens used to call `openEncrypted()`
+  themselves; separate connections to the same file failed with "database is
+  locked" (e.g. migrations on one, a read on another — broke SMS import on a
+  fresh install). Always use `ArthDatabase.shared()`; never close it.
+  `busy_timeout = 5000` is set as a safety net.
+- **pdfrx cache dir.** `pdfrxInitialize()` defaults to `$HOME/.pdfrx`;
+  Android has no `HOME`, so every PDF import crashed. Mobile now passes the
+  app temp dir. `openStatementFile` also turns any exception into an error
+  result instead of crashing the import screen.
+- **INTERNET permission.** Flutter only adds it to debug / profile
+  manifests; the release manifest now declares it (model download, opt-in
+  AMFI NAVs).
+- **AI model screen.** Model download lived on a `kDebugMode`-only screen;
+  `AiModelScreen` (Privacy → On-device AI model) is the user-facing one.
+  The model's SHA-256 is now pinned (from Hugging Face LFS metadata); the full
+  hash runs once off the UI thread and writes a `.verified` marker so later
+  checks only compare size + marker. A resume that gets a full 200 response
+  restarts instead of appending.
+- **App lock covers every route.** `AppLockGate` moved to
+  `MaterialApp.builder`, so pushed screens are hidden when the app re-locks.
+
+Verify release-only behaviour on the `arth_test` emulator (Android 35
+x86_64 with ARM translation runs the arm64 APK): SMS seeded with
+`adb emu sms send`, statements pushed to `/sdcard/Download`.
+
 ---
 
 ## Engineering rules

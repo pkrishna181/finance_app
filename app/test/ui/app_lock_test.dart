@@ -119,4 +119,43 @@ void main() {
     expect(await AppLockSettings().isEnabled(), isTrue);
     expect(find.text('Lock again'), findsOneWidget);
   });
+
+  testWidgets('re-lock covers screens pushed above home', (tester) async {
+    await AppLockSettings().setEnabled(true);
+    await AppLockSettings().setTimeoutSeconds(0);
+    var now = DateTime(2026, 10, 12, 10);
+    final auth = FakeAuth();
+    await tester.pumpWidget(MaterialApp(
+      home: Builder(
+        builder: (context) => TextButton(
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => const Scaffold(body: Text('LOAN DETAILS')),
+          )),
+          child: const Text('open'),
+        ),
+      ),
+      builder: (context, child) => AppLockGate(
+        initiallyEnabled: true,
+        authenticator: auth,
+        clock: () => now,
+        child: child!,
+      ),
+    ));
+    await settle(tester);
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.text('LOAN DETAILS'), findsOneWidget);
+
+    auth.result = false;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    now = now.add(const Duration(seconds: 5));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await settle(tester);
+    expect(find.text('Arth is locked'), findsOneWidget);
+    expect(find.text('LOAN DETAILS'), findsNothing);
+  });
 }

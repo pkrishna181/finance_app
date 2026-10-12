@@ -16,9 +16,12 @@ class ArthApp extends StatelessWidget {
       title: 'Arth',
       debugShowCheckedModeBanner: false,
       theme: ArthTheme.light(),
-      home: AppLockGate(
+      home: const HomeShell(),
+      // Wraps the whole navigator, so the lock covers every pushed screen
+      // and dialog, not just the home route.
+      builder: (context, child) => AppLockGate(
         initiallyEnabled: lockEnabled,
-        child: const HomeShell(),
+        child: child ?? const SizedBox.shrink(),
       ),
     );
   }

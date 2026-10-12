@@ -131,21 +131,21 @@ class StatementBatchImporter {
         final code = opened.errorOrNull!;
         return switch (code) {
           'duplicate_file' => base.copyWith(
-              status: BatchFileStatus.alreadyImported,
-              message: 'Already imported',
-            ),
+            status: BatchFileStatus.alreadyImported,
+            message: 'Already imported',
+          ),
           'pdf_password_required' => base.copyWith(
-              status: BatchFileStatus.skipped,
-              message: 'Locked — no password worked',
-            ),
+            status: BatchFileStatus.skipped,
+            message: 'Locked — no password worked',
+          ),
           'cas_empty' => base.copyWith(
-              status: BatchFileStatus.failed,
-              message: 'Investment statement, but no holdings could be read',
-            ),
+            status: BatchFileStatus.failed,
+            message: 'Investment statement, but no holdings could be read',
+          ),
           _ => base.copyWith(
-              status: BatchFileStatus.failed,
-              message: statementImportErrorMessage(code),
-            ),
+            status: BatchFileStatus.failed,
+            message: statementImportErrorMessage(code),
+          ),
         };
       }
       switch (opened.okOrNull!) {
@@ -210,6 +210,21 @@ Future<Result<OpenedFile>> openStatementFile({
   required PdfUnlockSession session,
   PdfStatementLoader? pdfLoader,
 }) async {
+  try {
+    return await _openStatementFile(db, source, file, session, pdfLoader);
+  } catch (e) {
+    // Never let a bad file crash the import screen.
+    return Err('file_read_failed', e);
+  }
+}
+
+Future<Result<OpenedFile>> _openStatementFile(
+  ArthDatabase db,
+  StatementFileSource source,
+  StatementFile file,
+  PdfUnlockSession session,
+  PdfStatementLoader? pdfLoader,
+) async {
   final isPdf = file.name.toLowerCase().endsWith('.pdf');
   List<PdfPageTextContent>? pages;
   if (isPdf) {

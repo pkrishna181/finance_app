@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Network: only the on-device AI model download and the opt-in AMFI
+         NAV list (see README → Privacy). Debug builds get this from
+         Flutter automatically; release builds need it declared here. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.READ_SMS"/>
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <!-- Reminders (Phase 11.4): show notifications, re-schedule after reboot. -->
