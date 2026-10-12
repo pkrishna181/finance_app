@@ -44,6 +44,10 @@ dependencies:
   pdfrx_engine: ^0.4.6
   pdfium_flutter: ^0.2.3
   pdf: ^3.13.0
+
+  # Insights charts. Checked 2026-09: fl_chart 1.x — pure Dart/Flutter, MIT,
+  # actively maintained (imfuzzy/fl_chart); no network or native code.
+  fl_chart: ^1.0.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

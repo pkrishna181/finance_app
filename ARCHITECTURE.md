@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: 2026-08-10 (Phase 5.5 — opportunistic LLM batch runner)
+Last updated: Phase 6.5 — cash-flow and forecast
 
 ---
 
@@ -21,7 +21,7 @@ Last updated: 2026-08-10 (Phase 5.5 — opportunistic LLM batch runner)
     common/          shared extractors (amount/date/refs/vpa)
     sms/             regex cascade + templates
   lib/llm            LlmEngine, FakeLlmEngine, LlamaCppEngine, job queue, anchoring
-  lib/insights       (later)
+  lib/insights       aggregation (Phase 6.1): pure Dart + read-only repository
   lib/ui
 /native/llama        arth_llm shim + llama.cpp b4531 (pinned)
 /model               MODEL_CARD.md (Gemma-3 1B Q4)
@@ -43,6 +43,7 @@ ARCHITECTURE.md
 | `csv` 8.x | CSV decode | dart ecosystem, recent |
 | `file_picker` 8.x | File pick | Active |
 | `pdfrx_engine` 0.4.x + `pdfium_flutter` | PDF text + positions | **Chosen Phase 3** — PDFium-based (preferred over pure-Dart renderers for extraction fidelity); active GitHub (espresso3389/pdfrx, 2025–2026); MIT; password via `PdfPasswordProvider` |
+| `fl_chart` 1.x | Insights donut + trend bars | **Chosen Phase 6.2** — MIT, pure Dart/Flutter (no native/network), actively maintained; checked 2026-09 |
 | `pdf` 3.x | Dev fixture generation only | DavBfr/dart_pdf; BSD; used in Python/reportlab path for goldens, not runtime import |
 
 ### Removed: `flutter_sms_inbox`
@@ -70,7 +71,7 @@ never logged. `countMessages` estimates total matching rows for progress UI.
 
 ---
 
-## Data model (schema v6)
+## Data model (schema v7)
 
 ### Imports
 
@@ -418,6 +419,113 @@ complete summary. **N unrecognized — resolve** on Import tab and scan complete
 opportunistically — never inline during scan).
 
 Lifecycle: app backgrounding requests cooperative cancel (same as Stop).
+
+---
+
+## Insights aggregation (Phase 6.1)
+
+`lib/insights/` — no Flutter dependency; deterministic, paise integers only.
+
+- `InsightsRepository` loads slim `InsightTxn` rows (raw SQL join to
+  categories/merchants) for a date range, padded ±7 days so transfers across a
+  month edge still pair.
+- `InsightsAggregator` (pure): `summarize(month)`, `trend`, `topMerchants`,
+  `dailySpend`, `weekdaySpend`, `monthOverMonth`, `categoryDeltas`.
+- **Spend** = debits; **income** = credits in `salary`/`interest` or
+  uncategorized; other categorized credits are **refunds** netting against that
+  category (category display floored at 0).
+- **Transfers excluded** (`TransferPairing`): category `transfers_self`, plus
+  auto-paired debit/credit of equal amount on different accounts within 3 days.
+  Both sides must be uncategorized/transfer-category; rows categorized by the
+  user elsewhere never pair. Manual override = recategorize the row
+  (`transfers_self` to force-exclude, any other category to force-include).
+- Schema v7 adds indexes `idx_transactions_booked_at` and
+  `idx_transactions_category_booked_at` (no table changes, no codegen impact).
+- Tests: `test/insights/`.
+
+### Recurring detection (Phase 6.3)
+
+`RecurringDetector` (pure) over counted, non-transfer debits, grouped by
+`merchantId` (else normalized raw label: lowercase, digits/punctuation
+stripped, ≥3 chars):
+
+1. Amounts form ≤ 2 consecutive levels (±5%) — one price change allowed
+   (`PriceChange`), noisy spend rejected.
+2. Min charges: weekly 4, monthly 3, quarterly 3, annual 2.
+3. ≥ 75% of intervals fit one cadence (7±2, 30±4, 91±8, 365±15 days); an
+   interval near 2× the cadence counts as one missed cycle.
+4. `active` = last charge within 2 cycles of `asOf`; lapsed series are kept
+   but excluded from the monthly-commitment total.
+
+`kind`: `sip` (category `investments_sip`), `enach` (txn type enach/mandate or
+category `emi`), else `subscription`. `InsightsRepository.loadRecurring` scans
+13 months, flags rows (`is_recurring_candidate = 1`; `recurring_kind` only when
+still null — never overwrites) and attaches the earliest upcoming
+`mandate_notices` date whose merchant matches and amount is within 10%.
+UI: "Subscriptions & EMIs" card (monthly total, next date, "price up").
+Tests: `test/insights/recurring_detector_test.dart`.
+
+### Anomalies (Phase 6.4)
+
+`AnomalyDetector` (pure) flags unusual spending in the selected month against
+up to 6 prior months held by the aggregator. Thresholds are constructor
+parameters. One flag per transaction (duplicate > new payee > large):
+
+| Kind | Rule |
+|---|---|
+| Category spike | ≥3 prior months; z ≥ 2 (σ floored at 10% of mean); ≥1.3× mean; ≥₹1,000 above it. Uncategorized ignored. |
+| Large transaction | ≥5 prior debits in the category; > mean+3σ; ≥3× median; ≥₹2,000 |
+| New payee | ≥20 prior debits overall; never-seen merchant; ≥₹5,000 and ≥ prior 90th percentile |
+| Duplicate charge | same merchant + amount within 24h; ≥₹100 |
+
+Top 5 by money impact shown as "Unusual this month". The ✕ button stores a
+`user_corrections` row (`field = 'anomaly_dismissed'`, `new_value = key`;
+keys: `dup:<txn>`, `new:<txn>`, `large:<txn>`, `cat:<slug>:<yyyy-MM>`). The
+category rule engine only reads `field = 'category'`, so dismissals do not
+affect categorization. Tests: `test/insights/anomaly_detector_test.dart`.
+
+### Cash-flow and forecast (Phase 6.5)
+
+`lib/insights/cashflow.dart` (pure):
+
+- **`BalanceSeries`** — combined daily balance from `balance_after_paise`.
+  Per account the day's last transaction (time, then id) is the closing
+  balance, carried forward on quiet days; an account joins from its first known
+  balance. Accounts with < 3 balance points are ignored. **Uses all rows
+  including transfers** (balances don't care about spend semantics).
+  Caveat: credit-card statements may report outstanding/limit rather than a
+  balance and would distort the sum; not special-cased yet.
+- **`CashflowForecaster`** (current calendar month only) — projected spend =
+  spent so far + recurring charges still due (from 6.3 series; mandate date
+  wins over the estimate; weekly series can fall due repeatedly; overdue ones
+  are not projected) + non-recurring daily rate × days left. Rate = this
+  month's non-recurring spend / days elapsed once ≥ 7 days have passed, else
+  the average of up to 3 prior months. Projected balance = latest combined
+  balance − projected remaining spend, when balances are known.
+- **Category increases** — top 3 categories with ≥ ₹500 growth vs last month
+  (categories with no prior spend excluded).
+
+UI cards: "Month-end outlook", "Biggest increases vs last month", "Balance"
+(60-day line). Tests: `test/insights/cashflow_test.dart`.
+
+### Insights UI (Phase 6.2)
+
+`InsightsScreen` (Insights tab) loads the selected month via
+`InsightsRepository` → `InsightsSnapshot.build` (pure view-model: summary,
+MoM spend delta, 6-month trend, category slices with tail folded into
+"Other", top 5 merchants). Reloads when the tab is re-selected
+(`reloadToken`) and on pull-to-refresh.
+
+- Summary tiles: income / spend / net / savings rate.
+- Category donut (`fl_chart`) + tappable legend → `CategoryTransactionsScreen`
+  (read-only list of the transactions behind the number).
+- Spend-trend bars with the selected month highlighted; chart is wrapped in a
+  text `Semantics` summary.
+- Uncategorized banner drills into the uncategorized list (it does **not** open
+  the SMS resolve flow, which handles unparsed SMS, not categories).
+- Category editing from these lists is Phase 6.6.
+- Tests: `test/insights/insights_snapshot_test.dart`,
+  `test/ui/insights_screen_test.dart`.
 
 ---
 

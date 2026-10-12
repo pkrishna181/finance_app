@@ -66,7 +66,7 @@ class ArthDatabase extends _$ArthDatabase {
   }
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
   created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
 )''');
           await _seedCategories();
+          await _createInsightIndexes();
         },
         onUpgrade: (m, from, to) async {
           if (from < 2) {
@@ -116,11 +117,26 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
   created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
 )''');
           }
+          if (from < 7) {
+            await _createInsightIndexes();
+          }
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');
         },
       );
+
+  /// Indexes backing Phase 6 insights range / category queries.
+  Future<void> _createInsightIndexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_transactions_booked_at '
+      'ON transactions(booked_at)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_transactions_category_booked_at '
+      'ON transactions(category_id, booked_at)',
+    );
+  }
 
   Future<void> _seedCategories() async {
     await batch((b) {
