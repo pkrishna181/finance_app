@@ -10,6 +10,7 @@ import 'credit_cards_screen.dart';
 import 'doctor_screen.dart';
 import 'goals_screen.dart';
 import 'investments_screen.dart';
+import 'net_worth_screen.dart';
 import 'manual_transaction_screen.dart';
 import 'search_screen.dart';
 import 'yearly_screen.dart';
@@ -52,6 +53,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
   List<CardStatus> _cards = const [];
   List<GoalProgress> _goals = const [];
   PortfolioSummary? _portfolio;
+  NetWorth? _netWorth;
   int _cardSuggestions = 0;
 
   @override
@@ -82,7 +84,11 @@ class _InsightsScreenState extends State<InsightsScreen> {
     try {
       final repo = InsightsRepository(db);
       final months = await repo.availableMonths();
+      final portfolio = await PortfolioRepository(db).summary(DateTime.now());
+      final netWorth = await NetWorthRepository(db).netWorth(DateTime.now());
       if (!mounted) return;
+      _portfolio = portfolio;
+      _netWorth = netWorth;
       if (months.isEmpty) {
         setState(() {
           _months = const [];
@@ -107,13 +113,11 @@ class _InsightsScreenState extends State<InsightsScreen> {
       final cards = await cardRepo.statuses(DateTime.now());
       final cardSuggestions = (await cardRepo.suggestions()).length;
       final goals = await GoalRepository(db).progressAll(DateTime.now());
-      final portfolio = await PortfolioRepository(db).summary(DateTime.now());
       if (!mounted) return;
       setState(() {
         _cards = cards;
         _cardSuggestions = cardSuggestions;
         _goals = goals;
-        _portfolio = portfolio;
         _months = months;
         _selected = selected;
         _snapshot = InsightsSnapshot.build(
@@ -195,6 +199,15 @@ class _InsightsScreenState extends State<InsightsScreen> {
       ),
     );
     if (saved == true && mounted) await _load();
+  }
+
+  Future<void> _openNetWorth() async {
+    final db = widget.database;
+    if (db == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => NetWorthScreen(database: db)),
+    );
+    if (mounted) await _load();
   }
 
   Future<void> _openInvestments() async {
@@ -292,8 +305,29 @@ class _InsightsScreenState extends State<InsightsScreen> {
     }
     final snap = _snapshot;
     if (snap == null) {
-      return const _Message(
-        'No transactions yet.\nImport a statement or scan SMS to see insights.',
+      final p = _portfolio;
+      final nw = _netWorth;
+      if ((p == null || p.isEmpty) && (nw == null || nw.isEmpty)) {
+        return const _Message(
+          'No transactions yet.\nImport a statement or scan SMS to see insights.',
+        );
+      }
+      // Only holdings / assets so far: show those.
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        children: [
+          if (nw != null && !nw.isEmpty) ...[
+            _NetWorthCard(netWorth: nw, onOpen: _openNetWorth),
+            const SizedBox(height: 12),
+          ],
+          if (p != null && !p.isEmpty)
+            PortfolioSummaryCard(summary: p, onTap: _openInvestments),
+          const SizedBox(height: 24),
+          const Text(
+            'Import bank statements or scan SMS to see spending insights.',
+            textAlign: TextAlign.center,
+          ),
+        ],
       );
     }
     final i = _months.indexOf(snap.month);
@@ -329,6 +363,10 @@ class _InsightsScreenState extends State<InsightsScreen> {
             const SizedBox(height: 12),
             if (snap.forecast != null) ...[
               _ForecastCard(forecast: snap.forecast!),
+              const SizedBox(height: 12),
+            ],
+            if (_netWorth != null && !_netWorth!.isEmpty) ...[
+              _NetWorthCard(netWorth: _netWorth!, onOpen: _openNetWorth),
               const SizedBox(height: 12),
             ],
             if (_portfolio != null && !_portfolio!.isEmpty) ...[
@@ -886,6 +924,37 @@ class _AnomalyCard extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _NetWorthCard extends StatelessWidget {
+  const _NetWorthCard({required this.netWorth, required this.onOpen});
+  final NetWorth netWorth;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final nw = netWorth;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: ListTile(
+        contentPadding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+        title: Text('Net worth', style: t.titleMedium),
+        subtitle: Text(
+          '${inrWhole(nw.assetsPaise)} owned · '
+          '${inrWhole(nw.liabilitiesPaise)} owed',
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(inrWhole(nw.totalPaise), style: t.titleLarge),
+            const Icon(Icons.chevron_right),
+          ],
+        ),
+        onTap: onOpen,
       ),
     );
   }

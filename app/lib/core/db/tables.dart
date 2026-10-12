@@ -422,3 +422,35 @@ class SecurityPrices extends Table {
         {securityId, date},
       ];
 }
+
+/// Assets and liabilities the user enters by hand (Phase 9.2).
+class ManualAssets extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+
+  /// gold | fd | ppf | epf | nps | property | vehicle | cash | other |
+  /// loan (liability)
+  TextColumn get kind => text()();
+
+  /// FD only: yearly interest in basis points, compounded quarterly from
+  /// [startDate] on the latest recorded value.
+  IntColumn get interestBp => integer().nullable()();
+  DateTimeColumn get startDate => dateTime().nullable()();
+  DateTimeColumn get maturityDate => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Value of a manual asset / liability from a date on (Phase 9.2).
+class ManualAssetValues extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get assetId => integer().references(ManualAssets, #id)();
+  DateTimeColumn get date => dateTime()();
+
+  /// Always positive; liabilities are subtracted by kind.
+  IntColumn get valuePaise => integer()();
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => [
+        {assetId, date},
+      ];
+}

@@ -363,4 +363,23 @@ void main() {
     await _settle(tester);
     expect(find.textContaining('2 results'), findsOneWidget);
   });
+
+  testWidgets('only assets so far: Insights shows net worth', (tester) async {
+    _tallView(tester);
+    final db = ArthDatabase.memory();
+    addTearDown(() => tester.runAsync(db.close));
+    await tester.runAsync(() => NetWorthRepository(db)
+        .saveAsset(name: 'Gold coins', kind: 'gold', valuePaise: 20000000));
+    await tester.pumpWidget(MaterialApp(home: InsightsScreen(database: db)));
+    await _settle(tester);
+    expect(find.textContaining('No transactions yet'), findsNothing);
+    expect(find.text('Net worth'), findsOneWidget);
+    expect(find.text('₹2,00,000'), findsOneWidget);
+
+    await tester.tap(find.text('Net worth'));
+    await _settle(tester);
+    await tester.pumpAndSettle();
+    expect(find.text('Gold coins'), findsOneWidget);
+    expect(find.text('Other assets'), findsOneWidget);
+  });
 }

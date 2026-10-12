@@ -12498,6 +12498,780 @@ class SecurityPricesCompanion extends UpdateCompanion<SecurityPrice> {
   }
 }
 
+class $ManualAssetsTable extends ManualAssets
+    with TableInfo<$ManualAssetsTable, ManualAsset> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ManualAssetsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _interestBpMeta = const VerificationMeta(
+    'interestBp',
+  );
+  @override
+  late final GeneratedColumn<int> interestBp = GeneratedColumn<int>(
+    'interest_bp',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _startDateMeta = const VerificationMeta(
+    'startDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+    'start_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _maturityDateMeta = const VerificationMeta(
+    'maturityDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> maturityDate = GeneratedColumn<DateTime>(
+    'maturity_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    kind,
+    interestBp,
+    startDate,
+    maturityDate,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'manual_assets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ManualAsset> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('interest_bp')) {
+      context.handle(
+        _interestBpMeta,
+        interestBp.isAcceptableOrUnknown(data['interest_bp']!, _interestBpMeta),
+      );
+    }
+    if (data.containsKey('start_date')) {
+      context.handle(
+        _startDateMeta,
+        startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta),
+      );
+    }
+    if (data.containsKey('maturity_date')) {
+      context.handle(
+        _maturityDateMeta,
+        maturityDate.isAcceptableOrUnknown(
+          data['maturity_date']!,
+          _maturityDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ManualAsset map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ManualAsset(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      interestBp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}interest_bp'],
+      ),
+      startDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_date'],
+      ),
+      maturityDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}maturity_date'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ManualAssetsTable createAlias(String alias) {
+    return $ManualAssetsTable(attachedDatabase, alias);
+  }
+}
+
+class ManualAsset extends DataClass implements Insertable<ManualAsset> {
+  final int id;
+  final String name;
+
+  /// gold | fd | ppf | epf | nps | property | vehicle | cash | other |
+  /// loan (liability)
+  final String kind;
+
+  /// FD only: yearly interest in basis points, compounded quarterly from
+  /// [startDate] on the latest recorded value.
+  final int? interestBp;
+  final DateTime? startDate;
+  final DateTime? maturityDate;
+  final DateTime createdAt;
+  const ManualAsset({
+    required this.id,
+    required this.name,
+    required this.kind,
+    this.interestBp,
+    this.startDate,
+    this.maturityDate,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['kind'] = Variable<String>(kind);
+    if (!nullToAbsent || interestBp != null) {
+      map['interest_bp'] = Variable<int>(interestBp);
+    }
+    if (!nullToAbsent || startDate != null) {
+      map['start_date'] = Variable<DateTime>(startDate);
+    }
+    if (!nullToAbsent || maturityDate != null) {
+      map['maturity_date'] = Variable<DateTime>(maturityDate);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  ManualAssetsCompanion toCompanion(bool nullToAbsent) {
+    return ManualAssetsCompanion(
+      id: Value(id),
+      name: Value(name),
+      kind: Value(kind),
+      interestBp: interestBp == null && nullToAbsent
+          ? const Value.absent()
+          : Value(interestBp),
+      startDate: startDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startDate),
+      maturityDate: maturityDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(maturityDate),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory ManualAsset.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ManualAsset(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      kind: serializer.fromJson<String>(json['kind']),
+      interestBp: serializer.fromJson<int?>(json['interestBp']),
+      startDate: serializer.fromJson<DateTime?>(json['startDate']),
+      maturityDate: serializer.fromJson<DateTime?>(json['maturityDate']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'kind': serializer.toJson<String>(kind),
+      'interestBp': serializer.toJson<int?>(interestBp),
+      'startDate': serializer.toJson<DateTime?>(startDate),
+      'maturityDate': serializer.toJson<DateTime?>(maturityDate),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  ManualAsset copyWith({
+    int? id,
+    String? name,
+    String? kind,
+    Value<int?> interestBp = const Value.absent(),
+    Value<DateTime?> startDate = const Value.absent(),
+    Value<DateTime?> maturityDate = const Value.absent(),
+    DateTime? createdAt,
+  }) => ManualAsset(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    kind: kind ?? this.kind,
+    interestBp: interestBp.present ? interestBp.value : this.interestBp,
+    startDate: startDate.present ? startDate.value : this.startDate,
+    maturityDate: maturityDate.present ? maturityDate.value : this.maturityDate,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  ManualAsset copyWithCompanion(ManualAssetsCompanion data) {
+    return ManualAsset(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      interestBp: data.interestBp.present
+          ? data.interestBp.value
+          : this.interestBp,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      maturityDate: data.maturityDate.present
+          ? data.maturityDate.value
+          : this.maturityDate,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ManualAsset(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('kind: $kind, ')
+          ..write('interestBp: $interestBp, ')
+          ..write('startDate: $startDate, ')
+          ..write('maturityDate: $maturityDate, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    kind,
+    interestBp,
+    startDate,
+    maturityDate,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ManualAsset &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.kind == this.kind &&
+          other.interestBp == this.interestBp &&
+          other.startDate == this.startDate &&
+          other.maturityDate == this.maturityDate &&
+          other.createdAt == this.createdAt);
+}
+
+class ManualAssetsCompanion extends UpdateCompanion<ManualAsset> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<String> kind;
+  final Value<int?> interestBp;
+  final Value<DateTime?> startDate;
+  final Value<DateTime?> maturityDate;
+  final Value<DateTime> createdAt;
+  const ManualAssetsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.interestBp = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.maturityDate = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  ManualAssetsCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    required String kind,
+    this.interestBp = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.maturityDate = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : name = Value(name),
+       kind = Value(kind);
+  static Insertable<ManualAsset> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<String>? kind,
+    Expression<int>? interestBp,
+    Expression<DateTime>? startDate,
+    Expression<DateTime>? maturityDate,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (kind != null) 'kind': kind,
+      if (interestBp != null) 'interest_bp': interestBp,
+      if (startDate != null) 'start_date': startDate,
+      if (maturityDate != null) 'maturity_date': maturityDate,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  ManualAssetsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<String>? kind,
+    Value<int?>? interestBp,
+    Value<DateTime?>? startDate,
+    Value<DateTime?>? maturityDate,
+    Value<DateTime>? createdAt,
+  }) {
+    return ManualAssetsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      kind: kind ?? this.kind,
+      interestBp: interestBp ?? this.interestBp,
+      startDate: startDate ?? this.startDate,
+      maturityDate: maturityDate ?? this.maturityDate,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (interestBp.present) {
+      map['interest_bp'] = Variable<int>(interestBp.value);
+    }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
+    if (maturityDate.present) {
+      map['maturity_date'] = Variable<DateTime>(maturityDate.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ManualAssetsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('kind: $kind, ')
+          ..write('interestBp: $interestBp, ')
+          ..write('startDate: $startDate, ')
+          ..write('maturityDate: $maturityDate, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ManualAssetValuesTable extends ManualAssetValues
+    with TableInfo<$ManualAssetValuesTable, ManualAssetValue> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ManualAssetValuesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _assetIdMeta = const VerificationMeta(
+    'assetId',
+  );
+  @override
+  late final GeneratedColumn<int> assetId = GeneratedColumn<int>(
+    'asset_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES manual_assets (id)',
+    ),
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _valuePaiseMeta = const VerificationMeta(
+    'valuePaise',
+  );
+  @override
+  late final GeneratedColumn<int> valuePaise = GeneratedColumn<int>(
+    'value_paise',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, assetId, date, valuePaise];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'manual_asset_values';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ManualAssetValue> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('asset_id')) {
+      context.handle(
+        _assetIdMeta,
+        assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_assetIdMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('value_paise')) {
+      context.handle(
+        _valuePaiseMeta,
+        valuePaise.isAcceptableOrUnknown(data['value_paise']!, _valuePaiseMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valuePaiseMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {assetId, date},
+  ];
+  @override
+  ManualAssetValue map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ManualAssetValue(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      assetId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}asset_id'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      valuePaise: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}value_paise'],
+      )!,
+    );
+  }
+
+  @override
+  $ManualAssetValuesTable createAlias(String alias) {
+    return $ManualAssetValuesTable(attachedDatabase, alias);
+  }
+}
+
+class ManualAssetValue extends DataClass
+    implements Insertable<ManualAssetValue> {
+  final int id;
+  final int assetId;
+  final DateTime date;
+
+  /// Always positive; liabilities are subtracted by kind.
+  final int valuePaise;
+  const ManualAssetValue({
+    required this.id,
+    required this.assetId,
+    required this.date,
+    required this.valuePaise,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['asset_id'] = Variable<int>(assetId);
+    map['date'] = Variable<DateTime>(date);
+    map['value_paise'] = Variable<int>(valuePaise);
+    return map;
+  }
+
+  ManualAssetValuesCompanion toCompanion(bool nullToAbsent) {
+    return ManualAssetValuesCompanion(
+      id: Value(id),
+      assetId: Value(assetId),
+      date: Value(date),
+      valuePaise: Value(valuePaise),
+    );
+  }
+
+  factory ManualAssetValue.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ManualAssetValue(
+      id: serializer.fromJson<int>(json['id']),
+      assetId: serializer.fromJson<int>(json['assetId']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      valuePaise: serializer.fromJson<int>(json['valuePaise']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'assetId': serializer.toJson<int>(assetId),
+      'date': serializer.toJson<DateTime>(date),
+      'valuePaise': serializer.toJson<int>(valuePaise),
+    };
+  }
+
+  ManualAssetValue copyWith({
+    int? id,
+    int? assetId,
+    DateTime? date,
+    int? valuePaise,
+  }) => ManualAssetValue(
+    id: id ?? this.id,
+    assetId: assetId ?? this.assetId,
+    date: date ?? this.date,
+    valuePaise: valuePaise ?? this.valuePaise,
+  );
+  ManualAssetValue copyWithCompanion(ManualAssetValuesCompanion data) {
+    return ManualAssetValue(
+      id: data.id.present ? data.id.value : this.id,
+      assetId: data.assetId.present ? data.assetId.value : this.assetId,
+      date: data.date.present ? data.date.value : this.date,
+      valuePaise: data.valuePaise.present
+          ? data.valuePaise.value
+          : this.valuePaise,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ManualAssetValue(')
+          ..write('id: $id, ')
+          ..write('assetId: $assetId, ')
+          ..write('date: $date, ')
+          ..write('valuePaise: $valuePaise')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, assetId, date, valuePaise);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ManualAssetValue &&
+          other.id == this.id &&
+          other.assetId == this.assetId &&
+          other.date == this.date &&
+          other.valuePaise == this.valuePaise);
+}
+
+class ManualAssetValuesCompanion extends UpdateCompanion<ManualAssetValue> {
+  final Value<int> id;
+  final Value<int> assetId;
+  final Value<DateTime> date;
+  final Value<int> valuePaise;
+  const ManualAssetValuesCompanion({
+    this.id = const Value.absent(),
+    this.assetId = const Value.absent(),
+    this.date = const Value.absent(),
+    this.valuePaise = const Value.absent(),
+  });
+  ManualAssetValuesCompanion.insert({
+    this.id = const Value.absent(),
+    required int assetId,
+    required DateTime date,
+    required int valuePaise,
+  }) : assetId = Value(assetId),
+       date = Value(date),
+       valuePaise = Value(valuePaise);
+  static Insertable<ManualAssetValue> custom({
+    Expression<int>? id,
+    Expression<int>? assetId,
+    Expression<DateTime>? date,
+    Expression<int>? valuePaise,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (assetId != null) 'asset_id': assetId,
+      if (date != null) 'date': date,
+      if (valuePaise != null) 'value_paise': valuePaise,
+    });
+  }
+
+  ManualAssetValuesCompanion copyWith({
+    Value<int>? id,
+    Value<int>? assetId,
+    Value<DateTime>? date,
+    Value<int>? valuePaise,
+  }) {
+    return ManualAssetValuesCompanion(
+      id: id ?? this.id,
+      assetId: assetId ?? this.assetId,
+      date: date ?? this.date,
+      valuePaise: valuePaise ?? this.valuePaise,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (assetId.present) {
+      map['asset_id'] = Variable<int>(assetId.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (valuePaise.present) {
+      map['value_paise'] = Variable<int>(valuePaise.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ManualAssetValuesCompanion(')
+          ..write('id: $id, ')
+          ..write('assetId: $assetId, ')
+          ..write('date: $date, ')
+          ..write('valuePaise: $valuePaise')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$ArthDatabase extends GeneratedDatabase {
   _$ArthDatabase(QueryExecutor e) : super(e);
   $ArthDatabaseManager get managers => $ArthDatabaseManager(this);
@@ -12537,6 +13311,9 @@ abstract class _$ArthDatabase extends GeneratedDatabase {
     this,
   );
   late final $SecurityPricesTable securityPrices = $SecurityPricesTable(this);
+  late final $ManualAssetsTable manualAssets = $ManualAssetsTable(this);
+  late final $ManualAssetValuesTable manualAssetValues =
+      $ManualAssetValuesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -12565,6 +13342,8 @@ abstract class _$ArthDatabase extends GeneratedDatabase {
     investmentTxns,
     holdingSnapshots,
     securityPrices,
+    manualAssets,
+    manualAssetValues,
   ];
 }
 
@@ -23402,6 +24181,659 @@ typedef $$SecurityPricesTableProcessedTableManager =
       SecurityPrice,
       PrefetchHooks Function({bool securityId})
     >;
+typedef $$ManualAssetsTableCreateCompanionBuilder =
+    ManualAssetsCompanion Function({
+      Value<int> id,
+      required String name,
+      required String kind,
+      Value<int?> interestBp,
+      Value<DateTime?> startDate,
+      Value<DateTime?> maturityDate,
+      Value<DateTime> createdAt,
+    });
+typedef $$ManualAssetsTableUpdateCompanionBuilder =
+    ManualAssetsCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<String> kind,
+      Value<int?> interestBp,
+      Value<DateTime?> startDate,
+      Value<DateTime?> maturityDate,
+      Value<DateTime> createdAt,
+    });
+
+final class $$ManualAssetsTableReferences
+    extends BaseReferences<_$ArthDatabase, $ManualAssetsTable, ManualAsset> {
+  $$ManualAssetsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$ManualAssetValuesTable, List<ManualAssetValue>>
+  _manualAssetValuesRefsTable(_$ArthDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.manualAssetValues,
+        aliasName: 'manual_assets__id__manual_asset_values__asset_id',
+      );
+
+  $$ManualAssetValuesTableProcessedTableManager get manualAssetValuesRefs {
+    final manager = $$ManualAssetValuesTableTableManager(
+      $_db,
+      $_db.manualAssetValues,
+    ).filter((f) => f.assetId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _manualAssetValuesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$ManualAssetsTableFilterComposer
+    extends Composer<_$ArthDatabase, $ManualAssetsTable> {
+  $$ManualAssetsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get interestBp => $composableBuilder(
+    column: $table.interestBp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get maturityDate => $composableBuilder(
+    column: $table.maturityDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> manualAssetValuesRefs(
+    Expression<bool> Function($$ManualAssetValuesTableFilterComposer f) f,
+  ) {
+    final $$ManualAssetValuesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.manualAssetValues,
+      getReferencedColumn: (t) => t.assetId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ManualAssetValuesTableFilterComposer(
+            $db: $db,
+            $table: $db.manualAssetValues,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$ManualAssetsTableOrderingComposer
+    extends Composer<_$ArthDatabase, $ManualAssetsTable> {
+  $$ManualAssetsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get interestBp => $composableBuilder(
+    column: $table.interestBp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get maturityDate => $composableBuilder(
+    column: $table.maturityDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ManualAssetsTableAnnotationComposer
+    extends Composer<_$ArthDatabase, $ManualAssetsTable> {
+  $$ManualAssetsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<int> get interestBp => $composableBuilder(
+    column: $table.interestBp,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get maturityDate => $composableBuilder(
+    column: $table.maturityDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> manualAssetValuesRefs<T extends Object>(
+    Expression<T> Function($$ManualAssetValuesTableAnnotationComposer a) f,
+  ) {
+    final $$ManualAssetValuesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.manualAssetValues,
+          getReferencedColumn: (t) => t.assetId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ManualAssetValuesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.manualAssetValues,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$ManualAssetsTableTableManager
+    extends
+        RootTableManager<
+          _$ArthDatabase,
+          $ManualAssetsTable,
+          ManualAsset,
+          $$ManualAssetsTableFilterComposer,
+          $$ManualAssetsTableOrderingComposer,
+          $$ManualAssetsTableAnnotationComposer,
+          $$ManualAssetsTableCreateCompanionBuilder,
+          $$ManualAssetsTableUpdateCompanionBuilder,
+          (ManualAsset, $$ManualAssetsTableReferences),
+          ManualAsset,
+          PrefetchHooks Function({bool manualAssetValuesRefs})
+        > {
+  $$ManualAssetsTableTableManager(_$ArthDatabase db, $ManualAssetsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ManualAssetsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ManualAssetsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ManualAssetsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<int?> interestBp = const Value.absent(),
+                Value<DateTime?> startDate = const Value.absent(),
+                Value<DateTime?> maturityDate = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => ManualAssetsCompanion(
+                id: id,
+                name: name,
+                kind: kind,
+                interestBp: interestBp,
+                startDate: startDate,
+                maturityDate: maturityDate,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                required String kind,
+                Value<int?> interestBp = const Value.absent(),
+                Value<DateTime?> startDate = const Value.absent(),
+                Value<DateTime?> maturityDate = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => ManualAssetsCompanion.insert(
+                id: id,
+                name: name,
+                kind: kind,
+                interestBp: interestBp,
+                startDate: startDate,
+                maturityDate: maturityDate,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ManualAssetsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({manualAssetValuesRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (manualAssetValuesRefs) db.manualAssetValues,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (manualAssetValuesRefs)
+                    await $_getPrefetchedData<
+                      ManualAsset,
+                      $ManualAssetsTable,
+                      ManualAssetValue
+                    >(
+                      currentTable: table,
+                      referencedTable: $$ManualAssetsTableReferences
+                          ._manualAssetValuesRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$ManualAssetsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).manualAssetValuesRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.assetId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ManualAssetsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$ArthDatabase,
+      $ManualAssetsTable,
+      ManualAsset,
+      $$ManualAssetsTableFilterComposer,
+      $$ManualAssetsTableOrderingComposer,
+      $$ManualAssetsTableAnnotationComposer,
+      $$ManualAssetsTableCreateCompanionBuilder,
+      $$ManualAssetsTableUpdateCompanionBuilder,
+      (ManualAsset, $$ManualAssetsTableReferences),
+      ManualAsset,
+      PrefetchHooks Function({bool manualAssetValuesRefs})
+    >;
+typedef $$ManualAssetValuesTableCreateCompanionBuilder =
+    ManualAssetValuesCompanion Function({
+      Value<int> id,
+      required int assetId,
+      required DateTime date,
+      required int valuePaise,
+    });
+typedef $$ManualAssetValuesTableUpdateCompanionBuilder =
+    ManualAssetValuesCompanion Function({
+      Value<int> id,
+      Value<int> assetId,
+      Value<DateTime> date,
+      Value<int> valuePaise,
+    });
+
+final class $$ManualAssetValuesTableReferences
+    extends
+        BaseReferences<
+          _$ArthDatabase,
+          $ManualAssetValuesTable,
+          ManualAssetValue
+        > {
+  $$ManualAssetValuesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ManualAssetsTable _assetIdTable(_$ArthDatabase db) => db.manualAssets
+      .createAlias('manual_asset_values__asset_id__manual_assets__id');
+
+  $$ManualAssetsTableProcessedTableManager get assetId {
+    final $_column = $_itemColumn<int>('asset_id')!;
+
+    final manager = $$ManualAssetsTableTableManager(
+      $_db,
+      $_db.manualAssets,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_assetIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ManualAssetValuesTableFilterComposer
+    extends Composer<_$ArthDatabase, $ManualAssetValuesTable> {
+  $$ManualAssetValuesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get valuePaise => $composableBuilder(
+    column: $table.valuePaise,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ManualAssetsTableFilterComposer get assetId {
+    final $$ManualAssetsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.assetId,
+      referencedTable: $db.manualAssets,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ManualAssetsTableFilterComposer(
+            $db: $db,
+            $table: $db.manualAssets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ManualAssetValuesTableOrderingComposer
+    extends Composer<_$ArthDatabase, $ManualAssetValuesTable> {
+  $$ManualAssetValuesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get valuePaise => $composableBuilder(
+    column: $table.valuePaise,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ManualAssetsTableOrderingComposer get assetId {
+    final $$ManualAssetsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.assetId,
+      referencedTable: $db.manualAssets,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ManualAssetsTableOrderingComposer(
+            $db: $db,
+            $table: $db.manualAssets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ManualAssetValuesTableAnnotationComposer
+    extends Composer<_$ArthDatabase, $ManualAssetValuesTable> {
+  $$ManualAssetValuesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<int> get valuePaise => $composableBuilder(
+    column: $table.valuePaise,
+    builder: (column) => column,
+  );
+
+  $$ManualAssetsTableAnnotationComposer get assetId {
+    final $$ManualAssetsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.assetId,
+      referencedTable: $db.manualAssets,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ManualAssetsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.manualAssets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ManualAssetValuesTableTableManager
+    extends
+        RootTableManager<
+          _$ArthDatabase,
+          $ManualAssetValuesTable,
+          ManualAssetValue,
+          $$ManualAssetValuesTableFilterComposer,
+          $$ManualAssetValuesTableOrderingComposer,
+          $$ManualAssetValuesTableAnnotationComposer,
+          $$ManualAssetValuesTableCreateCompanionBuilder,
+          $$ManualAssetValuesTableUpdateCompanionBuilder,
+          (ManualAssetValue, $$ManualAssetValuesTableReferences),
+          ManualAssetValue,
+          PrefetchHooks Function({bool assetId})
+        > {
+  $$ManualAssetValuesTableTableManager(
+    _$ArthDatabase db,
+    $ManualAssetValuesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ManualAssetValuesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ManualAssetValuesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ManualAssetValuesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> assetId = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<int> valuePaise = const Value.absent(),
+              }) => ManualAssetValuesCompanion(
+                id: id,
+                assetId: assetId,
+                date: date,
+                valuePaise: valuePaise,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int assetId,
+                required DateTime date,
+                required int valuePaise,
+              }) => ManualAssetValuesCompanion.insert(
+                id: id,
+                assetId: assetId,
+                date: date,
+                valuePaise: valuePaise,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ManualAssetValuesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({assetId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (assetId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.assetId,
+                                referencedTable:
+                                    $$ManualAssetValuesTableReferences
+                                        ._assetIdTable(db),
+                                referencedColumn:
+                                    $$ManualAssetValuesTableReferences
+                                        ._assetIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ManualAssetValuesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$ArthDatabase,
+      $ManualAssetValuesTable,
+      ManualAssetValue,
+      $$ManualAssetValuesTableFilterComposer,
+      $$ManualAssetValuesTableOrderingComposer,
+      $$ManualAssetValuesTableAnnotationComposer,
+      $$ManualAssetValuesTableCreateCompanionBuilder,
+      $$ManualAssetValuesTableUpdateCompanionBuilder,
+      (ManualAssetValue, $$ManualAssetValuesTableReferences),
+      ManualAssetValue,
+      PrefetchHooks Function({bool assetId})
+    >;
 
 class $ArthDatabaseManager {
   final _$ArthDatabase _db;
@@ -23452,4 +24884,8 @@ class $ArthDatabaseManager {
       $$HoldingSnapshotsTableTableManager(_db, _db.holdingSnapshots);
   $$SecurityPricesTableTableManager get securityPrices =>
       $$SecurityPricesTableTableManager(_db, _db.securityPrices);
+  $$ManualAssetsTableTableManager get manualAssets =>
+      $$ManualAssetsTableTableManager(_db, _db.manualAssets);
+  $$ManualAssetValuesTableTableManager get manualAssetValues =>
+      $$ManualAssetValuesTableTableManager(_db, _db.manualAssetValues);
 }

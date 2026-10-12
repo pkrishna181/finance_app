@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 9.3 — investment returns
+Last updated: Phase 9.2 — net worth
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -864,6 +864,27 @@ units, price date, transactions) and an Investments card on Insights.
 
 Tests: `test/insights/portfolio_test.dart` (XIRR against closed-form values,
 FIFO, the CAS fixture end to end).
+
+### Net worth (Phase 9.2)
+
+Schema v12: `manual_assets` (name, kind: gold, fd, ppf, epf, nps, property,
+vehicle, cash, other, loan; FD rate / start / maturity) and
+`manual_asset_values` (value from a date on; history kept, one per day).
+
+`NetWorthRepository.netWorth(on)`: bank accounts (latest
+`balance_after_paise` per bank + last 4 on or before the date; cards excluded)
++ investments (`PortfolioRepository`) + manual assets − credit-card outstanding
+(8.1, today only) − loans. FDs with a rate grow from the last recorded value,
+compounded quarterly, capped at maturity (`fdValue`). `history()` = month-end
+values for 12 months (card dues left out, leading empty months dropped).
+
+UI: `NetWorthScreen` (total, owned / owed, month-end line chart with tap
+tooltips, groups with items and "as of" dates, stale > 45 days flagged; add /
+update / remove assets and loans) and a Net worth card at the top of Insights.
+When there are no bank transactions yet, Insights still shows net worth and
+investments.
+
+Tests: `test/insights/net_worth_test.dart`, `test/ui/insights_screen_test.dart`.
 
 ---
 
