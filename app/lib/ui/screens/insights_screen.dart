@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/db/database.dart';
 import '../../insights/insights.dart';
+import 'budgets_screen.dart';
 import 'category_transactions_screen.dart';
 
 /// Categorical chart colors (Okabe-Ito inspired); grey is reserved for
@@ -90,6 +91,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
         asOf: monthEnd.isAfter(now) ? now : monthEnd,
       );
       final dismissed = await repo.dismissedAnomalyKeys();
+      final budgetDefs = await BudgetRepository(db).list();
       if (!mounted) return;
       setState(() {
         _months = months;
@@ -101,6 +103,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
           recurring: recurring,
           dismissedAnomalies: dismissed,
           now: now,
+          budgetDefs: budgetDefs,
         );
         _loading = false;
       });
@@ -131,6 +134,15 @@ class _InsightsScreenState extends State<InsightsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openBudgets() async {
+    final db = widget.database;
+    if (db == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => BudgetsScreen(database: db)),
+    );
+    if (mounted) await _load();
   }
 
   void _step(int delta) {
@@ -202,6 +214,8 @@ class _InsightsScreenState extends State<InsightsScreen> {
               _ForecastCard(forecast: snap.forecast!),
               const SizedBox(height: 12),
             ],
+            _BudgetCard(budgets: snap.budgets, onManage: _openBudgets),
+            const SizedBox(height: 12),
             _CategoryCard(snapshot: snap, onOpen: _openTxns),
             if (snap.changes.isNotEmpty) ...[
               const SizedBox(height: 12),
@@ -730,6 +744,73 @@ class _AnomalyCard extends StatelessWidget {
                   onPressed: () => onDismiss(a),
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BudgetCard extends StatelessWidget {
+  const _BudgetCard({required this.budgets, required this.onManage});
+  final List<BudgetProgress> budgets;
+  final VoidCallback onManage;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final over = budgets.where((b) => b.status == BudgetStatus.over).length;
+    final near = budgets.where((b) => b.status == BudgetStatus.warning).length;
+    final spent = budgets.fold<int>(0, (s, b) => s + b.spentPaise);
+    final available = budgets.fold<int>(0, (s, b) => s + b.availablePaise);
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 8, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text('Budgets', style: t.titleMedium)),
+                TextButton(
+                  onPressed: onManage,
+                  child: Text(budgets.isEmpty ? 'Set up' : 'Manage'),
+                ),
+              ],
+            ),
+            if (budgets.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  'Set a monthly limit per category to track it here.',
+                  style: t.bodySmall,
+                ),
+              )
+            else ...[
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  '${inrWhole(spent)} of ${inrWhole(available)}'
+                  '${over > 0 ? ' · $over over' : ''}'
+                  '${near > 0 ? ' · $near near limit' : ''}',
+                  style: t.bodySmall?.copyWith(
+                    color: over > 0 ? scheme.error : null,
+                  ),
+                ),
+              ),
+              for (final b in budgets.take(5))
+                Padding(
+                  padding: const EdgeInsets.only(top: 12, right: 8),
+                  child: BudgetProgressRow(progress: b),
+                ),
+              if (budgets.length > 5)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text('+${budgets.length - 5} more', style: t.bodySmall),
+                ),
+            ],
           ],
         ),
       ),

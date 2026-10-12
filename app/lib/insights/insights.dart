@@ -2,6 +2,8 @@
 library;
 
 export 'anomaly_detector.dart';
+export 'budget.dart';
+export 'budget_repository.dart';
 export 'cashflow.dart';
 export 'insight_format.dart';
 export 'insight_models.dart';

@@ -242,3 +242,19 @@ class LlmDisagreements extends Table {
   TextColumn get resolvedValue => text()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
+
+/// Monthly spending limit per category (Phase 7.1).
+class Budgets extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get categoryId =>
+      integer().unique().references(Categories, #id)();
+  IntColumn get limitPaise => integer()();
+
+  /// Envelope mode: unspent / overspent amounts carry into the next month.
+  BoolColumn get rollover => boolean().withDefault(const Constant(false))();
+
+  /// First month (yyyy-MM) the budget applies to.
+  TextColumn get startMonth => text()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+}

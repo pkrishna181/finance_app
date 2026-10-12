@@ -39,6 +39,7 @@ class UpsertResult {
     UnparsedStatementRows,
     LlmJobs,
     LlmReviewItems,
+    Budgets,
   ],
 )
 class ArthDatabase extends _$ArthDatabase {
@@ -67,7 +68,7 @@ class ArthDatabase extends _$ArthDatabase {
   }
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -120,6 +121,9 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
           }
           if (from < 7) {
             await _createInsightIndexes();
+          }
+          if (from < 8) {
+            await m.createTable(budgets);
           }
         },
         beforeOpen: (details) async {

@@ -4,7 +4,32 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 6.6 — category editing
+Last updated: Phase 7.1 — budgets
+
+**Network exception (price data, Phase 9+):** the only planned network use is an
+**opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
+Only full lists are fetched — never per-fund/per-symbol lookups — so a request
+reveals nothing about what the user holds. Nothing user-derived is ever sent.
+Off by default; the opt-in screen and Privacy settings must say exactly what is
+downloaded, from where, and that no user data is sent.
+
+---
+
+## Roadmap (feature parity with Paisa, adapted)
+
+Ideas drawn from [Paisa](https://github.com/ananthakumaran/paisa) (AGPL-3.0 —
+reimplement from docs/ideas only, never copy code).
+
+| Phase | Scope |
+|---|---|
+| 7 | Budgets (per-category, rollover, alerts); yearly views + income statement (cash-flow sankey, spend heatmap); transaction search + bulk edit |
+| 8 | Credit cards (cycle, due date, utilization, bill vs paid); manual transactions; savings goals; data "doctor" |
+| 9 | Holdings layer: CAMS/KFintech + NSDL/CDSL CAS PDF import, manual assets (gold, FD, EPF/PPF, property); net worth; XIRR; opt-in price lists |
+| 10 | Capital gains (FIFO lots, current Indian rules — verify at build time), tax harvesting, Schedule AL, allocation targets, retirement goal, loans |
+| later | Notepad calculator ("sheets"); biometric app lock |
+
+Not adopted: plain-text journal editor, ledger/hledger/beancount backends,
+handlebars import templates (bank profiles cover this).
 
 ---
 
@@ -550,6 +575,28 @@ Tapping a row in `CategoryTransactionsScreen` opens a category picker.
 - Insights reloads via `onChanged` after each edit.
 - Tests: `test/insights/recategorize_test.dart`,
   `test/ui/insights_screen_test.dart`.
+
+### Budgets (Phase 7.1)
+
+Schema v8 adds `budgets` (one per category: `limit_paise`, `rollover`,
+`start_month` yyyy-MM). `BudgetRepository` upserts by category (an edit keeps
+the original start month). `BudgetCalculator` (pure, `lib/insights/budget.dart`):
+
+- Spent = the aggregator's category spend (debits net of refunds, transfers
+  excluded). Income, transfer and uncategorized slugs can't be budgeted.
+- Status: `over` when spent > available, `warning` at ≥ 80%, else `ok`.
+- **Rollover** (envelope): available = limit + Σ(limit − spent) for months from
+  `start_month`, at most 6 back (the Insights aggregator holds 7). Overspending
+  carries forward as a negative amount.
+- Pace hint (current month only): "spending fast" when the fraction used is
+  more than 10 points ahead of the fraction of the month elapsed.
+- Suggested limit = average of the last 3 months that have data, rounded up to
+  ₹100.
+
+UI: "Budgets" card on Insights (summary + top 5, over-budget first) →
+`BudgetsScreen` (edit/remove, add with suggested amount). Alerts are in-app
+only for now; there is no notification plugin yet.
+Tests: `test/insights/budget_test.dart`, `test/ui/insights_screen_test.dart`.
 
 ---
 

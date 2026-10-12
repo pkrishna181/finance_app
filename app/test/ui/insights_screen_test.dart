@@ -124,4 +124,51 @@ void main() {
     expect(find.textContaining('uncategorized'), findsNothing);
     expect(find.text('Food Delivery'), findsWidgets);
   });
+
+  testWidgets('sets a budget from Insights and shows progress',
+      (tester) async {
+    _tallView(tester);
+    final db = ArthDatabase.memory();
+    addTearDown(() => tester.runAsync(db.close));
+
+    await tester.runAsync(() async {
+      final cat = await (db.select(db.categories)
+            ..where((c) => c.slug.equals('groceries')))
+          .getSingle();
+      final now = DateTime.now();
+      await db.into(db.transactions).insert(TransactionsCompanion.insert(
+            amountPaise: 450000,
+            direction: 'debit',
+            txnType: 'upi',
+            bookedAt: DateTime(now.year, now.month, 1, 12),
+            bankCode: 'HDFC',
+            rawMerchant: 'SHOP',
+            rawDescription: 'SHOP',
+            dedupeHash: 'g',
+            categoryId: Value(cat.id),
+          ));
+    });
+
+    await tester.pumpWidget(MaterialApp(home: InsightsScreen(database: db)));
+    await _settle(tester);
+    expect(find.text('Budgets'), findsOneWidget);
+
+    await tester.tap(find.text('Set up'));
+    await _settle(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Groceries'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '5000');
+    await tester.pump();
+    await tester.tap(find.text('Save'));
+    await _settle(tester);
+    await tester.pumpAndSettle();
+    expect(find.text('₹4,500 / ₹5,000'), findsOneWidget);
+
+    await tester.pageBack();
+    await _settle(tester);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('₹4,500 of ₹5,000'), findsOneWidget);
+    expect(find.textContaining('1 near limit'), findsOneWidget);
+  });
 }
