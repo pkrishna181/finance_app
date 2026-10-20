@@ -137,7 +137,7 @@ class ArthLlmBindings {
       ..nThreads = nThreads
       ..nGpuLayers = nGpuLayers
       ..useMmap = useMmap ? 1 : 0;
-    final handle = _load(path, params);
+    final handle = _load(path, params.ref);
     calloc.free(path);
     calloc.free(params);
     return handle;
@@ -234,13 +234,16 @@ class ArthLlmBindings {
   int lastGeneratedTokens() => _lastGeneratedTokens?.call() ?? 0;
 }
 
+// `arth_llm_load` takes the params struct by value (two registers on arm64
+// and x86-64). Passing a pointer here made C read the address bits as n_ctx /
+// n_threads — random context sizes, sometimes an out-of-memory crash.
 typedef _LoadNative = Pointer<Void> Function(
   Pointer<Utf8> modelPath,
-  Pointer<ArthLlmParams> params,
+  ArthLlmParams params,
 );
 typedef _LoadDart = Pointer<Void> Function(
   Pointer<Utf8> modelPath,
-  Pointer<ArthLlmParams> params,
+  ArthLlmParams params,
 );
 
 typedef _GenerateNative = Int32 Function(
