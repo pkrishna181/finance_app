@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 11.5 — sheets (phase 11 complete)
+Last updated: Phase 12.1 — Ask: question parser and answers
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -27,6 +27,7 @@ reimplement from docs/ideas only, never copy code).
 | 9 ✅ | Holdings layer: CAMS/KFintech + NSDL/CDSL CAS PDF import, manual assets (gold, FD, EPF/PPF, property); net worth; XIRR; opt-in price lists |
 | 10 ✅ | Capital gains (FIFO lots, current Indian rules — verify at build time), tax harvesting, Schedule AL, allocation targets, retirement goal, loans |
 | 11 ✅ | App lock; encrypted backup / restore; upcoming-payments calendar; reminders; notepad calculator ("sheets") |
+| 12 | Ask tab: questions answered on the device — rule-based parser first, the local model only to read unusual wording; numbers always from app code |
 
 Not adopted: plain-text journal editor, ledger/hledger/beancount backends,
 handlebars import templates (bank profiles cover this).
@@ -1191,6 +1192,37 @@ Tests run on the desktop VM, so these only showed up in a release APK:
 Verify release-only behaviour on the `arth_test` emulator (Android 35
 x86_64 with ARM translation runs the arm64 APK): SMS seeded with
 `adb emu sms send`, statements pushed to `/sdcard/Download`.
+
+### Ask — questions and answers (Phase 12.1)
+
+`lib/ask/`. The model never produces a number: a question becomes an
+`AskQuery` (intent + period + optional category / merchant), and
+`AskAnswerer` computes the answer with the same code as the rest of the app.
+
+- **Intents:** spend, income, savings, top categories, top merchants,
+  largest payments, last paid, monthly average, net worth, budgets,
+  upcoming payments.
+- **`AskParser`** (pure, instant): finds one date phrase (today, this /
+  last week, this / last month, month names — a month without a year is the
+  most recent one, `since april`, last N days / weeks / months as a rolling
+  range, this / last year, `FY 2025-26`, this / last FY), an intent from
+  keywords, a category (display names, slugs, `kCategorySynonyms`), and a
+  merchant from `AskVocabulary` (merchant names in the ledger). It is strict:
+  any leftover word that isn't filler, a category or a known merchant fails
+  the parse (`unknownWords`) instead of guessing. Default period: this month.
+- **`AskAnswerer`:** totals come from `InsightsAggregator.summarizeWithin`
+  per calendar month (new; `summarize` delegates to it), so whole months
+  match Insights exactly and partial ranges use the same rules (transfers
+  excluded, refunds net per category). Merchant totals and rankings count
+  payments only (`topMerchantsWithin`, optional category). Budgets use
+  `BudgetCalculator`, net worth `NetWorthRepository`, upcoming
+  `UpcomingRepository`, last paid `InsightsRepository.search`. Each answer
+  carries `understoodAs` ("Spending · Food Delivery · Sep 2026"), a headline,
+  rows, transactions, a note on what is / isn't counted, and a `TxnQuery`
+  string to open the matching transactions in Search. A period with no
+  transactions says so instead of answering ₹0.
+
+Tests: `test/ask/ask_parser_test.dart`, `test/ask/ask_answerer_test.dart`.
 
 ---
 

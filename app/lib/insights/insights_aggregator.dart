@@ -12,8 +12,8 @@ class InsightsAggregator {
   InsightsAggregator(
     List<InsightTxn> txns, {
     TransferPairing pairing = const TransferPairing(),
-  })  : _excluded = pairing.excludedIds(txns),
-        _txns = txns;
+  }) : _excluded = pairing.excludedIds(txns),
+       _txns = txns;
 
   final List<InsightTxn> _txns;
   final Set<int> _excluded;
@@ -25,32 +25,45 @@ class InsightsAggregator {
 
   /// All counted (non-transfer) transactions, oldest first as supplied.
   List<InsightTxn> get counted => [
-        for (final t in _txns)
-          if (_counted(t)) t,
-      ];
+    for (final t in _txns)
+      if (_counted(t)) t,
+  ];
 
   bool _counted(InsightTxn t) => !_excluded.contains(t.id);
 
-  Iterable<InsightTxn> _inMonth(MonthKey m) => _txns.where(
-        (t) => _counted(t) && MonthKey.of(t.bookedAt) == m,
-      );
+  Iterable<InsightTxn> _inMonth(MonthKey m) =>
+      _txns.where((t) => _counted(t) && MonthKey.of(t.bookedAt) == m);
 
   /// Counted (non-transfer) transactions in [month], newest first. With
   /// [categorySlug], only that category (null category = uncategorized).
   List<InsightTxn> transactionsIn(MonthKey month, {String? categorySlug}) {
-    final out = _inMonth(month)
-        .where((t) =>
-            categorySlug == null ||
-            (t.categorySlug ?? kUncategorizedSlug) == categorySlug)
-        .toList()
-      ..sort((a, b) {
-        final c = b.bookedAt.compareTo(a.bookedAt);
-        return c != 0 ? c : b.id.compareTo(a.id);
-      });
+    final out =
+        _inMonth(month)
+            .where(
+              (t) =>
+                  categorySlug == null ||
+                  (t.categorySlug ?? kUncategorizedSlug) == categorySlug,
+            )
+            .toList()
+          ..sort((a, b) {
+            final c = b.bookedAt.compareTo(a.bookedAt);
+            return c != 0 ? c : b.id.compareTo(a.id);
+          });
     return out;
   }
 
-  MonthSummary summarize(MonthKey month) {
+  MonthSummary summarize(MonthKey month) =>
+      summarizeWithin(month, month.start, month.endExclusive);
+
+  /// [summarize] limited to `[from, toExclusive)` within [month], for date
+  /// ranges that start or end mid-month. Same rules, so whole months match.
+  MonthSummary summarizeWithin(
+    MonthKey month,
+    DateTime from,
+    DateTime toExclusive,
+  ) {
+    bool inRange(InsightTxn t) =>
+        !t.bookedAt.isBefore(from) && t.bookedAt.isBefore(toExclusive);
     var income = 0;
     var spend = 0;
     var uncatCount = 0;
@@ -58,7 +71,7 @@ class InsightsAggregator {
     var count = 0;
     final byCat = <String, int>{};
 
-    for (final t in _inMonth(month)) {
+    for (final t in _inMonth(month).where(inRange)) {
       count++;
       final slug = t.categorySlug ?? kUncategorizedSlug;
       if (t.isDebit) {
@@ -92,22 +105,42 @@ class InsightsAggregator {
       uncategorizedCount: uncatCount,
       uncategorizedPaise: uncatPaise,
       txnCount: count,
-      excludedTransferCount:
-          _txns.where((t) => !_counted(t) && MonthKey.of(t.bookedAt) == month)
-              .length,
+      excludedTransferCount: _txns
+          .where(
+            (t) =>
+                !_counted(t) && MonthKey.of(t.bookedAt) == month && inRange(t),
+          )
+          .length,
     );
   }
 
   /// [months] summaries ending at [end], oldest first (gaps filled with zeros).
   List<MonthSummary> trend(MonthKey end, {int months = 6}) => [
-        for (var i = months - 1; i >= 0; i--) summarize(end.plusMonths(-i)),
-      ];
+    for (var i = months - 1; i >= 0; i--) summarize(end.plusMonths(-i)),
+  ];
 
   /// Top merchants by net debit spend in [month], largest first.
-  List<MerchantTotal> topMerchants(MonthKey month, {int limit = 10}) {
+  List<MerchantTotal> topMerchants(MonthKey month, {int limit = 10}) =>
+      topMerchantsWithin(month.start, month.endExclusive, limit: limit);
+
+  /// Top merchants by debit spend in `[from, toExclusive)`, largest first,
+  /// optionally within one category.
+  List<MerchantTotal> topMerchantsWithin(
+    DateTime from,
+    DateTime toExclusive, {
+    int limit = 10,
+    String? categorySlug,
+  }) {
     final totals = <String, _MerchantAcc>{};
-    for (final t in _inMonth(month)) {
-      if (!t.isDebit) continue;
+    for (final t in _txns) {
+      if (!t.isDebit || !_counted(t)) continue;
+      if (categorySlug != null &&
+          (t.categorySlug ?? kUncategorizedSlug) != categorySlug) {
+        continue;
+      }
+      if (t.bookedAt.isBefore(from) || !t.bookedAt.isBefore(toExclusive)) {
+        continue;
+      }
       final key = t.merchantId != null
           ? 'm${t.merchantId}'
           : 'r${t.merchantLabel.toLowerCase()}';
@@ -118,18 +151,21 @@ class InsightsAggregator {
       acc.paise += t.amountPaise;
       acc.count++;
     }
-    final list = totals.values
-        .map((a) => MerchantTotal(
-              label: a.label,
-              merchantId: a.id,
-              spendPaise: a.paise,
-              count: a.count,
-            ))
-        .toList()
-      ..sort((a, b) {
-        final c = b.spendPaise.compareTo(a.spendPaise);
-        return c != 0 ? c : a.label.compareTo(b.label);
-      });
+    final list =
+        totals.values
+            .map(
+              (a) => MerchantTotal(
+                label: a.label,
+                merchantId: a.id,
+                spendPaise: a.paise,
+                count: a.count,
+              ),
+            )
+            .toList()
+          ..sort((a, b) {
+            final c = b.spendPaise.compareTo(a.spendPaise);
+            return c != 0 ? c : a.label.compareTo(b.label);
+          });
     return list.take(limit).toList();
   }
 
