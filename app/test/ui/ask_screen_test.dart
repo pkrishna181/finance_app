@@ -137,9 +137,7 @@ void main() {
   ) async {
     final db = await seeded(tester);
     final engine = FakeLlmEngine(
-      jsonResponse:
-          '{"intent":"spend","category":"rent","merchant":"",'
-          '"period":"month","month":"2026-09","n":0}',
+      jsonResponse: '{"intent":"spend","category":"rent"}',
     );
     await pump(
       tester,

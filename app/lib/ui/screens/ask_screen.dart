@@ -39,7 +39,7 @@ class AskScreen extends StatefulWidget {
   State<AskScreen> createState() => _AskScreenState();
 }
 
-enum _Problem { notUnderstood, noModel, modelFailed, busy, unknownMerchant }
+enum _Problem { notUnderstood, noModel, modelFailed, busy }
 
 class _Exchange {
   _Exchange(this.question);
@@ -50,7 +50,9 @@ class _Exchange {
   bool fromModel = false;
   _Problem? problem;
   List<String> unknownWords = const [];
-  String? merchant;
+
+  /// Words the model's reading didn't use (shown with its answer).
+  List<String> ignoredWords = const [];
 }
 
 class _AskScreenState extends State<AskScreen> {
@@ -115,18 +117,16 @@ class _AskScreenState extends State<AskScreen> {
       }
       final read = await AskModelReader(
         coordinator.engine,
-      ).read(ex.question, vocab, now);
+      ).read(ex.question, parsed.partial!, vocab, now);
       switch (read) {
         case Ok(:final value):
           ex.fromModel = true;
+          ex.ignoredWords = parsed.partial!.ignoredWords;
           ex.answer = await answerer.answer(value, now);
-        case Err(:final message, :final cause):
-          ex.problem = switch (message) {
-            'model_busy' => _Problem.busy,
-            'unknown_merchant' => _Problem.unknownMerchant,
-            _ => _Problem.notUnderstood,
-          };
-          if (message == 'unknown_merchant') ex.merchant = '$cause';
+        case Err(:final message):
+          ex.problem = message == 'model_busy'
+              ? _Problem.busy
+              : _Problem.notUnderstood;
       }
     } finally {
       ex.reading = false;
@@ -309,6 +309,7 @@ class _ExchangeView extends StatelessWidget {
       return _AnswerView(
         answer: a,
         fromModel: ex.fromModel,
+        ignoredWords: ex.ignoredWords,
         onSearch: onSearch,
       );
     }
@@ -337,9 +338,6 @@ class _ExchangeView extends StatelessWidget {
       _Problem.busy =>
         'The on-device model is busy sorting new transactions. '
             'Try again in a minute, or use one of these:',
-      _Problem.unknownMerchant =>
-        'I couldn\'t find "${ex.merchant}" in your transactions. '
-            'Check the spelling as it appears on your statement.',
     };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,10 +354,8 @@ class _ExchangeView extends StatelessWidget {
               ),
             ),
           ),
-        if (ex.problem != _Problem.unknownMerchant) ...[
-          const SizedBox(height: 12),
-          _Suggestions(onPick: onPick, limit: 4),
-        ],
+        const SizedBox(height: 12),
+        _Suggestions(onPick: onPick, limit: 4),
       ],
     );
   }
@@ -370,10 +366,12 @@ class _AnswerView extends StatelessWidget {
     required this.answer,
     required this.fromModel,
     required this.onSearch,
+    this.ignoredWords = const [],
   });
 
   final AskAnswer answer;
   final bool fromModel;
+  final List<String> ignoredWords;
   final ValueChanged<String> onSearch;
 
   @override
@@ -405,6 +403,11 @@ class _AnswerView extends StatelessWidget {
             ),
           ],
         ),
+        if (ignoredWords.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 22, top: 2),
+            child: Text('Ignored: ${ignoredWords.join(' ')}', style: muted),
+          ),
         const SizedBox(height: 8),
         Text(a.headline, style: theme.textTheme.titleMedium),
         if (a.rows.isNotEmpty) ...[

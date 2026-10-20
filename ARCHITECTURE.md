@@ -1226,34 +1226,59 @@ Tests: `test/ask/ask_parser_test.dart`, `test/ask/ask_answerer_test.dart`.
 
 ### Ask — the model as a fallback reader (Phase 12.2)
 
-Only when `AskParser` fails. `AskModelReader` sends `AskPrompt` (today's
-date, the user's category ids and names, five few-shot examples with dates
-relative to today) to `LlmEngine.completeJson` with a grammar built per call
-by `AskModelReader.grammar`: compact JSON with fixed keys —
-`intent` (enum), `category` (`""` or one of the user's slugs),
-`merchant` (≤ 40 safe characters), `period` (`this_month`, `last_month`,
-`month` + `"YYYY-MM"`, `this_year`, `last_year`, `this_fy`, `last_fy`,
-`last_days` / `last_months` + `n`, `all`), `month`, `n` (also months to
-average or days ahead). ~30 output tokens, so a few seconds of decode.
+Only when `AskParser` fails. Measured on the real Gemma 3 1B, asking the
+model for every field (intent, category, merchant, period, month, n) read
+**2 / 24** unusual questions correctly — it can't do date arithmetic or
+copy merchants reliably. So the job is split:
 
-`AskModelReader.validate` (pure) rejects: invalid JSON or intent, unknown
-category, a merchant **not present in the question** (no invented names) or
-not in the ledger (`unknown_merchant`, shown as such instead of a silent
-₹0), `last_paid` with nothing to look for, a future or invalid month, and
-out-of-range `n`. A busy engine (batch job running) returns `model_busy`.
-The grammar is checked by llama.cpp's parser in
-`test/ask/ask_model_reader_test.dart` when `grammar_validate` is built.
+- **Parser, always:** even when it can't read the whole question it returns
+  an `AskPartial` — the period, a category named in the question, a merchant
+  named word-for-word (whole words of a ledger merchant name), a keyword
+  intent if any, look-ahead days / month counts, and `ignoredWords`. Number
+  words, "fortnight", "a couple of", "since the year began" are rewritten
+  first.
+- **Model, only classification:** `AskPrompt` (intent descriptions, the
+  user's category ids, 12 short examples) → grammar `{"intent":…,
+  "category":…}` from fixed lists (the user's own categories). ~10 output
+  tokens.
+- **Merge (`AskModelReader.validate`, pure):** a specific keyword intent
+  beats the model (plain "spend" doesn't); the question's category beats the
+  model's; an income category turns spend / savings / rankings into income;
+  fields that don't fit the intent are dropped; `last_paid` needs something
+  to look for. Dates and merchants never come from the model.
+
+`test/ask/ask_model_eval_test.dart` runs the real model (skipped unless
+`ARTH_MODEL_PATH` is set and `LD_LIBRARY_PATH` points at the desktop
+`libarth_llm.so`). Desktop, 4 threads, ~2.5 s per question. Results
+(Oct 2026):
+
+| Set | Overall | Parser | Model |
+|---|---|---|---|
+| Tuning (25, prompt and keywords tuned on these) | 24 / 25 | 2 / 2 | 22 / 23 |
+| Held out (20, never tuned on) | 12 / 20 | 5 / 5 | 7 / 15 |
+
+The model's usual mistake is defaulting to `spend`; answers it read show
+"Read by the on-device model as: …" plus ignored words, so a misreading is
+visible. Don't tune on the held-out set; add new held-out questions instead.
 
 `LlmBatchCoordinator.ensureEngineLoaded()` (extracted from `runNow`) loads
-the downloaded model for Ask. Parser additions: `all time` / `ever`
-(clamped to the first month with data), shared `AskPeriod.lastMonths`.
+the model for Ask; a busy engine (batch job running) returns `model_busy`.
+
+**FFI fix found by this work:** `arth_llm_load` takes `arth_llm_params` by
+value, but the Dart binding passed a pointer since Phase 4. C read the
+pointer's bits as `n_ctx` / `n_threads` (and garbage for `use_mmap`,
+`n_gpu_layers`): when the low 32 bits were negative it fell back to 2048 and
+worked; otherwise it tried a context of hundreds of millions of tokens and
+crashed (`std::bad_alloc`). The binding now passes the struct by value.
+`build_desktop.sh` now builds with `-fPIC` (the shared shim didn't link on
+desktop before).
 
 ### Ask screen (Phase 12.3)
 
 `AskScreen(database, coordinator)` in the fourth tab. Intro with example
 questions; each exchange shows the question, then a card with how it was
-read (`understoodAs`, prefixed "Read by the on-device model as:" when the
-model was used, so a misreading is visible), the headline, rows, matching
+read (`understoodAs`, prefixed "Read by the on-device model as:" and followed by
+"Ignored: …" when the model was used, so a misreading is visible), the headline, rows, matching
 transactions, the note and **See transactions** (opens `SearchScreen` with
 the answer's query). Spending answers compare with the previous month in the
 headline. The vocabulary is rebuilt per question (imports add merchants).
@@ -1284,5 +1309,8 @@ merchant; no model; model path with `FakeLlmEngine`). Rendered light / dark.
   section has its own header row; nested summary boxes may confuse header scan.
 - **Password formulas:** Hint map only; user must supply the correct password.
 - **LLM shim:** llama.cpp API pinned to b4531; upgrades need shim retest.
+  Struct arguments are passed **by value** — match `arth_llm.h` exactly in
+  `arth_llm_bindings.dart` (a pointer here silently corrupted load params
+  until Phase 12).
   Token callback uses a single trampoline (not re-entrant). Placeholder sha256
   in `ModelConfig` until weights are verified on device.

@@ -13,71 +13,82 @@ void main() {
     categoryNames: {for (final c in kDefaultCategories) c.slug: c.name},
     merchants: const ['starbucks coffee', 'swiggy blr'],
   );
+  final sep = AskPeriod.month(const MonthKey(2026, 9));
 
-  String json({
-    String intent = 'spend',
-    String category = '',
-    String merchant = '',
-    String period = 'this_month',
-    String month = '',
-    int n = 0,
-  }) =>
-      '{"intent":"$intent","category":"$category","merchant":"$merchant",'
-      '"period":"$period","month":"$month","n":$n}';
+  String json(String intent, [String category = '']) =>
+      '{"intent":"$intent","category":"$category"}';
 
-  AskQuery ok(String j, [String question = 'q']) {
-    final r = AskModelReader.validate(j, question, vocab, now);
+  AskQuery ok(String j, [AskPartial partial = const AskPartial()]) {
+    final r = AskModelReader.validate(j, partial, vocab, now);
     expect(r.errorOrNull, isNull);
     return r.okOrNull!;
   }
 
-  String err(String j, [String question = 'q']) =>
-      AskModelReader.validate(j, question, vocab, now).errorOrNull!;
+  String err(String j, [AskPartial partial = const AskPartial()]) =>
+      AskModelReader.validate(j, partial, vocab, now).errorOrNull!;
 
-  test('valid output becomes a query', () {
-    final a = ok(
-      json(category: 'food_delivery', period: 'month', month: '2026-08'),
-    );
+  test('model picks the intent and category; dates come from the parser', () {
+    final a = ok(json('spend', 'food_delivery'), AskPartial(period: sep));
     expect(a.intent, AskIntent.spend);
     expect(a.categorySlug, 'food_delivery');
-    expect(a.period, AskPeriod.month(const MonthKey(2026, 8)));
+    expect(a.period, sep);
 
-    final b = ok(
-      json(merchant: 'Starbucks', period: 'last_months', n: 2),
-      'how much did i blow at Starbucks lately',
-    );
-    expect(b.merchant, 'starbucks');
-    expect(b.period!.from, DateTime(2026, 8, 21));
-
-    expect(ok(json(intent: 'upcoming', period: 'all', n: 14)).days, 14);
-    expect(ok(json(intent: 'average', n: 3)).months, 3);
-    expect(ok(json(intent: 'net_worth')).period, isNull);
-    expect(ok(json(period: 'this_fy')).period!.from, DateTime(2026, 4));
+    final b = ok(json('top_merchants'));
+    expect(b.period, AskPeriod.month(const MonthKey(2026, 10), now: now));
+    expect(ok(json('net_worth')).period, isNull);
+    expect(ok(json('upcoming'), const AskPartial(days: 14)).days, 14);
   });
 
-  test('rejects what the model made up', () {
+  test('the parser outranks the model where it found something', () {
+    // Category named in the question beats the model's.
+    final a = ok(
+      json('spend', 'groceries'),
+      const AskPartial(categorySlug: 'fuel'),
+    );
+    expect(a.categorySlug, 'fuel');
+    // A specific keyword beats the model's intent; generic "spend" doesn't.
+    expect(
+      ok(
+        json('upcoming'),
+        const AskPartial(intent: AskIntent.lastPaid, categorySlug: 'fuel'),
+      ).intent,
+      AskIntent.lastPaid,
+    );
+    expect(
+      ok(
+        json('average', 'groceries'),
+        const AskPartial(intent: AskIntent.spend),
+      ).intent,
+      AskIntent.average,
+    );
+    // An income category turns spend / savings into income.
+    final i = ok(json('savings'), const AskPartial(categorySlug: 'interest'));
+    expect(i.intent, AskIntent.income);
+    expect(i.categorySlug, 'interest');
+  });
+
+  test('fields that do not fit the intent are dropped', () {
+    expect(ok(json('net_worth', 'rent')).categorySlug, isNull);
+    expect(ok(json('income', 'groceries')).categorySlug, isNull);
+    const swiggy = AskPartial(merchant: 'swiggy');
+    expect(ok(json('spend'), swiggy).merchant, 'swiggy');
+    expect(ok(json('top_categories'), swiggy).merchant, isNull);
+  });
+
+  test('rejects malformed output', () {
     expect(err('not json'), 'bad_json');
-    expect(err(json(intent: 'gossip')), 'bad_intent');
-    expect(err(json(category: 'crypto')), 'bad_category');
-    expect(
-      err(json(merchant: 'starbucks'), 'coffee spend'),
-      'merchant_not_in_question',
-    );
-    expect(
-      err(json(merchant: 'blue tokai'), 'spent at blue tokai'),
-      'unknown_merchant',
-    );
-    expect(err(json(intent: 'last_paid')), 'nothing_to_look_for');
-    expect(err(json(period: 'month', month: '2026-12')), 'bad_period');
-    expect(err(json(period: 'month', month: '2026-13')), 'bad_period');
-    expect(err(json(period: 'last_days', n: 0)), 'bad_period');
-    expect(err(json(period: 'someday')), 'bad_period');
+    expect(err('[1]'), 'bad_json');
+    expect(err(json('gossip')), 'bad_intent');
+    expect(err(json('spend', 'crypto')), 'bad_category');
+    expect(err(json('last_paid')), 'nothing_to_look_for');
   });
 
   test('read sends the prompt and grammar to the engine', () async {
-    final engine = FakeLlmEngine(jsonResponse: json(intent: 'savings'));
+    final engine = FakeLlmEngine(jsonResponse: json('savings'));
     await engine.load(modelPath: 'x');
-    final r = await AskModelReader(engine).read('am i saving', vocab, now);
+    final r = await AskModelReader(
+      engine,
+    ).read('am i saving', const AskPartial(), vocab, now);
     expect(r.okOrNull!.intent, AskIntent.savings);
     expect(engine.lastPrompt, contains('Q: am i saving'));
     expect(engine.lastPrompt, contains('food_delivery (Food Delivery)'));
@@ -86,8 +97,9 @@ void main() {
   });
 
   test('engine errors pass through', () async {
-    final engine = FakeLlmEngine(); // not loaded
-    final r = await AskModelReader(engine).read('x', vocab, now);
+    final r =
+        await AskModelReader(FakeLlmEngine()) // not loaded
+            .read('x', const AskPartial(), vocab, now);
     expect(r, isA<Err<AskQuery>>());
   });
 

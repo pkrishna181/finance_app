@@ -127,4 +127,33 @@ void main() {
     expect(w.from, DateTime(2026, 10, 12));
     expect(w.toExclusive, DateTime(2026, 10, 19));
   });
+
+  test('number words and fortnights', () {
+    expect(
+      q('swiggy in the past three months').period!.from,
+      DateTime(2026, 7, 21),
+    );
+    expect(
+      q('spend over the past fortnight').period!.from,
+      DateTime(2026, 10, 7),
+    );
+    expect(q('bills due in the next fortnight').days, 14);
+    expect(q('rent since the year began').period!.from, DateTime(2026));
+  });
+
+  test('a failed parse still reports what it found', () {
+    final r = parser.parse('how much did swiggy sneakily take in august', now);
+    expect(r.query, isNull);
+    final p = r.partial!;
+    expect(p.merchant, 'swiggy');
+    expect(p.period!.from, DateTime(2026, 8));
+    expect(p.intent, isNull);
+    expect(p.ignoredWords, ['sneakily', 'take']);
+
+    final w = parser.parse('when did i last fill petrol', now).partial!;
+    expect(w.intent, AskIntent.lastPaid);
+    expect(w.categorySlug, 'fuel');
+    // Merchants match whole words only.
+    expect(parser.parse('ate out in august', now).partial!.merchant, isNull);
+  });
 }

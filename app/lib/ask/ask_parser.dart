@@ -54,13 +54,47 @@ const kCategorySynonyms = <String, List<String>>{
 };
 
 class AskParseResult {
-  const AskParseResult(this.query, {this.unknownWords = const []});
+  const AskParseResult(
+    this.query, {
+    this.unknownWords = const [],
+    this.partial,
+  });
 
   /// Null when the question wasn't understood.
   final AskQuery? query;
 
   /// Words that matched nothing (why [query] is null).
   final List<String> unknownWords;
+
+  /// What was found anyway, for the model fallback. Null for empty input.
+  final AskPartial? partial;
+}
+
+/// The parts of a question the parser could read even when it couldn't read
+/// all of it. Dates and merchants come from here, never from the model.
+class AskPartial {
+  const AskPartial({
+    this.intent,
+    this.period,
+    this.categorySlug,
+    this.merchant,
+    this.months = 6,
+    this.days = 30,
+    this.ignoredWords = const [],
+  });
+
+  /// Only when a keyword named it (no default).
+  final AskIntent? intent;
+  final AskPeriod? period;
+  final String? categorySlug;
+
+  /// A merchant named word-for-word in the question.
+  final String? merchant;
+  final int months;
+  final int days;
+
+  /// Unrecognised words that aren't part of [merchant].
+  final List<String> ignoredWords;
 }
 
 /// Rule-based question → [AskQuery]. Pure and instant; handles the common
@@ -107,33 +141,37 @@ class AskParser {
       ' top ',
     );
     if (text.trim().isEmpty) return const AskParseResult(null);
+    for (final e in _rewrites.entries) {
+      text = text.replaceAll(' ${e.key} ', ' ${e.value} ');
+    }
 
-    final intent = _intent(text);
+    final hint = _intent(text);
+    final intent = hint ?? AskIntent.spend;
 
     // "last 3 months" for an average is a month count, not a date range.
     var months = 6;
-    if (intent == AskIntent.average) {
-      final m = RegExp(
-        r' (?:last|past|previous) (\d{1,2}) months? ',
-      ).firstMatch(text);
-      if (m != null) {
-        months = int.parse(m[1]!).clamp(1, 24);
-        text = text.replaceRange(m.start, m.end, ' ');
+    final monthsRe = RegExp(
+      r' (?:last|past|previous) (\d{1,2}) months? ',
+    ).firstMatch(text);
+    if (monthsRe != null) {
+      months = int.parse(monthsRe[1]!).clamp(1, 24);
+      if (intent == AskIntent.average) {
+        text = text.replaceRange(monthsRe.start, monthsRe.end, ' ');
       }
     }
+    // A look-ahead ("next 2 weeks") only makes sense for what's due.
     var days = 30;
-    if (intent == AskIntent.upcoming) {
-      final m = RegExp(
-        r' (?:next|coming) (\d{1,3}) (days?|weeks?) ',
-      ).firstMatch(text);
-      if (m != null) {
-        final n = int.parse(m[1]!);
-        days = (m[2]!.startsWith('week') ? n * 7 : n).clamp(1, 90);
-        text = text.replaceRange(m.start, m.end, ' ');
-      } else if (text.contains(' next week ') || text.contains(' this week ')) {
-        days = 7;
-        text = text.replaceAll(RegExp(r' (?:next|this) week '), ' ');
-      }
+    final ahead = RegExp(
+      r' (?:next|coming) (\d{1,3}) (days?|weeks?) ',
+    ).firstMatch(text);
+    if (ahead != null) {
+      final n = int.parse(ahead[1]!);
+      days = (ahead[2]!.startsWith('week') ? n * 7 : n).clamp(1, 90);
+      text = text.replaceRange(ahead.start, ahead.end, ' ');
+    } else if (intent == AskIntent.upcoming &&
+        (text.contains(' next week ') || text.contains(' this week '))) {
+      days = 7;
+      text = text.replaceAll(RegExp(r' (?:next|this) week '), ' ');
     }
 
     final (period, rest) = _period(text, now);
@@ -157,12 +195,31 @@ class AskParser {
       for (final w in words)
         if (!_filler.contains(w)) w,
     ];
+    AskParseResult fail() {
+      final found = _findMerchant(leftover);
+      final used = found?.split(' ').toSet() ?? const <String>{};
+      return AskParseResult(
+        null,
+        unknownWords: leftover,
+        partial: AskPartial(
+          intent: hint,
+          period: period,
+          categorySlug: category,
+          merchant: found,
+          months: months,
+          days: days,
+          ignoredWords: [
+            for (final w in leftover)
+              if (!used.contains(w)) w,
+          ],
+        ),
+      );
+    }
+
     String? merchant;
     if (leftover.isNotEmpty) {
       merchant = _matchMerchant(words);
-      if (merchant == null) {
-        return AskParseResult(null, unknownWords: leftover);
-      }
+      if (merchant == null) return fail();
     }
 
     var finalIntent = intent;
@@ -176,7 +233,7 @@ class AskParser {
     if (finalIntent == AskIntent.lastPaid &&
         category == null &&
         merchant == null) {
-      return AskParseResult(null, unknownWords: leftover);
+      return fail();
     }
 
     return AskParseResult(
@@ -200,7 +257,7 @@ class AskParser {
   static bool _has(String text, List<String> phrases) =>
       phrases.any((p) => text.contains(' $p '));
 
-  static AskIntent _intent(String t) {
+  static AskIntent? _intent(String t) {
     if (_has(t, ['net worth', 'networth', 'worth'])) return AskIntent.netWorth;
     if (_has(t, ['budget', 'budgets'])) return AskIntent.budgets;
     if (_has(t, [
@@ -215,7 +272,20 @@ class AskParser {
       return AskIntent.upcoming;
     }
     if (_has(t, ['when'])) return AskIntent.lastPaid;
-    if (_has(t, ['average', 'avg', 'typically', 'usually', 'per month'])) {
+    if (_has(t, [
+      'average',
+      'avg',
+      'typical',
+      'typically',
+      'usually',
+      'normally',
+      'per month',
+      'each month',
+      'every month',
+      'normal month',
+      'usual month',
+      'typical month',
+    ])) {
       return AskIntent.average;
     }
     if (_has(t, [
@@ -245,6 +315,10 @@ class AskParser {
       'category',
       'breakdown',
       'where did my money go',
+      'where is my money going',
+      'where is all my money',
+      'where is my money',
+      'where does it all go',
       'where does my money go',
       'where did the money go',
       'what did i spend on',
@@ -259,6 +333,9 @@ class AskParser {
       'savings',
       'cash flow',
       'cashflow',
+      'than i make',
+      'than i earn',
+      'within my means',
     ])) {
       return AskIntent.savings;
     }
@@ -274,7 +351,10 @@ class AskParser {
     ])) {
       return AskIntent.income;
     }
-    return AskIntent.spend;
+    if (_has(t, ['spend', 'spent', 'spending', 'expenses'])) {
+      return AskIntent.spend;
+    }
+    return null;
   }
 
   static const _months = <String, int>{
@@ -433,6 +513,54 @@ class AskParser {
       return cut(year, AskPeriod.calendarYear(int.parse(year[1]!), now: now));
     }
     return (null, t);
+  }
+
+  /// Phrases rewritten before parsing ("past fortnight" → "past 2 weeks").
+  static const _rewrites = <String, String>{
+    'a couple of': '2',
+    'couple of': '2',
+    'a couple': '2',
+    'a few': '3',
+    'one': '1',
+    'two': '2',
+    'three': '3',
+    'four': '4',
+    'five': '5',
+    'six': '6',
+    'seven': '7',
+    'eight': '8',
+    'nine': '9',
+    'ten': '10',
+    'eleven': '11',
+    'twelve': '12',
+    'fifteen': '15',
+    'twenty': '20',
+    'thirty': '30',
+    'forty': '40',
+    'fifty': '50',
+    'sixty': '60',
+    'ninety': '90',
+    'fortnight': '2 weeks',
+    'since the year began': 'this year',
+    'since the start of the year': 'this year',
+    'since the beginning of the year': 'this year',
+    'year to date': 'this year',
+    'ytd': 'this year',
+  };
+
+  /// A merchant named word-for-word by some run of [words] (whole words of a
+  /// ledger merchant name, longest run first). Looser than [_matchMerchant]:
+  /// other words may remain.
+  String? _findMerchant(List<String> words) {
+    for (var len = words.length; len >= 1; len--) {
+      for (var i = 0; i + len <= words.length; i++) {
+        final phrase = words.sublist(i, i + len).join(' ');
+        if (phrase.length < 3) continue;
+        final padded = ' $phrase ';
+        if (vocab.merchants.any((m) => ' $m '.contains(padded))) return phrase;
+      }
+    }
+    return null;
   }
 
   /// A merchant name containing every non-filler word of [words], widened
