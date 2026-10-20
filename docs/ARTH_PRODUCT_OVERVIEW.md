@@ -149,6 +149,16 @@ pre-July-2024 sales, exit loads.
   own numbers (`networth`, `cash`, `spend("groceries")`, `income(1)`,
   `avg_spend("food delivery", 6)`).
 
+### 3.7 Ask
+
+Questions in plain English — "how much did I spend on food last month?",
+"top merchants this financial year", "when did I last pay rent?", "what's due
+in the next 2 weeks?", net worth, budgets, savings, monthly averages. Every
+number is calculated by the app with the same rules as Insights; the
+on-device AI is only used to work out what an unusually worded question is
+asking, and the answer card shows how it was read. Each answer links to the
+matching transactions.
+
 ## 4. Privacy and security
 
 | Area | How it is handled |
@@ -174,7 +184,7 @@ pre-July-2024 sales, exit loads.
 | Charts | `fl_chart`, with a validated colour palette for light and dark themes |
 | Security | `flutter_secure_storage`, `local_auth`, `pointycastle` (AES-GCM, PBKDF2) |
 | Reminders | `flutter_local_notifications`, `timezone` |
-| Code size | ~30,300 lines of app Dart in 171 files; ~8,300 lines of tests in 63 files; 407 automated tests |
+| Code size | ~32,700 lines of app Dart in 177 files; ~9,300 lines of tests in 68 files; 443 automated tests |
 
 Design approach: pure, deterministic calculation modules (aggregation,
 budgets, recurring detection, anomalies, cash-flow, portfolio/XIRR, capital
@@ -186,7 +196,9 @@ Flutter screens on top — so the maths is unit-tested without a phone.
 - **Real-world parser coverage:** SMS templates and statement layouts cover
   the banks listed above; CAS parsing is tested on synthetic statements
   modelled on real layouts — real statements may need adjustments.
-- **Not yet built:** the *Ask* tab (on-device Q&A) is a placeholder; no iOS
+- **Ask** understands common phrasings instantly; unusual wording goes to the
+  1B on-device model, which read about half of new test questions correctly
+  (the answer card always shows how a question was read). No iOS
   build setup; no background processing when the app is closed (AI work runs
   while the app is open).
 - **Share prices** are not downloaded; they update when a newer demat CAS is imported.
@@ -200,6 +212,5 @@ Flutter screens on top — so the maths is unit-tested without a phone.
 
 1. Field-test with real SMS, statements and CAS files; add any failing samples as fixtures.
 2. Release signing and a Play-ready build; optional iOS setup.
-3. On-device *Ask* (natural-language questions over the ledger).
-4. Background processing (WorkManager) for AI and reminders when the app is closed.
-5. More bank / card / broker statement profiles; share prices from a bulk public source if one fits the privacy policy.
+3. Background processing (WorkManager) for AI and reminders when the app is closed.
+4. More bank / card / broker statement profiles; share prices from a bulk public source if one fits the privacy policy.
