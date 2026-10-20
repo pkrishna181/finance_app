@@ -19,3 +19,6 @@ model/*.gguf
 model/*.bin
 **/.env
 **/secrets/
+
+# Generated report (rebuild with docs/build-report.sh)
+docs/*.pdf

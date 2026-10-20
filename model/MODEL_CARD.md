@@ -6,8 +6,8 @@
 | **Quantization** | Q4_K_M (GGUF) |
 | **File** | `google_gemma-3-1b-it-Q4_K_M.gguf` |
 | **Source URL** | https://huggingface.co/bartowski/google_gemma-3-1b-it-GGUF/resolve/main/google_gemma-3-1b-it-Q4_K_M.gguf |
-| **SHA-256** | *Pin after first verified download* (placeholder in `ModelConfig` until pinned) |
-| **Runtime** | llama.cpp `b4531` via `arth_llm` shim |
+| **SHA-256** | `12bf0fff8815d5f73a3c9b586bd8fee8e7b248c935de70dec367679873d0f29d` (806,058,496 bytes; from Hugging Face LFS metadata, verified on-device 13 Oct 2026) |
+| **Runtime** | llama.cpp `b4875` via `arth_llm` shim |
 | **Storage** | `<ApplicationSupport>/models/` (excluded from backups) |
 
 ## Attribution
