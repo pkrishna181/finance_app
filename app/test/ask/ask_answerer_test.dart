@@ -91,11 +91,11 @@ void main() {
       );
       expect(
         a.headline,
-        'You spent ₹950 on Food Delivery in Sep 2026 (2 payments).',
+        'You spent ₹950 on Food Delivery in Sep 2026 (2 payments). '
+        'That\'s ₹150 more than Aug 2026 (₹800).',
       );
       expect(a.understoodAs, 'Spending · Food Delivery · Sep 2026');
-      expect(a.rows.single.label, 'Aug 2026');
-      expect(a.rows.single.paise, 80000);
+      expect(a.rows, isEmpty);
       expect(
         a.searchQuery,
         'cat:food_delivery from:2026-09-01 to:2026-09-30 debit',

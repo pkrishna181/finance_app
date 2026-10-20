@@ -154,7 +154,14 @@ SELECT DISTINCT LOWER(raw_merchant) FROM transactions
         break;
     }
 
-    final p = q.period!;
+    var p = q.period!;
+    if (p.from == AskPeriod.kAllTimeStart) {
+      // Start at the first month with data rather than walking from 2000.
+      final months = await _repo.availableMonths();
+      if (months.isNotEmpty) {
+        p = AskPeriod(months.last.start, p.toExclusive, p.label);
+      }
+    }
     final agg = await _aggregatorFor(p);
     final inPeriod = [
       for (final t in agg.counted)
@@ -287,6 +294,7 @@ SELECT DISTINCT LOWER(raw_merchant) FROM transactions
     }
 
     final rows = <AskRow>[];
+    var compare = '';
     final prev = p.previousMonth;
     if (prev != null) {
       final prevTxns = [
@@ -297,7 +305,12 @@ SELECT DISTINCT LOWER(raw_merchant) FROM transactions
       ];
       final before = measure(prev, prevTxns);
       if (before.count > 0) {
-        rows.add(AskRow(prev.label, paise: before.paise));
+        final diff = cur.paise - before.paise;
+        compare = diff == 0
+            ? ' That\'s the same as ${prev.label}.'
+            : ' That\'s ${inrWhole(diff.abs())} '
+                  '${diff > 0 ? 'more' : 'less'} than ${prev.label} '
+                  '(${inrWhole(before.paise)}).';
       }
     }
     if (q.categorySlug == null && q.merchant == null) {
@@ -314,7 +327,7 @@ SELECT DISTINCT LOWER(raw_merchant) FROM transactions
         : 0;
     return build(
       'You spent ${inrWhole(cur.paise)}$on in ${p.label} '
-      '(${_count(cur.count, 'payment')}).',
+      '(${_count(cur.count, 'payment')}).$compare',
       rows: rows,
       note: [
         if (q.categorySlug != null && q.merchant == null)

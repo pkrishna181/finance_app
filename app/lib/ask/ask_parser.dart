@@ -331,14 +331,12 @@ class AskParser {
       if (unit.startsWith('week')) {
         return cut(rel, AskPeriod.lastDays(n * 7, now));
       }
-      final from = DateTime(now.year, now.month - n, now.day + 1);
-      return cut(
-        rel,
-        AskPeriod.lastDays(today.difference(from).inDays + 1, now),
-      );
+      return cut(rel, AskPeriod.lastMonths(n, now));
     }
 
     final simple = <String, AskPeriod Function()>{
+      'all time': () => AskPeriod.allTime(now),
+      'ever': () => AskPeriod.allTime(now),
       'today': () =>
           AskPeriod(today, today.add(const Duration(days: 1)), 'today'),
       'yesterday': () => AskPeriod(
@@ -460,6 +458,8 @@ class AskParser {
   }
 
   static const _filler = <String>{
+    'lot',
+    'lots',
     'ride',
     'rides',
     'trip',

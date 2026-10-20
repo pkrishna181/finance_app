@@ -4,3 +4,4 @@ library;
 export 'ask_answerer.dart';
 export 'ask_parser.dart';
 export 'ask_query.dart';
+export 'ask_model_reader.dart';

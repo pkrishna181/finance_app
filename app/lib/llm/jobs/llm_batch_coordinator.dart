@@ -66,17 +66,10 @@ class LlmBatchCoordinator {
         return;
       }
 
-      if (!engine.isReady) {
-        if (!await _downloader.isDownloaded()) {
-          _emit(const LlmBatchState.idle(skipped: 'model_not_downloaded'));
-          return;
-        }
-        final file = await _downloader.modelFilePath();
-        final load = await engine.load(modelPath: file.path);
-        if (load.isErr) {
-          _emit(const LlmBatchState.idle(skipped: 'engine_load_failed'));
-          return;
-        }
+      final notReady = await ensureEngineLoaded();
+      if (notReady != null) {
+        _emit(LlmBatchState.idle(skipped: notReady));
+        return;
       }
 
       final runner = LlmJobRunner(
@@ -95,6 +88,16 @@ class LlmBatchCoordinator {
     } finally {
       _inFlight = false;
     }
+  }
+
+  /// Loads the downloaded model if needed (also used by Ask). Null when the
+  /// engine is ready, else `model_not_downloaded` or `engine_load_failed`.
+  Future<String?> ensureEngineLoaded() async {
+    if (engine.isReady) return null;
+    if (!await _downloader.isDownloaded()) return 'model_not_downloaded';
+    final file = await _downloader.modelFilePath();
+    final load = await engine.load(modelPath: file.path);
+    return load.isErr ? 'engine_load_failed' : null;
   }
 
   void _emit(LlmBatchState next) {

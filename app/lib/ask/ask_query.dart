@@ -93,6 +93,22 @@ class AskPeriod {
     );
   }
 
+  /// The [months] months ending today, e.g. 21 Jul – 20 Oct for 3.
+  factory AskPeriod.lastMonths(int months, DateTime now) {
+    final today = DateTime(now.year, now.month, now.day);
+    final from = DateTime(now.year, now.month - months, now.day + 1);
+    return AskPeriod.lastDays(today.difference(from).inDays + 1, now);
+  }
+
+  /// Everything up to today.
+  factory AskPeriod.allTime(DateTime now) => AskPeriod(
+    kAllTimeStart,
+    DateTime(now.year, now.month, now.day + 1),
+    'all time',
+  );
+
+  static final kAllTimeStart = DateTime(2000);
+
   final DateTime from;
   final DateTime toExclusive;
   final String label;
