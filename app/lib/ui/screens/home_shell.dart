@@ -95,7 +95,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             database: db,
             coordinator: _coordinator,
           ),
-          AskScreen(),
+          AskScreen(database: db, coordinator: _coordinator),
         ],
       ),
       bottomNavigationBar: NavigationBar(

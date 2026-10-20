@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 12.1 — Ask: question parser and answers
+Last updated: Phase 12.3 — Ask screen (phase 12 complete)
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -27,7 +27,7 @@ reimplement from docs/ideas only, never copy code).
 | 9 ✅ | Holdings layer: CAMS/KFintech + NSDL/CDSL CAS PDF import, manual assets (gold, FD, EPF/PPF, property); net worth; XIRR; opt-in price lists |
 | 10 ✅ | Capital gains (FIFO lots, current Indian rules — verify at build time), tax harvesting, Schedule AL, allocation targets, retirement goal, loans |
 | 11 ✅ | App lock; encrypted backup / restore; upcoming-payments calendar; reminders; notepad calculator ("sheets") |
-| 12 | Ask tab: questions answered on the device — rule-based parser first, the local model only to read unusual wording; numbers always from app code |
+| 12 ✅ | Ask tab: questions answered on the device — rule-based parser first, the local model only to read unusual wording; numbers always from app code |
 
 Not adopted: plain-text journal editor, ledger/hledger/beancount backends,
 handlebars import templates (bank profiles cover this).
@@ -1223,6 +1223,46 @@ x86_64 with ARM translation runs the arm64 APK): SMS seeded with
   transactions says so instead of answering ₹0.
 
 Tests: `test/ask/ask_parser_test.dart`, `test/ask/ask_answerer_test.dart`.
+
+### Ask — the model as a fallback reader (Phase 12.2)
+
+Only when `AskParser` fails. `AskModelReader` sends `AskPrompt` (today's
+date, the user's category ids and names, five few-shot examples with dates
+relative to today) to `LlmEngine.completeJson` with a grammar built per call
+by `AskModelReader.grammar`: compact JSON with fixed keys —
+`intent` (enum), `category` (`""` or one of the user's slugs),
+`merchant` (≤ 40 safe characters), `period` (`this_month`, `last_month`,
+`month` + `"YYYY-MM"`, `this_year`, `last_year`, `this_fy`, `last_fy`,
+`last_days` / `last_months` + `n`, `all`), `month`, `n` (also months to
+average or days ahead). ~30 output tokens, so a few seconds of decode.
+
+`AskModelReader.validate` (pure) rejects: invalid JSON or intent, unknown
+category, a merchant **not present in the question** (no invented names) or
+not in the ledger (`unknown_merchant`, shown as such instead of a silent
+₹0), `last_paid` with nothing to look for, a future or invalid month, and
+out-of-range `n`. A busy engine (batch job running) returns `model_busy`.
+The grammar is checked by llama.cpp's parser in
+`test/ask/ask_model_reader_test.dart` when `grammar_validate` is built.
+
+`LlmBatchCoordinator.ensureEngineLoaded()` (extracted from `runNow`) loads
+the downloaded model for Ask. Parser additions: `all time` / `ever`
+(clamped to the first month with data), shared `AskPeriod.lastMonths`.
+
+### Ask screen (Phase 12.3)
+
+`AskScreen(database, coordinator)` in the fourth tab. Intro with example
+questions; each exchange shows the question, then a card with how it was
+read (`understoodAs`, prefixed "Read by the on-device model as:" when the
+model was used, so a misreading is visible), the headline, rows, matching
+transactions, the note and **See transactions** (opens `SearchScreen` with
+the answer's query). Spending answers compare with the previous month in the
+headline. The vocabulary is rebuilt per question (imports add merchants).
+Not understood → which words weren't recognised plus examples; without the
+model, a button to *On-device AI model*; busy model → try again shortly.
+Conversations are kept in memory only.
+
+Tests: `test/ui/ask_screen_test.dart` (suggestion → answer → Search; typed
+merchant; no model; model path with `FakeLlmEngine`). Rendered light / dark.
 
 ---
 
