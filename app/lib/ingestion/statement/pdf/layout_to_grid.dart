@@ -51,6 +51,16 @@ class LayoutToGrid {
               .join(' '),
       ];
 
+  /// Lines with their words and position, top to bottom, page by page.
+  List<PdfTextLine> positionedLines(List<PdfPageTextContent> pages) => [
+        for (final l in _allLines(pages))
+          PdfTextLine(
+            pageIndex: l.pageIndex,
+            y: l.y,
+            words: [...l.words]..sort((a, b) => a.x.compareTo(b.x)),
+          ),
+      ];
+
   List<_TextLine> _allLines(List<PdfPageTextContent> pages) {
     final lines = <_TextLine>[];
     for (final page in pages) {
@@ -355,11 +365,27 @@ class _ColumnLayout {
   }
 
   int _columnForX(double x) {
+    if (x < boundaries.first) return 0;
     for (var i = 0; i < boundaries.length - 1; i++) {
       if (x >= boundaries[i] && x < boundaries[i + 1]) return i;
     }
     return boundaries.length - 2;
   }
+}
+
+/// One line of a PDF page: words left to right.
+class PdfTextLine {
+  const PdfTextLine({
+    required this.pageIndex,
+    required this.y,
+    required this.words,
+  });
+
+  final int pageIndex;
+  final double y;
+  final List<PositionedWord> words;
+
+  String get text => words.map((w) => w.text).join(' ');
 }
 
 class _TextLine {

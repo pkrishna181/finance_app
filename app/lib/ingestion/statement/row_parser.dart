@@ -145,14 +145,14 @@ class StatementRowParser {
         balance = parseAmountCell(_cell(row, balIdx)).amount;
       }
 
-      final type = _inferType(narration.isNotEmpty ? narration : dateCell);
+      final type = inferStatementTxnType(narration.isNotEmpty ? narration : dateCell);
       final ref = resolveStatementRef(
         refCol: refCol,
         narration: narration,
         dateCell: dateCell,
       );
       final vpa = extractVpa(narration);
-      final merchant = _merchantFromNarration(narration, vpa);
+      final merchant = merchantFromNarration(narration, vpa);
 
       final dedupeKey = buildDedupeKey(
         bankCode: bank,
@@ -202,8 +202,8 @@ class StatementRowParser {
         ) ??
         t.externalRef;
     final vpa = extractVpa(narration) ?? t.upiPayeeVpa;
-    final merchant = _merchantFromNarration(narration, vpa);
-    final type = _inferType(narration);
+    final merchant = merchantFromNarration(narration, vpa);
+    final type = inferStatementTxnType(narration);
     final dedupeKey = buildDedupeKey(
       bankCode: bank,
       bookedAt: t.bookedAt,
@@ -302,28 +302,7 @@ class StatementRowParser {
     );
   }
 
-  TransactionType _inferType(String narration) {
-    final u = narration.toUpperCase();
-    if (u.contains('UPI')) return TransactionType.upi;
-    if (u.contains('IMPS')) return TransactionType.imps;
-    if (u.contains('NEFT')) return TransactionType.neft;
-    if (u.contains('RTGS')) return TransactionType.rtgs;
-    if (u.contains('ATM')) return TransactionType.atm;
-    if (u.contains('POS') || u.contains('CARD')) return TransactionType.card;
-    if (u.contains('SALARY')) return TransactionType.salary;
-    return TransactionType.other;
-  }
 
-  String _merchantFromNarration(String narration, String? vpa) {
-    if (vpa != null) return vpa;
-    // UPI/xxx/MERCHANT or IMPS/.../MERCHANT
-    final parts = narration.split('/');
-    if (parts.length >= 3) {
-      final last = parts.last.trim();
-      if (last.isNotEmpty && last.length < 64) return last;
-    }
-    return narration.length > 48 ? narration.substring(0, 48) : narration;
-  }
 
   bool _isFooter(List<String> row) {
     final j = row.join(' ').toLowerCase();
@@ -337,4 +316,42 @@ class StatementRowParser {
 
   String _cell(List<String> row, int idx) =>
       idx < row.length ? row[idx] : '';
+}
+
+TransactionType inferStatementTxnType(String narration) {
+  final u = narration.toUpperCase();
+  if (u.contains('UPI')) return TransactionType.upi;
+  if (u.contains('IMPS')) return TransactionType.imps;
+  if (u.contains('NEFT')) return TransactionType.neft;
+  if (u.contains('RTGS')) return TransactionType.rtgs;
+  if (u.contains('ATM')) return TransactionType.atm;
+  if (u.contains('POS') || u.contains('CARD')) return TransactionType.card;
+  if (u.contains('SALARY')) return TransactionType.salary;
+  return TransactionType.other;
+}
+
+final _upiPathPayee = RegExp(
+  r'\bUPI/(?:DR|CR)/\d{6,}/([^/]+)/',
+  caseSensitive: false,
+);
+final _neftStarPayee = RegExp(
+  r'\b(?:NEFT|RTGS|IMPS)\*[A-Z0-9]+\*[A-Z0-9]+\*([^*]+?)(?:\*|$)',
+  caseSensitive: false,
+);
+
+String merchantFromNarration(String narration, String? vpa) {
+  // UPI/DR/<ref>/<payee>/<bank>/<vpa>/<note> — the payee's name.
+  final upi = _upiPathPayee.firstMatch(narration)?.group(1)?.trim();
+  if (upi != null && upi.isNotEmpty) return upi;
+  // NEFT*<ifsc>*<utr>*<remitter>
+  final neft = _neftStarPayee.firstMatch(narration)?.group(1)?.trim();
+  if (neft != null && neft.isNotEmpty) return neft;
+  if (vpa != null) return vpa;
+  // UPI/xxx/MERCHANT or IMPS/.../MERCHANT
+  final parts = narration.split('/');
+  if (parts.length >= 3) {
+    final last = parts.last.trim();
+    if (last.isNotEmpty && last.length < 64) return last;
+  }
+  return narration.length > 48 ? narration.substring(0, 48) : narration;
 }

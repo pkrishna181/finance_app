@@ -83,6 +83,7 @@ class HeaderMapper {
   /// Whether [profileId] (from [ColumnMap.profileId]) is a credit-card
   /// statement layout.
   static bool isCreditCardProfileId(String profileId) =>
+      profileId == 'line_card' ||
       HeaderMapper()._profiles.any((p) => p.id == profileId && p.isCreditCard);
 
   ColumnMap map(List<List<String>> rows) {

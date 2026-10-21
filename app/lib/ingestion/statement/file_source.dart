@@ -12,6 +12,7 @@ import '../../core/models/transaction_type.dart';
 import '../../core/result/result.dart';
 import '../source.dart';
 import 'header_mapper.dart';
+import 'line_statement_parser.dart';
 import 'pdf/password_hints.dart';
 import 'pdf/pdf_loader.dart';
 import 'pdf/positioned_text.dart';
@@ -154,7 +155,7 @@ class StatementFileSource implements IngestionSource {
 
     final isPdf = fileName.toLowerCase().endsWith('.pdf');
     late final TableGrid grid;
-    late final ColumnMap columnMap;
+    late ColumnMap columnMap;
 
     if (isPdf) {
       final loaded = pages != null
@@ -199,10 +200,19 @@ class StatementFileSource implements IngestionSource {
       );
     }
 
-    final parseResult = StatementRowParser().parse(
+    var parseResult = StatementRowParser().parse(
       rows: grid.rows,
       columnMap: columnMap,
     );
+    // PDFs whose table the header mapper can't read (headers drawn as
+    // graphics, centred headers, wrapped rows): read them line by line.
+    if (grid.pdfLines != null) {
+      final byLine = const LineStatementParser().parse(grid.pdfLines!);
+      if (byLine.transactions.length > parseResult.transactions.length) {
+        parseResult = byLine.toParseResult();
+        columnMap = parseResult.columnMap;
+      }
+    }
     final summary = extractStatementSummary(grid.rows);
 
     var duplicateCount = 0;
