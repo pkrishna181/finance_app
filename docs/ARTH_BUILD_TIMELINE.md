@@ -17,8 +17,8 @@ first commit; their content is reconstructed from the architecture record.*
 | Duration | 3 Aug 2026 → 20 Oct 2026 |
 | Phases | 0 → 12, plus a release-hardening pass |
 | Commits on `main` | 37 feature/fix commits, 4 merged pull requests |
-| App code | ~32,700 lines of Dart in 177 files |
-| Tests | 443 automated tests in 68 files (unit, repository, widget, real-model eval) |
+| App code | ~35,900 lines of Dart in 186 files |
+| Tests | 522 automated tests in 75 files (unit, repository, widget, real-model eval, real-data harnesses) |
 | Database | Encrypted SQLite, schema v17, 31 tables |
 | Release check | Release APK run on an Android 35 emulator: SMS import, statement + locked CAS import, AI model download verified |
 
@@ -211,6 +211,35 @@ model 7 / 15). Misreadings are shown on the answer card.
 
 ---
 
+## Part 7 — Real data (21 October 2026)
+
+Installing the Phase 12 build on a phone showed Android had restored an old
+encrypted database without its key (fixed: backups off, unreadable file set
+aside). With the user's permission, parsing was then measured on their real
+SMS inbox and two real PDF statements — kept on the machine, never committed.
+Synthetic fixtures had hidden that real coverage was close to zero.
+
+| Commit | Delivered |
+|---|---|
+| fix `8aa5940` | Android backup restored a database its key could never open. |
+| 13.1 `263b348` | PDF statements read line by line from word positions: per-page amount columns, balance/marker direction, wrapped rows, EMI rows kept out; real-data harnesses. |
+| format `c1008f7` | Newer `dart format` style for the files 13.2 touches, split out. |
+| 13.2 `9e30fa8` | ~45 SMS templates from real formats (IDFC FIRST, IndusInd new); reasoned skips; card statements linked to SMS one to one. |
+| 13.3 `2c8d79d` | Statement summaries checked against printed totals; *Your statements*; schema 18. |
+
+| Measure | Before | After |
+|---|---|---|
+| SBI SMS (Card, UPI, account; ~8,700 read by the scan) | 0 SBI Card and 0 SBI UPI read; ~50 account credits | 5,356 transactions; 20 left unparsed (notices and one ₹1 UPI test); foreign-currency card spends skipped (the rupee amount is on the statement) |
+| IDFC FIRST / IndusInd SMS | never fetched | 1,383 / 104 read, 1 / 1 unparsed |
+| SBI savings PDF | 0 rows | 271 rows, every printed total matched |
+| SBI Card PDF | 0 rows | 67 rows, purchases, payments, fees and outstanding matched |
+
+A paragraph about each statement written by the on-device model was tried
+and dropped: the 1B model padded, misstated facts, and looped when kept from
+writing digits.
+
+---
+
 ## Bugs found and fixed during the session
 
 | Area | Bug | Found by |
@@ -227,6 +256,12 @@ model 7 / 15). Misreadings are shown on the answer card.
 | Process | A test failure slipped into one commit via a piped `tail` | Noticed immediately; all later commits gated on the test exit code |
 | Release build | DB locking, PDF `$HOME`, missing INTERNET, debug-only model screen | Release APK on an emulator |
 | LLM shim | Load params passed by pointer to a by-value C struct (random `n_ctx`, occasional out-of-memory crash) | Loading the real model on desktop for the Ask evaluation |
+| Backup | Android restored the encrypted DB without its Keystore key — every screen failed | Installing on a phone |
+| SMS | Templates written from guessed formats read almost no real messages; two banks never fetched | Real inbox harness |
+| PDF | No rows from real SBI statements; a day left of the first column landed in the last | Real statement harness |
+| Statements | Minimum due read from policy text; statement bank taken from the layout profile | Real statement harness; card-linking test |
+| SMS | A UPI ID in a credit recorded as the payee | Real fixtures (two goldens had the bug baked in) |
+| Process | Real names and figures reached test fixtures before a scan caught them; scrubbed from history before any push | Scanning each commit |
 
 ## How the work was verified
 
@@ -255,6 +290,7 @@ model 7 / 15). Misreadings are shown on the answer card.
 | v15 | Allocation targets |
 | v16 | Retirement plan |
 | v17 | Sheets |
+| v18 | Statement summaries keep printed totals and EMI instalments |
 
 All upgrades are automatic migrations; backups from older versions restore
 into the current schema.
@@ -267,10 +303,13 @@ into the current schema.
 | #2 | Phases 6.6 → 10.6 (budgets → Schedule AL) | 12 Oct 2026 |
 | #3 | Phase 11 (lock, backup, calendar, reminders, sheets) | 13 Oct 2026 |
 | #4 | Release-build fixes | 13 Oct 2026 |
+| #5 | Docs and model card checksum | 20 Oct 2026 |
+| #6 | Phase 12 (Ask) and the model-load fix | 21 Oct 2026 |
+| #7 | Backup-restore fix | 21 Oct 2026 |
 
 ## Open items
 
-- Field-test with real SMS / statements / CAS; add failing samples as fixtures.
+- Measure other banks' SMS and statements (and real CAS files) with the harnesses.
 - Release signing key (current APK uses the development key).
 - Ask: check the model fallback on a phone (desktop measured ~2.5 s per question); grow the held-out question set.
 - Background processing when the app is closed.

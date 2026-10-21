@@ -28,6 +28,7 @@ reimplement from docs/ideas only, never copy code).
 | 10 ✅ | Capital gains (FIFO lots, current Indian rules — verify at build time), tax harvesting, Schedule AL, allocation targets, retirement goal, loans |
 | 11 ✅ | App lock; encrypted backup / restore; upcoming-payments calendar; reminders; notepad calculator ("sheets") |
 | 12 ✅ | Ask tab: questions answered on the device — rule-based parser first, the local model only to read unusual wording; numbers always from app code |
+| 13 ✅ | Parsing measured on real data: SMS templates from a real inbox (IDFC FIRST, IndusInd added), PDF statements read line by line, card statements linked to SMS; statement summaries checked against the totals each statement prints |
 
 Not adopted: plain-text journal editor, ledger/hledger/beancount backends,
 handlebars import templates (bank profiles cover this).
@@ -1291,6 +1292,125 @@ merchant; no model; model path with `FakeLlmEngine`). Rendered light / dark.
 
 ---
 
+### Measuring parsers on real data (Phase 13)
+
+Synthetic fixtures had hidden that real parsing was near zero: on one real
+inbox (≈12,000 bank messages, 2020–2026) the SMS parser read 0 SBI Card, 0
+SBI UPI and 0 Axis messages and never fetched IDFC FIRST or IndusInd; on a
+real SBI savings statement and an SBI Card bill the PDF import read 0 rows.
+Two harnesses, skipped unless pointed at local data, measure this:
+
+- `test/parsing/real_sms_coverage_test.dart` (`ARTH_SMS_DUMP` = JSON lines of
+  `{address, date, body}`, e.g. from `adb shell content query --uri
+  content://sms/inbox`; `ARTH_SMS_REPORT`) — per bank: transactions,
+  mandates, skips by reason, unparsed, and senders the scan never reads,
+  with samples of each.
+- `test/ingestion/pdf/real_pdf_coverage_test.dart` (`ARTH_PDF_DIR`,
+  `ARTH_PDF_REPORT`) — grid and line parser results, printed totals, the
+  digest with its checks, and every positioned line.
+
+Real data stays on the machine. Fixtures made from it use the real layout
+with made-up names, amounts, account numbers and references.
+
+### PDF statements line by line (Phase 13.1)
+
+`LineStatementParser` (`ingestion/statement/line_statement_parser.dart`)
+reads layouts the header-based grid can't: SBI accounts (table header drawn
+without text), SBI Card (centred headers over wide columns), descriptions
+wrapped above and below the date line. `file_source.previewBytes` uses it
+when it reads more rows than the grid.
+
+```
+positioned lines → rows that start with a date and end in amounts
+  → amount columns per page: overlapping spans of line-ending amounts
+    (right-aligned or centred; amounts inside a description don't end the line)
+  → undated rows with a C/D/M marker inside the table (fees, GST) take the
+    previous date
+  → wrapped lines join the nearest row, lines above counting double
+  → direction: running balance, else C/D/M or Cr/Dr marker, else column
+```
+
+Card `M` rows (EMI instalments) are counted, not imported: the purchase
+they repay was spent earlier. Narration clean-up drops SBI's
+`WDL TFR`/`DEP TFR` prefix and `<txn no> AT <branch>` suffix and rejoins
+paths and NEFT references split across lines; payees come from
+`UPI/DR/<ref>/<name>/` and `NEFT*<ifsc>*<utr>*<name>`. Also fixed in the
+grid: a word left of the first column went to the last.
+
+### SMS from a real inbox (Phase 13.2)
+
+About 45 templates written from real formats (SBI UPI in four eras, SBI
+Card, SBI account alerts, NEFT/IMPS, INB, ATM/debit card, IDFC FIRST,
+IndusInd, Axis card, Paytm, ICICI eazypay). Senders `IDFCFB`, `INDUSB`,
+`CBSSBI`, `SBIPSG`, `ATMSBI`, `SBIBNK`, `IPAYTM` map to their banks and are
+fetched by the scan.
+
+Skips, each checked against real samples (`detectNoise`): no amount at all
+(notices, logins, advisories in other languages), OTP, declined, fraud
+checks, bill and statement alerts, collect requests, holds, credit-limit
+alerts, EMI-conversion offers, e-mandate set-up, loan-account credits, fund
+purchases (the CAS covers them), and spends whose first amount is foreign
+(the INR amount is only on the statement). "will be processed", "is
+scheduled on" and "will be executed" are mandates (upcoming debits).
+
+Measured afterwards, of messages the scan reads: SBI 5,356 transactions /
+20 unparsed, IDFC 1,383 / 1, Axis 306 / 3, Paytm 322 / 14, IndusInd 104 / 1.
+
+**Card statements ↔ SMS.** Card SMS carry no reference the statement prints,
+so exact dedupe can't match them. `ArthDatabase.findSmsMatch` links a
+statement row without a strong reference to an SMS transaction with the same
+bank, amount and direction within a day and a compatible card number (one
+ends with the other); each SMS row matches once per statement, so two
+identical payments on one day stay two. The preview counts them as already
+known. A bank named in a statement now wins over the layout profile's bank.
+
+### Statement summaries (Phase 13.3)
+
+```
+PDF lines → extractPrintedTotals → PrintedTotals (what the statement says)
+rows + PrintedTotals → StatementDigest.build → totals, charges, payees,
+                                               checks
+```
+
+`PrintedTotals` (`printed_totals.dart`): a value's label is the text before
+it on its line, else the phrase stacked directly above it (up to five lines,
+34pt; a phrase is words ≤5pt apart). Reads period, opening/closing balance,
+total debits/credits and their counts; for cards previous balance, payments,
+purchases, fees, total and minimum due, due and statement dates, credit and
+available limit (cash limit recognised but not kept). For PDFs these replace
+the grid's bill-fact guesses (the grid reader took a minimum due from policy
+text).
+
+`StatementDigest` (`statement_digest.dart`, pure): money in/out and counts,
+charges (fee/charge/GST/interest/markup rows), interest earned, top payees
+and sources (`payeeKey`: drops places, company suffixes and card-network
+prefixes; keeps two words for platforms like Google), largest payments,
+instalments, and `DigestCheck`s: parsed vs printed debits (cards: minus
+fees), credits, counts, and opening ± movement vs closing (cards: previous −
+paid + spent vs outstanding). Money matches to a rupee, counts exactly.
+
+UI: picking one statement opens `StatementPreviewScreen` — the summary
+(`StatementSummaryView`: whether it adds up and which figure doesn't, a
+plain overview from `statementOverview`, bill, charges, payees, largest),
+then the rows (guessed directions to flip) and Import. Import → *Your
+statements* lists imported statements (`StatementHistory`); each rebuilds
+its digest from the rows the import linked and the totals stored with it
+(schema 18: `statement_summaries.printed_json`, `instalments_paise`,
+`instalment_count`; every statement import gets a summary row). A card
+statement printing only the last two digits takes the card number of the SMS
+rows it linked.
+
+A paragraph by the on-device model was tried and dropped: Gemma 3 1B opened
+with filler, misstated facts, and looped when its grammar banned digits.
+The overview is written by code.
+
+Tests: `test/ingestion/line_statement_parser_test.dart`,
+`statement_summary_feature_test.dart`, `cross_source_dedupe_test.dart`,
+`test/parsing/real_formats_test.dart`, 33 `real_*` golden SMS,
+`test/ui/statement_summary_screens_test.dart`.
+
+---
+
 ## Engineering rules
 
 - Golden fixtures before a parser is “done”.
@@ -1304,6 +1424,13 @@ merchant; no model; model path with `FakeLlmEngine`). Rendered light / dark.
 - **Layout reconstruction:** Column boundaries anchored from header + sample
   data rows; tight PDF word gaps can still merge narration into ref/date cells
   (mitigated by `resolveStatementRef` in row parser).
+- **Line parser vs grid:** chosen by row count. A layout where the grid reads
+  most rows but not all keeps the grid's result; the summary's checks show it.
+- **Printed totals:** label-above-value needs real word spacing; two labels
+  closer than 5pt read as one phrase.
+- **SMS templates** come from one inbox (SBI, IDFC FIRST, Axis, IndusInd,
+  Paytm). Other banks still fall back to the generic templates; measure with
+  the harness before trusting a new bank.
 - **Font / encoding:** Rare PDFs with custom encodings may yield garbage text.
 - **Sectioned credit cards:** Domestic/international sections work when each
   section has its own header row; nested summary boxes may confuse header scan.
