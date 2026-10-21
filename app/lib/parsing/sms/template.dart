@@ -36,8 +36,8 @@ class SmsTemplate {
 
     final amountRaw = m.namedGroupOrNull('amount');
     if (amountRaw == null) return null;
-    final amount = parseAmountToken(amountRaw) ??
-        parseAmountToken('Rs.$amountRaw');
+    final amount =
+        parseAmountToken(amountRaw) ?? parseAmountToken('Rs.$amountRaw');
     if (amount == null) return null;
 
     final dateRaw = m.namedGroupOrNull('date');
@@ -50,18 +50,21 @@ class SmsTemplate {
         : extractDateTime(normalizedBody, fallback: receivedAt);
     bookedAt ??= receivedAt ?? DateTime.now().toUtc();
 
-    final direction = fixedDirection ??
+    final direction =
+        fixedDirection ??
         extractDirection(normalizedBody) ??
         TransactionDirection.debit;
 
-    final payee = m.namedGroupOrNull('payee_vpa') ??
+    final payee =
+        m.namedGroupOrNull('payee_vpa') ??
         (type == TransactionType.upi ? extractVpa(normalizedBody) : null);
     final payer = m.namedGroupOrNull('payer_vpa');
-    final merchant = (m.namedGroupOrNull('merchant') ??
-            payee ??
-            m.namedGroupOrNull('remarks') ??
-            'Unknown')
-        .trim();
+    final merchant =
+        (m.namedGroupOrNull('merchant') ??
+                payee ??
+                m.namedGroupOrNull('remarks') ??
+                'Unknown')
+            .trim();
     var remarks = m.namedGroupOrNull('remarks')?.trim();
     // UPI dash-suffix merchants (e.g. -SWIGGY) double as remarks; VPAs do not.
     if (remarks == null &&
@@ -69,11 +72,13 @@ class SmsTemplate {
         type == TransactionType.upi) {
       remarks = merchant;
     }
-    final account = m.namedGroupOrNull('account') ??
+    final account =
+        m.namedGroupOrNull('account') ??
         extractAccountMask(normalizedBody) ??
         extractCardLast4(normalizedBody);
 
-    final ref = m.namedGroupOrNull('ref') ??
+    final ref =
+        m.namedGroupOrNull('ref') ??
         extractUpiRef(normalizedBody) ??
         extractImpsRef(normalizedBody) ??
         extractNeftUtr(normalizedBody);
@@ -83,8 +88,10 @@ class SmsTemplate {
     final balRaw = m.namedGroupOrNull('balance');
     if (balRaw != null) {
       balance = parseAmountToken(balRaw) ?? parseAmountToken('Rs.$balRaw');
-    } else if (!RegExp(r'avl\.?\s*(?:lmt|limit)', caseSensitive: false)
-        .hasMatch(normalizedBody)) {
+    } else if (!RegExp(
+      r'avl\.?\s*(?:lmt|limit)',
+      caseSensitive: false,
+    ).hasMatch(normalizedBody)) {
       balance = extractBalance(normalizedBody);
     }
 
@@ -193,21 +200,26 @@ ParsedMandateNotice? tryParseMandate(
   if (!future.hasMatch(normalizedBody)) return null;
 
   // Exclude completed past-tense "has been debited"
-  if (RegExp(r'\b(?:has\s+been|is)\s+debited\b', caseSensitive: false)
-      .hasMatch(normalizedBody)) {
+  if (RegExp(
+    r'\b(?:has\s+been|is)\s+debited\b',
+    caseSensitive: false,
+  ).hasMatch(normalizedBody)) {
     // Could still be mandate if also "will be" — prefer future if both
-    if (!RegExp(r'will\s+be\s+debited', caseSensitive: false)
-        .hasMatch(normalizedBody)) {
+    if (!RegExp(
+      r'will\s+be\s+debited',
+      caseSensitive: false,
+    ).hasMatch(normalizedBody)) {
       return null;
     }
   }
 
-  final amount = extractSoleTxnAmount(normalizedBody).okOrNull ??
+  final amount =
+      extractSoleTxnAmount(normalizedBody).okOrNull ??
       parseAmountToken(
         RegExp(
-          r'(?:Rs\.?|INR|₹)\s*[0-9,]+(?:\.[0-9]{1,2})?',
-          caseSensitive: false,
-        ).firstMatch(normalizedBody)?.group(0) ??
+              r'(?:Rs\.?|INR|₹)\s*[0-9,]+(?:\.[0-9]{1,2})?',
+              caseSensitive: false,
+            ).firstMatch(normalizedBody)?.group(0) ??
             '',
       );
 
@@ -225,9 +237,10 @@ ParsedMandateNotice? tryParseMandate(
 
 /// Early noise filter: OTP / promo / balance-only / EMI reminder.
 String? detectNoise(String normalizedBody) {
-  if (RegExp(r'\b(otp|one[- ]time\s+password|verification\s+code)\b',
-          caseSensitive: false)
-      .hasMatch(normalizedBody)) {
+  if (RegExp(
+    r'\b(otp|one[- ]time\s+password|verification\s+code)\b',
+    caseSensitive: false,
+  ).hasMatch(normalizedBody)) {
     return 'otp';
   }
   if (RegExp(
@@ -235,13 +248,16 @@ String? detectNoise(String normalizedBody) {
         r'pre[- ]?approved|limited\s+period)\b',
         caseSensitive: false,
       ).hasMatch(normalizedBody) &&
-      !RegExp(r'\b(debited|credited|spent|withdrawn|paid)\b',
-              caseSensitive: false)
-          .hasMatch(normalizedBody)) {
+      !RegExp(
+        r'\b(debited|credited|spent|withdrawn|paid)\b',
+        caseSensitive: false,
+      ).hasMatch(normalizedBody)) {
     return 'promo';
   }
-  if (RegExp(r'\bemi\s+(?:due|reminder|overdue)\b', caseSensitive: false)
-      .hasMatch(normalizedBody)) {
+  if (RegExp(
+    r'\bemi\s+(?:due|reminder|overdue)\b',
+    caseSensitive: false,
+  ).hasMatch(normalizedBody)) {
     return 'emi_reminder';
   }
   // Balance-only alert: has balance cue but no debit/credit/spent/paid

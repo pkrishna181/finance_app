@@ -34,11 +34,11 @@ class StatementImportPreview {
     required this.unparseableCount,
     this.summary = const StatementSummary(),
   }) : transactions = [
-          for (final t in parseResult.transactions)
-            summary.last4 != null && t.accountHint == null
-                ? _withAccountHint(t, summary.last4!)
-                : t,
-        ];
+         for (final t in parseResult.transactions)
+           summary.last4 != null && t.accountHint == null
+               ? _withAccountHint(t, summary.last4!)
+               : t,
+       ];
 
   final String fileName;
   final String contentHash;
@@ -92,10 +92,8 @@ class StatementImportPreview {
 
 /// CSV / Excel / PDF statement source — available on Android and iOS.
 class StatementFileSource implements IngestionSource {
-  StatementFileSource({
-    TableLoader? tableLoader,
-    PdfStatementLoader? pdfLoader,
-  })  : _pdfLoader = pdfLoader ?? PdfStatementLoader();
+  StatementFileSource({TableLoader? tableLoader, PdfStatementLoader? pdfLoader})
+    : _pdfLoader = pdfLoader ?? PdfStatementLoader();
 
   final PdfStatementLoader _pdfLoader;
 
@@ -127,7 +125,8 @@ class StatementFileSource implements IngestionSource {
       return const Err('cancelled');
     }
     final file = picked.files.single;
-    final bytes = file.bytes ??
+    final bytes =
+        file.bytes ??
         (file.path != null ? await File(file.path!).readAsBytes() : null);
     if (bytes == null) {
       return const Err('could_not_read_file');
@@ -170,8 +169,9 @@ class StatementFileSource implements IngestionSource {
       grid = loaded.okOrNull!;
       columnMap = HeaderMapper().map(grid.rows);
     } else {
-      final payload =
-          await Isolate.run(() => _parseTabularInIsolate(bytes, fileName));
+      final payload = await Isolate.run(
+        () => _parseTabularInIsolate(bytes, fileName),
+      );
       if (payload['error'] != null) {
         return Err(payload['error']! as String);
       }
@@ -191,7 +191,9 @@ class StatementFileSource implements IngestionSource {
         bindings: [
           for (final b in payload['bindings'] as List)
             ColumnBinding(
-              field: StatementField.values.byName((b as Map)['field'] as String),
+              field: StatementField.values.byName(
+                (b as Map)['field'] as String,
+              ),
               index: b['index'] as int,
               confidence: (b['confidence'] as num).toDouble(),
               matchedHeader: b['matched_header'] as String,
@@ -225,9 +227,9 @@ class StatementFileSource implements IngestionSource {
         ref: t.externalRef,
         normalizedBody: t.rawDescription,
       );
-      final exists = await (db.select(db.transactions)
-            ..where((row) => row.dedupeHash.equals(hash)))
-          .getSingleOrNull();
+      final exists = await (db.select(
+        db.transactions,
+      )..where((row) => row.dedupeHash.equals(hash))).getSingleOrNull();
       if (exists == null) {
         newCount++;
       } else {
@@ -265,7 +267,9 @@ class StatementFileSource implements IngestionSource {
       'pdf' => 'pdf',
       _ => 'excel',
     };
-    final importId = await db.into(db.imports).insert(
+    final importId = await db
+        .into(db.imports)
+        .insert(
           ImportsCompanion.insert(
             sourceType: sourceType,
             sourceLabel: preview.fileName,
@@ -333,7 +337,9 @@ class StatementFileSource implements IngestionSource {
           periodEnd = t.bookedAt;
         }
       }
-      await db.into(db.statementSummaries).insert(
+      await db
+          .into(db.statementSummaries)
+          .insert(
             StatementSummariesCompanion.insert(
               importId: importId,
               bankCode: preview.columnMap.bankCode,

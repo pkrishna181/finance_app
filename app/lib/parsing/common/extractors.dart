@@ -92,13 +92,12 @@ Result<MoneyPaise> extractSoleTxnAmount(String body) {
     final prelude = before.substring(windowStart);
     if (_balanceCue.hasMatch(prelude)) continue;
     // Also skip if the match itself is right after Avl Bal
-    final line = body.substring(
-      m.start > 40 ? m.start - 40 : 0,
-      m.end,
-    );
+    final line = body.substring(m.start > 40 ? m.start - 40 : 0, m.end);
     if (_balanceCue.hasMatch(line) &&
         _balanceCue.firstMatch(line)!.start <
-            line.toLowerCase().indexOf(m.group(0)!.toLowerCase().substring(0, 2))) {
+            line.toLowerCase().indexOf(
+              m.group(0)!.toLowerCase().substring(0, 2),
+            )) {
       continue;
     }
     // Simpler: if amount is within 30 chars after a balance cue, skip.
@@ -157,20 +156,11 @@ final _datePatterns = <RegExp>[
   // dd-MM-yy or dd/MM/yy
   RegExp(r'\b(\d{2})[-/](\d{2})[-/](\d{2})\b'),
   // 01-Aug-26 or 01-Aug-2026
-  RegExp(
-    r'\b(\d{2})-([A-Za-z]{3})-(\d{2,4})\b',
-    caseSensitive: false,
-  ),
+  RegExp(r'\b(\d{2})-([A-Za-z]{3})-(\d{2,4})\b', caseSensitive: false),
   // 01 Aug 2026 / 01 Aug 26
-  RegExp(
-    r'\b(\d{2})\s+([A-Za-z]{3})\s+(\d{2,4})\b',
-    caseSensitive: false,
-  ),
+  RegExp(r'\b(\d{2})\s+([A-Za-z]{3})\s+(\d{2,4})\b', caseSensitive: false),
   // 01Aug26
-  RegExp(
-    r'\b(\d{2})([A-Za-z]{3})(\d{2,4})\b',
-    caseSensitive: false,
-  ),
+  RegExp(r'\b(\d{2})([A-Za-z]{3})(\d{2,4})\b', caseSensitive: false),
 ];
 
 final _timePattern = RegExp(r'\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b');
@@ -310,9 +300,7 @@ final _cardLast4 = RegExp(
   r'(?:card|a/?c|acct|account|xx+)\s*(?:ending\s*)?(?:\*{0,2}|x{0,4}|X{0,4})(\d{4})\b',
   caseSensitive: false,
 );
-final _vpa = RegExp(
-  r'\b([a-zA-Z0-9._-]{2,}@[a-zA-Z][a-zA-Z0-9]{2,})\b',
-);
+final _vpa = RegExp(r'\b([a-zA-Z0-9._-]{2,}@[a-zA-Z][a-zA-Z0-9]{2,})\b');
 final _accountMask = RegExp(
   r'(?:A/?c|Acct|Account)\s*(?:No\.?\s*)?(?:XX+|X+|\*{2,}|ending\s+)?(\d{4})\b',
   caseSensitive: false,
@@ -328,7 +316,8 @@ final _upiPathRef = RegExp(r'UPI/(\d{12})/', caseSensitive: false);
 final _embeddedStrongRef = RegExp(r'\b([A-Z0-9]{12,22})\b');
 
 /// UPI/412345678901/merchant@ybl style refs in statement narration.
-String? extractUpiPathRef(String body) => _upiPathRef.firstMatch(body)?.group(1);
+String? extractUpiPathRef(String body) =>
+    _upiPathRef.firstMatch(body)?.group(1);
 
 /// First token in [body] that passes [isStrongRef].
 String? extractEmbeddedStrongRef(String body) {

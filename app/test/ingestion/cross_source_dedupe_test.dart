@@ -16,7 +16,9 @@ void main() {
         'merchant@okhdfcbank (UPI Ref 412345678901). Not you? Call 18002586161';
 
     final smsParsed = RegexSmsParser().parse(body: body).okOrNull!.single;
-    final smsImportId = await db.into(db.imports).insert(
+    final smsImportId = await db
+        .into(db.imports)
+        .insert(
           ImportsCompanion.insert(
             sourceType: 'sms',
             sourceLabel: 'sms-test',
@@ -50,7 +52,9 @@ void main() {
     );
 
     // Statement row with same bank/date/amount/ref
-    final stmtImportId = await db.into(db.imports).insert(
+    final stmtImportId = await db
+        .into(db.imports)
+        .insert(
           ImportsCompanion.insert(
             sourceType: 'csv',
             sourceLabel: 'hdfc.csv',
@@ -107,7 +111,9 @@ void main() {
       final smsDate = DateTime.utc(2026, 8, 1);
       final stmtDate = DateTime.utc(2026, 8, 3);
 
-      final smsImportId = await db.into(db.imports).insert(
+      final smsImportId = await db
+          .into(db.imports)
+          .insert(
             ImportsCompanion.insert(
               sourceType: 'sms',
               sourceLabel: 'sms-date-test',
@@ -136,7 +142,9 @@ void main() {
         importId: smsImportId,
       );
 
-      final stmtImportId = await db.into(db.imports).insert(
+      final stmtImportId = await db
+          .into(db.imports)
+          .insert(
             ImportsCompanion.insert(
               sourceType: 'pdf',
               sourceLabel: 'hdfc.pdf',

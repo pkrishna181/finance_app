@@ -22,7 +22,7 @@ import 'templates/sbi.dart';
 /// 7. Err([UnparsedSms])
 class SmsParseCascade {
   SmsParseCascade({Map<String, List<SmsTemplate>>? bankTemplates})
-      : _bankTemplates = bankTemplates ?? _defaultBankTemplates;
+    : _bankTemplates = bankTemplates ?? _defaultBankTemplates;
 
   final Map<String, List<SmsTemplate>> _bankTemplates;
   final List<SmsTemplate> _generic = genericTemplates();
@@ -59,8 +59,9 @@ class SmsParseCascade {
       return Ok(SmsParseSuccess.mandate(mandate));
     }
 
-    final bankCodeForTemplates =
-        bank == 'UNKNOWN' ? _guessBankFromBody(normalized) : bank;
+    final bankCodeForTemplates = bank == 'UNKNOWN'
+        ? _guessBankFromBody(normalized)
+        : bank;
 
     final bankList = _bankTemplates[bankCodeForTemplates];
     if (bankList != null) {
@@ -95,8 +96,9 @@ class SmsParseCascade {
     for (final t in _generic) {
       final txn = t.tryParse(
         normalized,
-        bankOverride:
-            bankCodeForTemplates == 'UNKNOWN' ? null : bankCodeForTemplates,
+        bankOverride: bankCodeForTemplates == 'UNKNOWN'
+            ? null
+            : bankCodeForTemplates,
         receivedAt: receivedAt,
       );
       if (txn != null) {
@@ -110,7 +112,9 @@ class SmsParseCascade {
         rawBody: normalized,
         sender: sender,
         receivedAt: receivedAt,
-        bankCode: bankCodeForTemplates == 'UNKNOWN' ? null : bankCodeForTemplates,
+        bankCode: bankCodeForTemplates == 'UNKNOWN'
+            ? null
+            : bankCodeForTemplates,
       ),
     );
   }

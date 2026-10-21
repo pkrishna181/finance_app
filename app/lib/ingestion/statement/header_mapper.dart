@@ -46,37 +46,38 @@ class ColumnMap {
   }
 
   Map<String, Object?> toJson() => {
-        'header_row_index': headerRowIndex,
-        'bank_code': bankCode,
-        'profile_id': profileId,
-        'overall_confidence': overallConfidence,
-        'bindings': [
-          for (final b in bindings)
-            {
-              'field': b.field.name,
-              'index': b.index,
-              'confidence': b.confidence,
-              'matched_header': b.matchedHeader,
-            },
-        ],
-      };
+    'header_row_index': headerRowIndex,
+    'bank_code': bankCode,
+    'profile_id': profileId,
+    'overall_confidence': overallConfidence,
+    'bindings': [
+      for (final b in bindings)
+        {
+          'field': b.field.name,
+          'index': b.index,
+          'confidence': b.confidence,
+          'matched_header': b.matchedHeader,
+        },
+    ],
+  };
 }
 
 /// Score candidate header rows and map columns via synonyms + fuzzy match.
 class HeaderMapper {
   HeaderMapper({List<StatementProfile>? profiles})
-      : _profiles = profiles ??
-            [
-              hdfcAccountProfile(),
-              hdfcCreditCardProfile(),
-              iciciAccountProfile(),
-              iciciCreditCardProfile(),
-              sbiAccountProfile(),
-              axisAccountProfile(),
-              axisCreditCardProfile(),
-              kotakAccountProfile(),
-              genericAccountProfile(),
-            ];
+    : _profiles =
+          profiles ??
+          [
+            hdfcAccountProfile(),
+            hdfcCreditCardProfile(),
+            iciciAccountProfile(),
+            iciciCreditCardProfile(),
+            sbiAccountProfile(),
+            axisAccountProfile(),
+            axisCreditCardProfile(),
+            kotakAccountProfile(),
+            genericAccountProfile(),
+          ];
 
   final List<StatementProfile> _profiles;
 
