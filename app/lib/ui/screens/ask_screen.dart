@@ -39,7 +39,7 @@ class AskScreen extends StatefulWidget {
   State<AskScreen> createState() => _AskScreenState();
 }
 
-enum _Problem { notUnderstood, noModel, modelFailed, busy }
+enum _Problem { notUnderstood, noModel, modelFailed, busy, failed }
 
 class _Exchange {
   _Exchange(this.question);
@@ -83,6 +83,10 @@ class _AskScreenState extends State<AskScreen> {
     _scrollToEnd();
     try {
       await _resolve(db, ex);
+    } catch (e) {
+      // Without this the card would spin forever.
+      debugPrint('Ask failed: $e');
+      ex.problem = _Problem.failed;
     } finally {
       if (mounted) setState(() => _busy = false);
       _scrollToEnd();
@@ -338,6 +342,8 @@ class _ExchangeView extends StatelessWidget {
       _Problem.busy =>
         'The on-device model is busy sorting new transactions. '
             'Try again in a minute, or use one of these:',
+      _Problem.failed =>
+        'Something went wrong reading your data. Try again, or one of these:',
     };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

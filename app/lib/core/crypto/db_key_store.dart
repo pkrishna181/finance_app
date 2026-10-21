@@ -9,11 +9,17 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// iOS Keychain via flutter_secure_storage). Never logged or synced.
 class DbKeyStore {
   DbKeyStore({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? const FlutterSecureStorage();
 
   static const _keyName = 'arth_db_encryption_key_v1';
 
   final FlutterSecureStorage _storage;
+
+  /// The stored key, or null if none has been created on this install.
+  Future<String?> readKey() async {
+    final existing = await _storage.read(key: _keyName);
+    return existing == null || existing.isEmpty ? null : existing;
+  }
 
   /// Returns the existing key or creates a new 256-bit random passphrase.
   Future<String> getOrCreateKey() async {
