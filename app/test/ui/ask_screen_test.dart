@@ -98,6 +98,27 @@ void main() {
     expect(find.byType(SearchScreen), findsOneWidget);
   });
 
+  testWidgets('a database that cannot be read shows an error, not a spinner', (
+    tester,
+  ) async {
+    final db = (await tester.runAsync(() async {
+      final dir = await Directory.systemTemp.createTemp('arth_ask_');
+      addTearDown(() => dir.delete(recursive: true));
+      final file = File('${dir.path}/arth_encrypted.db');
+      final old = ArthDatabase.openEncryptedFile(file: file, key: 'old');
+      await old.customSelect('SELECT 1').get();
+      await old.close();
+      return ArthDatabase.openEncryptedFile(file: file, key: 'new');
+    }))!;
+    addTearDown(() => tester.runAsync(db.close));
+    await pump(tester, db);
+
+    await tester.tap(find.text('How much did I spend last month?'));
+    await settle(tester);
+    expect(find.textContaining('Something went wrong'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
   testWidgets('typed question with a merchant', (tester) async {
     final db = await seeded(tester);
     await pump(tester, db);

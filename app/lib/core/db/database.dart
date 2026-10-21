@@ -71,6 +71,12 @@ class ArthDatabase extends _$ArthDatabase {
 
   static Future<ArthDatabase> openEncrypted({DbKeyStore? keyStore}) async {
     final store = keyStore ?? DbKeyStore();
+    // No key but a database file: the file came from somewhere else (an
+    // Android backup restore, which never carries Keystore keys) and can't
+    // be decrypted. Move it aside rather than fail on every launch.
+    if (await store.readKey() == null) {
+      await setAsideUnreadableDatabase(await arthEncryptedDbFile());
+    }
     final key = await store.getOrCreateKey();
     return ArthDatabase(_openEncryptedExecutor(key));
   }
@@ -80,10 +86,7 @@ class ArthDatabase extends _$ArthDatabase {
     required String key,
   }) {
     return ArthDatabase(
-      NativeDatabase(
-        file,
-        setup: (db) => applyEncryptionKey(db, key),
-      ),
+      NativeDatabase(file, setup: (db) => applyEncryptionKey(db, key)),
     );
   }
 
@@ -96,9 +99,9 @@ class ArthDatabase extends _$ArthDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async {
-          await m.createAll();
-          await customStatement('''
+    onCreate: (m) async {
+      await m.createAll();
+      await customStatement('''
 CREATE TABLE IF NOT EXISTS llm_disagreements (
   id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
   job_id INTEGER REFERENCES llm_jobs(id),
@@ -107,33 +110,33 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
   resolved_value TEXT NOT NULL,
   created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
 )''');
-          await _seedCategories();
-          await _createInsightIndexes();
-        },
-        onUpgrade: (m, from, to) async {
-          if (from < 2) {
-            await m.createTable(unparsedSmsRows);
-            await m.createTable(mandateNotices);
-          }
-          if (from < 3) {
-            await m.addColumn(imports, imports.parsedCount);
-            await m.addColumn(imports, imports.skippedCount);
-            await m.addColumn(imports, imports.duplicateCount);
-            await m.createTable(transactionImports);
-            await m.createTable(unparsedStatementRows);
-          }
-          if (from < 4) {
-            await m.createTable(modelInfo);
-          }
-          if (from < 5) {
-            await m.addColumn(merchantAliases, merchantAliases.confidence);
-            await m.addColumn(transactions, transactions.suggestedCategorySlug);
-            await m.addColumn(transactions, transactions.categorySource);
-            await m.createTable(llmJobs);
-            await m.createTable(llmReviewItems);
-          }
-          if (from < 6) {
-            await customStatement('''
+      await _seedCategories();
+      await _createInsightIndexes();
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.createTable(unparsedSmsRows);
+        await m.createTable(mandateNotices);
+      }
+      if (from < 3) {
+        await m.addColumn(imports, imports.parsedCount);
+        await m.addColumn(imports, imports.skippedCount);
+        await m.addColumn(imports, imports.duplicateCount);
+        await m.createTable(transactionImports);
+        await m.createTable(unparsedStatementRows);
+      }
+      if (from < 4) {
+        await m.createTable(modelInfo);
+      }
+      if (from < 5) {
+        await m.addColumn(merchantAliases, merchantAliases.confidence);
+        await m.addColumn(transactions, transactions.suggestedCategorySlug);
+        await m.addColumn(transactions, transactions.categorySource);
+        await m.createTable(llmJobs);
+        await m.createTable(llmReviewItems);
+      }
+      if (from < 6) {
+        await customStatement('''
 CREATE TABLE IF NOT EXISTS llm_disagreements (
   id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
   job_id INTEGER REFERENCES llm_jobs(id),
@@ -142,54 +145,54 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
   resolved_value TEXT NOT NULL,
   created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
 )''');
-          }
-          if (from < 7) {
-            await _createInsightIndexes();
-          }
-          if (from < 8) {
-            await m.createTable(budgets);
-          }
-          if (from < 9) {
-            await m.addColumn(transactions, transactions.accountKind);
-            await m.createTable(statementSummaries);
-            await m.createTable(creditCards);
-          }
-          if (from < 10) {
-            await m.createTable(goals);
-            await m.createTable(goalContributions);
-          }
-          if (from < 11) {
-            await m.createTable(securities);
-            await m.createTable(investmentAccounts);
-            await m.createTable(investmentTxns);
-            await m.createTable(holdingSnapshots);
-            await m.createTable(securityPrices);
-          }
-          if (from < 12) {
-            await m.createTable(manualAssets);
-            await m.createTable(manualAssetValues);
-          }
-          if (from < 13) {
-            await m.addColumn(securities, securities.taxCategory);
-          }
-          if (from < 14) {
-            await m.createTable(loans);
-            await m.createTable(loanPrepayments);
-          }
-          if (from < 15) {
-            await m.createTable(allocationTargets);
-          }
-          if (from < 16) {
-            await m.createTable(retirementPlans);
-          }
-          if (from < 17) {
-            await m.createTable(sheets);
-          }
-        },
-        beforeOpen: (details) async {
-          await customStatement('PRAGMA foreign_keys = ON');
-        },
-      );
+      }
+      if (from < 7) {
+        await _createInsightIndexes();
+      }
+      if (from < 8) {
+        await m.createTable(budgets);
+      }
+      if (from < 9) {
+        await m.addColumn(transactions, transactions.accountKind);
+        await m.createTable(statementSummaries);
+        await m.createTable(creditCards);
+      }
+      if (from < 10) {
+        await m.createTable(goals);
+        await m.createTable(goalContributions);
+      }
+      if (from < 11) {
+        await m.createTable(securities);
+        await m.createTable(investmentAccounts);
+        await m.createTable(investmentTxns);
+        await m.createTable(holdingSnapshots);
+        await m.createTable(securityPrices);
+      }
+      if (from < 12) {
+        await m.createTable(manualAssets);
+        await m.createTable(manualAssetValues);
+      }
+      if (from < 13) {
+        await m.addColumn(securities, securities.taxCategory);
+      }
+      if (from < 14) {
+        await m.createTable(loans);
+        await m.createTable(loanPrepayments);
+      }
+      if (from < 15) {
+        await m.createTable(allocationTargets);
+      }
+      if (from < 16) {
+        await m.createTable(retirementPlans);
+      }
+      if (from < 17) {
+        await m.createTable(sheets);
+      }
+    },
+    beforeOpen: (details) async {
+      await customStatement('PRAGMA foreign_keys = ON');
+    },
+  );
 
   /// Indexes backing Phase 6 insights range / category queries.
   Future<void> _createInsightIndexes() async {
@@ -219,13 +222,8 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
   }
 
   /// Idempotent insert: skips rows whose [dedupeHash] already exists.
-  Future<int> insertTransactionIdempotent(
-    TransactionsCompanion row,
-  ) async {
-    return into(transactions).insert(
-      row,
-      mode: InsertMode.insertOrIgnore,
-    );
+  Future<int> insertTransactionIdempotent(TransactionsCompanion row) async {
+    return into(transactions).insert(row, mode: InsertMode.insertOrIgnore);
   }
 
   /// Insert or attach provenance. Always records [importId] on the txn.
@@ -234,9 +232,9 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
     required int importId,
   }) async {
     final hash = row.dedupeHash.value;
-    final existing = await (select(transactions)
-          ..where((t) => t.dedupeHash.equals(hash)))
-        .getSingleOrNull();
+    final existing = await (select(
+      transactions,
+    )..where((t) => t.dedupeHash.equals(hash))).getSingleOrNull();
 
     late final int txnId;
     var inserted = false;
@@ -265,11 +263,12 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
   Future<String?> merchantCategoryRule(String rawMerchant) async {
     final key = normalizeMerchantLabel(rawMerchant);
     if (key.length < 3) return null;
-    final rules = await (select(userCorrections)
-          ..where((t) => t.transactionId.isNull())
-          ..where((t) => t.field.equals('category'))
-          ..orderBy([(t) => OrderingTerm.desc(t.id)]))
-        .get();
+    final rules =
+        await (select(userCorrections)
+              ..where((t) => t.transactionId.isNull())
+              ..where((t) => t.field.equals('category'))
+              ..orderBy([(t) => OrderingTerm.desc(t.id)]))
+            .get();
     for (final r in rules) {
       if (normalizeMerchantLabel(r.rawMerchant) == key) return r.newValue;
     }
@@ -291,8 +290,9 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
   }
 
   Future<Import?> findImportByHash(String contentHash) {
-    return (select(imports)..where((t) => t.contentHash.equals(contentHash)))
-        .getSingleOrNull();
+    return (select(
+      imports,
+    )..where((t) => t.contentHash.equals(contentHash))).getSingleOrNull();
   }
 
   Future<int> insertUnparsedSms(UnparsedSmsRowsCompanion row) {
@@ -308,13 +308,15 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
   }
 
   Future<void> upsertModelInfo(ModelInfoCompanion row) async {
-    final existing = await (select(modelInfo)
-          ..where((t) => t.modelName.equals(row.modelName.value)))
-        .getSingleOrNull();
+    final existing = await (select(
+      modelInfo,
+    )..where((t) => t.modelName.equals(row.modelName.value))).getSingleOrNull();
     if (existing == null) {
       await into(modelInfo).insert(row);
     } else {
-      await (update(modelInfo)..where((t) => t.id.equals(existing.id))).write(row);
+      await (update(
+        modelInfo,
+      )..where((t) => t.id.equals(existing.id))).write(row);
     }
   }
 
@@ -332,7 +334,9 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
     final q = selectOnly(unparsedSmsRows)
       ..addColumns([unparsedSmsRows.id.count()])
       ..where(unparsedSmsRows.resolved.equals(false));
-    return q.watchSingle().map((row) => row.read(unparsedSmsRows.id.count()) ?? 0);
+    return q.watchSingle().map(
+      (row) => row.read(unparsedSmsRows.id.count()) ?? 0,
+    );
   }
 
   Future<List<UnparsedSmsRow>> listUnresolvedUnparsedSms({int limit = 100}) {
@@ -344,12 +348,15 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
   }
 
   Future<UnparsedSmsRow?> getUnparsedSms(int id) {
-    return (select(unparsedSmsRows)..where((t) => t.id.equals(id))).getSingleOrNull();
+    return (select(
+      unparsedSmsRows,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
   Future<void> markUnparsedSmsResolved(int id) {
-    return (update(unparsedSmsRows)..where((t) => t.id.equals(id)))
-        .write(const UnparsedSmsRowsCompanion(resolved: Value(true)));
+    return (update(unparsedSmsRows)..where((t) => t.id.equals(id))).write(
+      const UnparsedSmsRowsCompanion(resolved: Value(true)),
+    );
   }
 
   Future<int> insertLlmJob(LlmJobsCompanion row) {
@@ -358,10 +365,11 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
 
   Future<int> countPendingLlmJobs() async {
     final count = llmJobs.id.count();
-    final row = await (selectOnly(llmJobs)
-          ..addColumns([count])
-          ..where(llmJobs.status.equals('pending')))
-        .getSingle();
+    final row =
+        await (selectOnly(llmJobs)
+              ..addColumns([count])
+              ..where(llmJobs.status.equals('pending')))
+            .getSingle();
     return row.read(count) ?? 0;
   }
 
@@ -385,25 +393,27 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
 
   Future<bool> hasPendingMerchantJob(String rawMerchant) async {
     final key = rawMerchant.trim().toLowerCase();
-    final pending = await (select(llmJobs)
-          ..where((t) => t.jobType.equals('merchant_normalize'))
-          ..where((t) => t.status.isIn(['pending', 'running'])))
-        .get();
+    final pending =
+        await (select(llmJobs)
+              ..where((t) => t.jobType.equals('merchant_normalize'))
+              ..where((t) => t.status.isIn(['pending', 'running'])))
+            .get();
     for (final job in pending) {
       if (job.payloadJson.toLowerCase().contains(key)) return true;
     }
-    final alias = await (select(merchantAliases)
-          ..where((t) => t.rawName.equals(rawMerchant.trim())))
-        .getSingleOrNull();
+    final alias = await (select(
+      merchantAliases,
+    )..where((t) => t.rawName.equals(rawMerchant.trim()))).getSingleOrNull();
     return alias != null;
   }
 
   Future<List<LlmJob>> fetchPendingJobs({int limit = 50}) async {
-    final rows = await (select(llmJobs)
-          ..where((t) => t.status.equals('pending'))
-          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)])
-          ..limit(limit))
-        .get();
+    final rows =
+        await (select(llmJobs)
+              ..where((t) => t.status.equals('pending'))
+              ..orderBy([(t) => OrderingTerm.asc(t.createdAt)])
+              ..limit(limit))
+            .get();
     rows.sort((a, b) {
       final ta = LlmJobType.fromWire(a.jobType);
       final tb = LlmJobType.fromWire(b.jobType);
@@ -429,7 +439,9 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
   }
 
   Future<LlmReviewItem?> getReviewItem(int id) {
-    return (select(llmReviewItems)..where((t) => t.id.equals(id))).getSingleOrNull();
+    return (select(
+      llmReviewItems,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
   Future<void> updateReviewItem(int id, LlmReviewItemsCompanion patch) {
@@ -437,8 +449,9 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
   }
 
   Future<MerchantAliase?> findMerchantAlias(String rawName) {
-    return (select(merchantAliases)..where((t) => t.rawName.equals(rawName.trim())))
-        .getSingleOrNull();
+    return (select(
+      merchantAliases,
+    )..where((t) => t.rawName.equals(rawName.trim()))).getSingleOrNull();
   }
 
   Future<int> upsertMerchantAlias({
@@ -450,7 +463,9 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
     final existing = await findMerchantAlias(rawName);
     if (existing != null) {
       if (existing.source == 'user' && source != 'user') return existing.id;
-      await (update(merchantAliases)..where((t) => t.id.equals(existing.id))).write(
+      await (update(
+        merchantAliases,
+      )..where((t) => t.id.equals(existing.id))).write(
         MerchantAliasesCompanion(
           merchantId: Value(merchantId),
           source: Value(source),
@@ -470,17 +485,19 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
   }
 
   Future<int> findOrCreateMerchant(String canonicalName) async {
-    final existing = await (select(merchants)
-          ..where((t) => t.canonicalName.equals(canonicalName)))
-        .getSingleOrNull();
+    final existing = await (select(
+      merchants,
+    )..where((t) => t.canonicalName.equals(canonicalName))).getSingleOrNull();
     if (existing != null) return existing.id;
-    return into(merchants).insert(
-      MerchantsCompanion.insert(canonicalName: canonicalName),
-    );
+    return into(
+      merchants,
+    ).insert(MerchantsCompanion.insert(canonicalName: canonicalName));
   }
 
   Future<Category?> categoryBySlug(String slug) {
-    return (select(categories)..where((t) => t.slug.equals(slug))).getSingleOrNull();
+    return (select(
+      categories,
+    )..where((t) => t.slug.equals(slug))).getSingleOrNull();
   }
 
   Future<int> insertLlmDisagreement({
@@ -573,4 +590,19 @@ String buildDedupeHash({
 Future<File> arthEncryptedDbFile() async {
   final dir = await getApplicationSupportDirectory();
   return File(p.join(dir.path, 'arth_encrypted.db'));
+}
+
+/// Renames [db] and its WAL/SHM/journal files to `*.unreadable-<millis>`.
+/// Returns whether anything was moved.
+Future<bool> setAsideUnreadableDatabase(File db, {DateTime? now}) async {
+  final stamp = (now ?? DateTime.now()).millisecondsSinceEpoch;
+  var moved = false;
+  for (final suffix in const ['', '-wal', '-shm', '-journal']) {
+    final f = File('${db.path}$suffix');
+    if (await f.exists()) {
+      await f.rename('${f.path}.unreadable-$stamp');
+      moved = true;
+    }
+  }
+  return moved;
 }
