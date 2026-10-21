@@ -10,12 +10,16 @@ import '../../core/db/database.dart';
 import '../../core/models/parsed_transaction.dart';
 import '../../core/models/transaction_type.dart';
 import '../../core/result/result.dart';
+import '../../parsing/common/extractors.dart' show isStrongRef;
 import '../source.dart';
 import 'header_mapper.dart';
+import 'line_statement_parser.dart';
 import 'pdf/password_hints.dart';
 import 'pdf/pdf_loader.dart';
 import 'pdf/positioned_text.dart';
 import 'row_parser.dart';
+import 'printed_totals.dart';
+import 'statement_digest.dart';
 import 'statement_summary.dart';
 import 'table_loader.dart';
 
@@ -32,12 +36,15 @@ class StatementImportPreview {
     required this.duplicateCount,
     required this.unparseableCount,
     this.summary = const StatementSummary(),
+    this.printed = const PrintedTotals(),
+    this.instalmentsPaise = 0,
+    this.instalmentCount = 0,
   }) : transactions = [
-          for (final t in parseResult.transactions)
-            summary.last4 != null && t.accountHint == null
-                ? _withAccountHint(t, summary.last4!)
-                : t,
-        ];
+         for (final t in parseResult.transactions)
+           summary.last4 != null && t.accountHint == null
+               ? _withAccountHint(t, summary.last4!)
+               : t,
+       ];
 
   final String fileName;
   final String contentHash;
@@ -51,6 +58,34 @@ class StatementImportPreview {
 
   /// Card/account number and bill facts printed on the statement.
   final StatementSummary summary;
+
+  /// Totals the statement prints about itself (PDFs).
+  final PrintedTotals printed;
+
+  /// Card EMI instalments on the statement, kept out of [transactions].
+  final int instalmentsPaise;
+  final int instalmentCount;
+
+  /// The summary of these rows, checked against [printed]. Rebuilt on each
+  /// call so flipped directions count.
+  StatementDigest get digest => StatementDigest.build(
+    rows: [
+      for (final t in transactions)
+        DigestRow(
+          date: t.bookedAt,
+          paise: t.amountPaise.paise,
+          isDebit: t.direction == TransactionDirection.debit,
+          merchant: t.rawMerchant,
+          description: t.rawDescription,
+        ),
+    ],
+    printed: printed,
+    bankCode: columnMap.bankCode,
+    isCard: accountKind == 'card',
+    last4: summary.last4,
+    instalmentsPaise: instalmentsPaise,
+    instalmentCount: instalmentCount,
+  );
 
   /// bank | card, from the detected statement layout.
   String get accountKind =>
@@ -91,10 +126,8 @@ class StatementImportPreview {
 
 /// CSV / Excel / PDF statement source — available on Android and iOS.
 class StatementFileSource implements IngestionSource {
-  StatementFileSource({
-    TableLoader? tableLoader,
-    PdfStatementLoader? pdfLoader,
-  })  : _pdfLoader = pdfLoader ?? PdfStatementLoader();
+  StatementFileSource({TableLoader? tableLoader, PdfStatementLoader? pdfLoader})
+    : _pdfLoader = pdfLoader ?? PdfStatementLoader();
 
   final PdfStatementLoader _pdfLoader;
 
@@ -126,7 +159,8 @@ class StatementFileSource implements IngestionSource {
       return const Err('cancelled');
     }
     final file = picked.files.single;
-    final bytes = file.bytes ??
+    final bytes =
+        file.bytes ??
         (file.path != null ? await File(file.path!).readAsBytes() : null);
     if (bytes == null) {
       return const Err('could_not_read_file');
@@ -154,7 +188,7 @@ class StatementFileSource implements IngestionSource {
 
     final isPdf = fileName.toLowerCase().endsWith('.pdf');
     late final TableGrid grid;
-    late final ColumnMap columnMap;
+    late ColumnMap columnMap;
 
     if (isPdf) {
       final loaded = pages != null
@@ -169,8 +203,9 @@ class StatementFileSource implements IngestionSource {
       grid = loaded.okOrNull!;
       columnMap = HeaderMapper().map(grid.rows);
     } else {
-      final payload =
-          await Isolate.run(() => _parseTabularInIsolate(bytes, fileName));
+      final payload = await Isolate.run(
+        () => _parseTabularInIsolate(bytes, fileName),
+      );
       if (payload['error'] != null) {
         return Err(payload['error']! as String);
       }
@@ -190,7 +225,9 @@ class StatementFileSource implements IngestionSource {
         bindings: [
           for (final b in payload['bindings'] as List)
             ColumnBinding(
-              field: StatementField.values.byName((b as Map)['field'] as String),
+              field: StatementField.values.byName(
+                (b as Map)['field'] as String,
+              ),
               index: b['index'] as int,
               confidence: (b['confidence'] as num).toDouble(),
               matchedHeader: b['matched_header'] as String,
@@ -199,14 +236,31 @@ class StatementFileSource implements IngestionSource {
       );
     }
 
-    final parseResult = StatementRowParser().parse(
+    var parseResult = StatementRowParser().parse(
       rows: grid.rows,
       columnMap: columnMap,
     );
-    final summary = extractStatementSummary(grid.rows);
+    // PDFs whose table the header mapper can't read (headers drawn as
+    // graphics, centred headers, wrapped rows): read them line by line.
+    var instalments = 0, instalmentCount = 0;
+    if (grid.pdfLines != null) {
+      final byLine = const LineStatementParser().parse(grid.pdfLines!);
+      if (byLine.transactions.length > parseResult.transactions.length) {
+        parseResult = byLine.toParseResult();
+        columnMap = parseResult.columnMap;
+        instalments = byLine.instalmentsPaise;
+        instalmentCount = byLine.instalmentCount;
+      }
+    }
+    final printed = grid.pdfLines == null
+        ? const PrintedTotals()
+        : extractPrintedTotals(grid.pdfLines!);
+    // Read by position, the PDF's own figures beat the grid's guesses.
+    final summary = extractStatementSummary(grid.rows).withPrinted(printed);
 
     var duplicateCount = 0;
     var newCount = 0;
+    final matched = <int>{};
     for (final t in parseResult.transactions) {
       final hash = buildDedupeHash(
         bankCode: t.bankCode,
@@ -215,10 +269,13 @@ class StatementFileSource implements IngestionSource {
         ref: t.externalRef,
         normalizedBody: t.rawDescription,
       );
-      final exists = await (db.select(db.transactions)
-            ..where((row) => row.dedupeHash.equals(hash)))
-          .getSingleOrNull();
-      if (exists == null) {
+      final exists = await (db.select(
+        db.transactions,
+      )..where((row) => row.dedupeHash.equals(hash))).getSingleOrNull();
+      final sms = exists == null
+          ? await _smsMatch(db, t, summary.last4, matched)
+          : null;
+      if (exists == null && sms == null) {
         newCount++;
       } else {
         duplicateCount++;
@@ -237,9 +294,50 @@ class StatementFileSource implements IngestionSource {
         duplicateCount: duplicateCount,
         unparseableCount: parseResult.unparsed.length,
         summary: summary,
+        printed: printed,
+        instalmentsPaise: instalments,
+        instalmentCount: instalmentCount,
       ),
     );
   }
+
+  /// Rows without a strong reference may be a payment an SMS already
+  /// recorded (see [ArthDatabase.findSmsMatch]).
+  Future<int?> _smsMatch(
+    ArthDatabase db,
+    ParsedTransaction t,
+    String? statementLast4,
+    Set<int> matched,
+  ) async {
+    if (t.externalRef != null && isStrongRef(t.externalRef!)) return null;
+    final id = await db.findSmsMatch(
+      bankCode: t.bankCode,
+      amountPaise: t.amountPaise.paise,
+      direction: t.direction.wireName,
+      bookedAt: t.bookedAt,
+      accountHint: t.accountHint ?? statementLast4,
+      taken: matched,
+    );
+    if (id != null) matched.add(id);
+    return id;
+  }
+
+  Future<void> _fillFromStatement(
+    ArthDatabase db,
+    int transactionId,
+    String accountKind,
+    String? accountHint,
+  ) => db.customUpdate(
+    'UPDATE transactions SET '
+    'account_kind = COALESCE(account_kind, ?), '
+    'account_hint = COALESCE(account_hint, ?) WHERE id = ?',
+    variables: [
+      Variable<String>(accountKind),
+      Variable<String>(accountHint),
+      Variable<int>(transactionId),
+    ],
+    updates: {db.transactions},
+  );
 
   Future<Result<int>> confirmImport({
     required ArthDatabase db,
@@ -255,7 +353,9 @@ class StatementFileSource implements IngestionSource {
       'pdf' => 'pdf',
       _ => 'excel',
     };
-    final importId = await db.into(db.imports).insert(
+    final importId = await db
+        .into(db.imports)
+        .insert(
           ImportsCompanion.insert(
             sourceType: sourceType,
             sourceLabel: preview.fileName,
@@ -266,7 +366,36 @@ class StatementFileSource implements IngestionSource {
 
     var inserted = 0;
     var duplicates = 0;
+    final matched = <int>{};
     for (final t in preview.transactions) {
+      final exactHash = buildDedupeHash(
+        bankCode: t.bankCode,
+        bookedAt: t.bookedAt,
+        amountPaise: t.amountPaise.paise,
+        ref: t.externalRef,
+        normalizedBody: t.rawDescription,
+      );
+      final known = await (db.select(
+        db.transactions,
+      )..where((row) => row.dedupeHash.equals(exactHash))).getSingleOrNull();
+      final sms = known == null
+          ? await _smsMatch(db, t, preview.summary.last4, matched)
+          : null;
+      if (sms != null) {
+        // The SMS already recorded this payment: link it, don't add another.
+        await db
+            .into(db.transactionImports)
+            .insert(
+              TransactionImportsCompanion.insert(
+                transactionId: sms,
+                importId: importId,
+              ),
+              mode: InsertMode.insertOrIgnore,
+            );
+        await _fillFromStatement(db, sms, preview.accountKind, t.accountHint);
+        duplicates++;
+        continue;
+      }
       final hash = buildDedupeHash(
         bankCode: t.bankCode,
         bookedAt: t.bookedAt,
@@ -301,43 +430,63 @@ class StatementFileSource implements IngestionSource {
       } else {
         duplicates++;
         // Already known (e.g. from SMS): fill in what the statement adds.
-        await db.customUpdate(
-          'UPDATE transactions SET '
-          'account_kind = COALESCE(account_kind, ?), '
-          'account_hint = COALESCE(account_hint, ?) WHERE id = ?',
-          variables: [
-            Variable<String>(preview.accountKind),
-            Variable<String>(t.accountHint),
-            Variable<int>(result.transactionId),
-          ],
-          updates: {db.transactions},
+        await _fillFromStatement(
+          db,
+          result.transactionId,
+          preview.accountKind,
+          t.accountHint,
         );
       }
     }
 
+    // Every statement gets one: bill facts, printed totals, instalments.
     final sum = preview.summary;
-    if (!sum.isEmpty || preview.accountKind == 'card') {
-      DateTime? periodEnd;
-      for (final t in preview.transactions) {
-        if (periodEnd == null || t.bookedAt.isAfter(periodEnd)) {
-          periodEnd = t.bookedAt;
-        }
-      }
-      await db.into(db.statementSummaries).insert(
-            StatementSummariesCompanion.insert(
-              importId: importId,
-              bankCode: preview.columnMap.bankCode,
-              accountKind: preview.accountKind,
-              last4: Value(sum.last4),
-              statementDate: Value(sum.statementDate),
-              dueDate: Value(sum.dueDate),
-              totalDuePaise: Value(sum.totalDuePaise),
-              minDuePaise: Value(sum.minDuePaise),
-              creditLimitPaise: Value(sum.creditLimitPaise),
-              periodEnd: Value(periodEnd),
-            ),
-          );
+    // Statements that print only "XX65": the card number of the SMS rows
+    // this import linked to, when they all agree.
+    var last4 = sum.last4;
+    if (last4 == null && preview.accountKind == 'card') {
+      final hints = await db
+          .customSelect(
+            'SELECT DISTINCT t.account_hint AS h FROM transactions t '
+            'JOIN transaction_imports ti ON ti.transaction_id = t.id '
+            'WHERE ti.import_id = ? AND t.account_hint IS NOT NULL',
+            variables: [Variable<int>(importId)],
+            readsFrom: {db.transactions, db.transactionImports},
+          )
+          .get();
+      if (hints.length == 1) last4 = hints.single.read<String>('h');
     }
+    DateTime? periodEnd;
+    for (final t in preview.transactions) {
+      if (periodEnd == null || t.bookedAt.isAfter(periodEnd)) {
+        periodEnd = t.bookedAt;
+      }
+    }
+    await db
+        .into(db.statementSummaries)
+        .insert(
+          StatementSummariesCompanion.insert(
+            importId: importId,
+            bankCode: preview.columnMap.bankCode,
+            accountKind: preview.accountKind,
+            last4: Value(last4),
+            statementDate: Value(sum.statementDate),
+            dueDate: Value(sum.dueDate),
+            totalDuePaise: Value(sum.totalDuePaise),
+            minDuePaise: Value(sum.minDuePaise),
+            creditLimitPaise: Value(sum.creditLimitPaise),
+            periodEnd: Value(preview.printed.periodEnd ?? periodEnd),
+            printedJson: Value(
+              preview.printed.isEmpty ? null : preview.printed.encode(),
+            ),
+            instalmentsPaise: Value(
+              preview.instalmentCount == 0 ? null : preview.instalmentsPaise,
+            ),
+            instalmentCount: Value(
+              preview.instalmentCount == 0 ? null : preview.instalmentCount,
+            ),
+          ),
+        );
 
     for (final u in preview.parseResult.unparsed) {
       await db.insertUnparsedStatementRow(

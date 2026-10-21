@@ -1,0 +1,18 @@
+{
+  "amount_paise": 3416449,
+  "direction": "credit",
+  "type": "other",
+  "booked_at": "2026-08-10T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "4321",
+  "raw_merchant": "Mr. RAMESH BABU",
+  "raw_description": "Your A/C XXXXX654321 Credited INR 34,164.49 on 10/08/26 -Deposit by transfer from Mr. RAMESH BABU. Avl Bal INR 2,78,500.55-SBI",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": null,
+  "balance_after_paise": 27850055,
+  "dedupe_key": "SBI|2026-08-10|3416449|00:00|Your A/C XXXXX654321 Credited INR 34,164.49 on 10/08/26 -Deposit by transfer from Mr. RAMESH BABU. Avl Bal INR 2,78,500.55-SBI",
+  "direction_inferred": false
+}

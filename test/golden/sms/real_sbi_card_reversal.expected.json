@@ -1,0 +1,18 @@
+{
+  "amount_paise": 444900,
+  "direction": "credit",
+  "type": "card",
+  "booked_at": "2026-04-10T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "1234",
+  "raw_merchant": "IIL*Indian Railways Se NewDelhi IN",
+  "raw_description": "Rs. 4449 has been credited to your SBI Credit Card xxxx1234, towards reversal/cashback from IIL*Indian Railways Se NewDelhi IN for trxn. dated 10/04/2026",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": "reversal/cashback",
+  "external_ref": null,
+  "balance_after_paise": null,
+  "dedupe_key": "SBI|2026-04-10|444900|00:00|Rs. 4449 has been credited to your SBI Credit Card xxxx1234, towards reversal/cashback from IIL*Indian Railways Se NewDelhi IN for trxn. dated 10/04/2026",
+  "direction_inferred": false
+}

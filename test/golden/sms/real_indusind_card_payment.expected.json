@@ -1,0 +1,18 @@
+{
+  "amount_paise": 1599524,
+  "direction": "credit",
+  "type": "card",
+  "booked_at": "2026-10-11T00:00:00.000Z",
+  "bank_code": "INDUSIND",
+  "account_hint": null,
+  "raw_merchant": "Unknown",
+  "raw_description": "Dear Customer, thank you for your Payment of INR 15,995.24 towards your IndusInd Bank Credit Card on 11/10/2026 - IndusInd Bank",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": null,
+  "balance_after_paise": null,
+  "dedupe_key": "INDUSIND|2026-10-11|1599524|00:00|Dear Customer, thank you for your Payment of INR 15,995.24 towards your IndusInd Bank Credit Card on 11/10/2026 - IndusInd Bank",
+  "direction_inferred": false
+}

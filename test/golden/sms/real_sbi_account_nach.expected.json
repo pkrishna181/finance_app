@@ -1,0 +1,18 @@
+{
+  "amount_paise": 563469,
+  "direction": "debit",
+  "type": "other",
+  "booked_at": "2026-06-08T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "4321",
+  "raw_merchant": "NACH",
+  "raw_description": "Dear Customer, Your A/C XXXXX654321 has a debit by NACH of Rs 5,634.69 on 08/06/26. Avl Bal Rs 45,394.63. Download YONO - SBI",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": null,
+  "balance_after_paise": 4539463,
+  "dedupe_key": "SBI|2026-06-08|563469|00:00|Dear Customer, Your A/C XXXXX654321 has a debit by NACH of Rs 5,634.69 on 08/06/26. Avl Bal Rs 45,394.63. Download YONO - SBI",
+  "direction_inferred": false
+}

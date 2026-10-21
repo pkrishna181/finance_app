@@ -7,7 +7,8 @@ import '../../core/result/result.dart';
 // ---------------------------------------------------------------------------
 
 final _amountToken = RegExp(
-  r'(?:Rs\.?|INR|₹)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
+  // "INR.33.00" (IDFC) as well as "INR 33.00", "Rs.33", "₹33".
+  r'(?:Rs\.?|INR\.?|₹)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
   caseSensitive: false,
 );
 
@@ -92,13 +93,12 @@ Result<MoneyPaise> extractSoleTxnAmount(String body) {
     final prelude = before.substring(windowStart);
     if (_balanceCue.hasMatch(prelude)) continue;
     // Also skip if the match itself is right after Avl Bal
-    final line = body.substring(
-      m.start > 40 ? m.start - 40 : 0,
-      m.end,
-    );
+    final line = body.substring(m.start > 40 ? m.start - 40 : 0, m.end);
     if (_balanceCue.hasMatch(line) &&
         _balanceCue.firstMatch(line)!.start <
-            line.toLowerCase().indexOf(m.group(0)!.toLowerCase().substring(0, 2))) {
+            line.toLowerCase().indexOf(
+              m.group(0)!.toLowerCase().substring(0, 2),
+            )) {
       continue;
     }
     // Simpler: if amount is within 30 chars after a balance cue, skip.
@@ -157,28 +157,29 @@ final _datePatterns = <RegExp>[
   // dd-MM-yy or dd/MM/yy
   RegExp(r'\b(\d{2})[-/](\d{2})[-/](\d{2})\b'),
   // 01-Aug-26 or 01-Aug-2026
-  RegExp(
-    r'\b(\d{2})-([A-Za-z]{3})-(\d{2,4})\b',
-    caseSensitive: false,
-  ),
+  RegExp(r'\b(\d{2})-([A-Za-z]{3})-(\d{2,4})\b', caseSensitive: false),
   // 01 Aug 2026 / 01 Aug 26
-  RegExp(
-    r'\b(\d{2})\s+([A-Za-z]{3})\s+(\d{2,4})\b',
-    caseSensitive: false,
-  ),
+  RegExp(r'\b(\d{2})\s+([A-Za-z]{3})\s+(\d{2,4})\b', caseSensitive: false),
   // 01Aug26
-  RegExp(
-    r'\b(\d{2})([A-Za-z]{3})(\d{2,4})\b',
-    caseSensitive: false,
-  ),
+  RegExp(r'\b(\d{2})([A-Za-z]{3})(\d{2,4})\b', caseSensitive: false),
 ];
+
+// 2026-08-08
+final _isoDate = RegExp(r'\b(20\d{2})-(\d{2})-(\d{2})\b');
 
 final _timePattern = RegExp(r'\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b');
 
 /// Parse the first recognizable Indian date in [text]; attach time if present.
 DateTime? extractDateTime(String text, {DateTime? fallback}) {
   DateTime? date;
-  for (final pat in _datePatterns) {
+  final iso = _isoDate.firstMatch(text);
+  if (iso != null) {
+    final y = int.parse(iso.group(1)!);
+    final mo = int.parse(iso.group(2)!);
+    final d = int.parse(iso.group(3)!);
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) date = DateTime.utc(y, mo, d);
+  }
+  for (final pat in date == null ? _datePatterns : const <RegExp>[]) {
     final m = pat.firstMatch(text);
     if (m == null) continue;
     date = _matchToDate(m);
@@ -189,7 +190,14 @@ DateTime? extractDateTime(String text, {DateTime? fallback}) {
 
   final t = _timePattern.firstMatch(text);
   if (t != null) {
-    final hour = int.parse(t.group(1)!);
+    var hour = int.parse(t.group(1)!);
+    // "03:05:54 pm"
+    final half = RegExp(
+      r'^\s*([ap])\.?m\b',
+      caseSensitive: false,
+    ).firstMatch(text.substring(t.end))?.group(1)?.toLowerCase();
+    if (half == 'p' && hour < 12) hour += 12;
+    if (half == 'a' && hour == 12) hour = 0;
     final minute = int.parse(t.group(2)!);
     final second = int.parse(t.group(3) ?? '0');
     return DateTime.utc(date.year, date.month, date.day, hour, minute, second);
@@ -310,9 +318,7 @@ final _cardLast4 = RegExp(
   r'(?:card|a/?c|acct|account|xx+)\s*(?:ending\s*)?(?:\*{0,2}|x{0,4}|X{0,4})(\d{4})\b',
   caseSensitive: false,
 );
-final _vpa = RegExp(
-  r'\b([a-zA-Z0-9._-]{2,}@[a-zA-Z][a-zA-Z0-9]{2,})\b',
-);
+final _vpa = RegExp(r'\b([a-zA-Z0-9._-]{2,}@[a-zA-Z][a-zA-Z0-9]{2,})\b');
 final _accountMask = RegExp(
   r'(?:A/?c|Acct|Account)\s*(?:No\.?\s*)?(?:XX+|X+|\*{2,}|ending\s+)?(\d{4})\b',
   caseSensitive: false,
@@ -328,7 +334,8 @@ final _upiPathRef = RegExp(r'UPI/(\d{12})/', caseSensitive: false);
 final _embeddedStrongRef = RegExp(r'\b([A-Z0-9]{12,22})\b');
 
 /// UPI/412345678901/merchant@ybl style refs in statement narration.
-String? extractUpiPathRef(String body) => _upiPathRef.firstMatch(body)?.group(1);
+String? extractUpiPathRef(String body) =>
+    _upiPathRef.firstMatch(body)?.group(1);
 
 /// First token in [body] that passes [isStrongRef].
 String? extractEmbeddedStrongRef(String body) {
@@ -397,10 +404,23 @@ String? extractCardLast4(String body) => _cardLast4.firstMatch(body)?.group(1);
 String? extractAccountMask(String body) =>
     _accountMask.firstMatch(body)?.group(1);
 
-String? extractVpa(String body) => _vpa.firstMatch(body)?.group(1);
+/// "Rs150.0 debited@SBI UPI" is wording, not a UPI ID.
+final _notVpa = RegExp(
+  r'^(?:debited|credited|paid|sent)@',
+  caseSensitive: false,
+);
 
-List<String> extractAllVpas(String body) =>
-    _vpa.allMatches(body).map((m) => m.group(1)!).toList(growable: false);
+String? extractVpa(String body) => _vpa
+    .allMatches(body)
+    .map((m) => m.group(1)!)
+    .where((v) => !_notVpa.hasMatch(v))
+    .firstOrNull;
+
+List<String> extractAllVpas(String body) => _vpa
+    .allMatches(body)
+    .map((m) => m.group(1)!)
+    .where((v) => !_notVpa.hasMatch(v))
+    .toList(growable: false);
 
 /// Collapse whitespace and strip common unicode oddities.
 String normalizeSmsBody(String body) {

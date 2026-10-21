@@ -7956,6 +7956,39 @@ class $StatementSummariesTable extends StatementSummaries
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _printedJsonMeta = const VerificationMeta(
+    'printedJson',
+  );
+  @override
+  late final GeneratedColumn<String> printedJson = GeneratedColumn<String>(
+    'printed_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _instalmentsPaiseMeta = const VerificationMeta(
+    'instalmentsPaise',
+  );
+  @override
+  late final GeneratedColumn<int> instalmentsPaise = GeneratedColumn<int>(
+    'instalments_paise',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _instalmentCountMeta = const VerificationMeta(
+    'instalmentCount',
+  );
+  @override
+  late final GeneratedColumn<int> instalmentCount = GeneratedColumn<int>(
+    'instalment_count',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -7970,6 +8003,9 @@ class $StatementSummariesTable extends StatementSummaries
     creditLimitPaise,
     periodEnd,
     createdAt,
+    printedJson,
+    instalmentsPaise,
+    instalmentCount,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -8073,6 +8109,33 @@ class $StatementSummariesTable extends StatementSummaries
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('printed_json')) {
+      context.handle(
+        _printedJsonMeta,
+        printedJson.isAcceptableOrUnknown(
+          data['printed_json']!,
+          _printedJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('instalments_paise')) {
+      context.handle(
+        _instalmentsPaiseMeta,
+        instalmentsPaise.isAcceptableOrUnknown(
+          data['instalments_paise']!,
+          _instalmentsPaiseMeta,
+        ),
+      );
+    }
+    if (data.containsKey('instalment_count')) {
+      context.handle(
+        _instalmentCountMeta,
+        instalmentCount.isAcceptableOrUnknown(
+          data['instalment_count']!,
+          _instalmentCountMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -8130,6 +8193,18 @@ class $StatementSummariesTable extends StatementSummaries
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      printedJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}printed_json'],
+      ),
+      instalmentsPaise: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}instalments_paise'],
+      ),
+      instalmentCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}instalment_count'],
+      ),
     );
   }
 
@@ -8157,6 +8232,15 @@ class StatementSummaryRow extends DataClass
   /// Latest transaction date on the statement (fallback statement date).
   final DateTime? periodEnd;
   final DateTime createdAt;
+
+  /// Totals the statement prints about itself (`PrintedTotals` JSON), for
+  /// checking the imported rows against later (schema 18).
+  final String? printedJson;
+
+  /// Card EMI instalments billed on this statement — not imported as
+  /// transactions (schema 18).
+  final int? instalmentsPaise;
+  final int? instalmentCount;
   const StatementSummaryRow({
     required this.id,
     required this.importId,
@@ -8170,6 +8254,9 @@ class StatementSummaryRow extends DataClass
     this.creditLimitPaise,
     this.periodEnd,
     required this.createdAt,
+    this.printedJson,
+    this.instalmentsPaise,
+    this.instalmentCount,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -8200,6 +8287,15 @@ class StatementSummaryRow extends DataClass
       map['period_end'] = Variable<DateTime>(periodEnd);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || printedJson != null) {
+      map['printed_json'] = Variable<String>(printedJson);
+    }
+    if (!nullToAbsent || instalmentsPaise != null) {
+      map['instalments_paise'] = Variable<int>(instalmentsPaise);
+    }
+    if (!nullToAbsent || instalmentCount != null) {
+      map['instalment_count'] = Variable<int>(instalmentCount);
+    }
     return map;
   }
 
@@ -8231,6 +8327,15 @@ class StatementSummaryRow extends DataClass
           ? const Value.absent()
           : Value(periodEnd),
       createdAt: Value(createdAt),
+      printedJson: printedJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(printedJson),
+      instalmentsPaise: instalmentsPaise == null && nullToAbsent
+          ? const Value.absent()
+          : Value(instalmentsPaise),
+      instalmentCount: instalmentCount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(instalmentCount),
     );
   }
 
@@ -8252,6 +8357,9 @@ class StatementSummaryRow extends DataClass
       creditLimitPaise: serializer.fromJson<int?>(json['creditLimitPaise']),
       periodEnd: serializer.fromJson<DateTime?>(json['periodEnd']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      printedJson: serializer.fromJson<String?>(json['printedJson']),
+      instalmentsPaise: serializer.fromJson<int?>(json['instalmentsPaise']),
+      instalmentCount: serializer.fromJson<int?>(json['instalmentCount']),
     );
   }
   @override
@@ -8270,6 +8378,9 @@ class StatementSummaryRow extends DataClass
       'creditLimitPaise': serializer.toJson<int?>(creditLimitPaise),
       'periodEnd': serializer.toJson<DateTime?>(periodEnd),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'printedJson': serializer.toJson<String?>(printedJson),
+      'instalmentsPaise': serializer.toJson<int?>(instalmentsPaise),
+      'instalmentCount': serializer.toJson<int?>(instalmentCount),
     };
   }
 
@@ -8286,6 +8397,9 @@ class StatementSummaryRow extends DataClass
     Value<int?> creditLimitPaise = const Value.absent(),
     Value<DateTime?> periodEnd = const Value.absent(),
     DateTime? createdAt,
+    Value<String?> printedJson = const Value.absent(),
+    Value<int?> instalmentsPaise = const Value.absent(),
+    Value<int?> instalmentCount = const Value.absent(),
   }) => StatementSummaryRow(
     id: id ?? this.id,
     importId: importId ?? this.importId,
@@ -8305,6 +8419,13 @@ class StatementSummaryRow extends DataClass
         : this.creditLimitPaise,
     periodEnd: periodEnd.present ? periodEnd.value : this.periodEnd,
     createdAt: createdAt ?? this.createdAt,
+    printedJson: printedJson.present ? printedJson.value : this.printedJson,
+    instalmentsPaise: instalmentsPaise.present
+        ? instalmentsPaise.value
+        : this.instalmentsPaise,
+    instalmentCount: instalmentCount.present
+        ? instalmentCount.value
+        : this.instalmentCount,
   );
   StatementSummaryRow copyWithCompanion(StatementSummariesCompanion data) {
     return StatementSummaryRow(
@@ -8330,6 +8451,15 @@ class StatementSummaryRow extends DataClass
           : this.creditLimitPaise,
       periodEnd: data.periodEnd.present ? data.periodEnd.value : this.periodEnd,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      printedJson: data.printedJson.present
+          ? data.printedJson.value
+          : this.printedJson,
+      instalmentsPaise: data.instalmentsPaise.present
+          ? data.instalmentsPaise.value
+          : this.instalmentsPaise,
+      instalmentCount: data.instalmentCount.present
+          ? data.instalmentCount.value
+          : this.instalmentCount,
     );
   }
 
@@ -8347,7 +8477,10 @@ class StatementSummaryRow extends DataClass
           ..write('minDuePaise: $minDuePaise, ')
           ..write('creditLimitPaise: $creditLimitPaise, ')
           ..write('periodEnd: $periodEnd, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('printedJson: $printedJson, ')
+          ..write('instalmentsPaise: $instalmentsPaise, ')
+          ..write('instalmentCount: $instalmentCount')
           ..write(')'))
         .toString();
   }
@@ -8366,6 +8499,9 @@ class StatementSummaryRow extends DataClass
     creditLimitPaise,
     periodEnd,
     createdAt,
+    printedJson,
+    instalmentsPaise,
+    instalmentCount,
   );
   @override
   bool operator ==(Object other) =>
@@ -8382,7 +8518,10 @@ class StatementSummaryRow extends DataClass
           other.minDuePaise == this.minDuePaise &&
           other.creditLimitPaise == this.creditLimitPaise &&
           other.periodEnd == this.periodEnd &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.printedJson == this.printedJson &&
+          other.instalmentsPaise == this.instalmentsPaise &&
+          other.instalmentCount == this.instalmentCount);
 }
 
 class StatementSummariesCompanion extends UpdateCompanion<StatementSummaryRow> {
@@ -8398,6 +8537,9 @@ class StatementSummariesCompanion extends UpdateCompanion<StatementSummaryRow> {
   final Value<int?> creditLimitPaise;
   final Value<DateTime?> periodEnd;
   final Value<DateTime> createdAt;
+  final Value<String?> printedJson;
+  final Value<int?> instalmentsPaise;
+  final Value<int?> instalmentCount;
   const StatementSummariesCompanion({
     this.id = const Value.absent(),
     this.importId = const Value.absent(),
@@ -8411,6 +8553,9 @@ class StatementSummariesCompanion extends UpdateCompanion<StatementSummaryRow> {
     this.creditLimitPaise = const Value.absent(),
     this.periodEnd = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.printedJson = const Value.absent(),
+    this.instalmentsPaise = const Value.absent(),
+    this.instalmentCount = const Value.absent(),
   });
   StatementSummariesCompanion.insert({
     this.id = const Value.absent(),
@@ -8425,6 +8570,9 @@ class StatementSummariesCompanion extends UpdateCompanion<StatementSummaryRow> {
     this.creditLimitPaise = const Value.absent(),
     this.periodEnd = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.printedJson = const Value.absent(),
+    this.instalmentsPaise = const Value.absent(),
+    this.instalmentCount = const Value.absent(),
   }) : importId = Value(importId),
        bankCode = Value(bankCode),
        accountKind = Value(accountKind);
@@ -8441,6 +8589,9 @@ class StatementSummariesCompanion extends UpdateCompanion<StatementSummaryRow> {
     Expression<int>? creditLimitPaise,
     Expression<DateTime>? periodEnd,
     Expression<DateTime>? createdAt,
+    Expression<String>? printedJson,
+    Expression<int>? instalmentsPaise,
+    Expression<int>? instalmentCount,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -8455,6 +8606,9 @@ class StatementSummariesCompanion extends UpdateCompanion<StatementSummaryRow> {
       if (creditLimitPaise != null) 'credit_limit_paise': creditLimitPaise,
       if (periodEnd != null) 'period_end': periodEnd,
       if (createdAt != null) 'created_at': createdAt,
+      if (printedJson != null) 'printed_json': printedJson,
+      if (instalmentsPaise != null) 'instalments_paise': instalmentsPaise,
+      if (instalmentCount != null) 'instalment_count': instalmentCount,
     });
   }
 
@@ -8471,6 +8625,9 @@ class StatementSummariesCompanion extends UpdateCompanion<StatementSummaryRow> {
     Value<int?>? creditLimitPaise,
     Value<DateTime?>? periodEnd,
     Value<DateTime>? createdAt,
+    Value<String?>? printedJson,
+    Value<int?>? instalmentsPaise,
+    Value<int?>? instalmentCount,
   }) {
     return StatementSummariesCompanion(
       id: id ?? this.id,
@@ -8485,6 +8642,9 @@ class StatementSummariesCompanion extends UpdateCompanion<StatementSummaryRow> {
       creditLimitPaise: creditLimitPaise ?? this.creditLimitPaise,
       periodEnd: periodEnd ?? this.periodEnd,
       createdAt: createdAt ?? this.createdAt,
+      printedJson: printedJson ?? this.printedJson,
+      instalmentsPaise: instalmentsPaise ?? this.instalmentsPaise,
+      instalmentCount: instalmentCount ?? this.instalmentCount,
     );
   }
 
@@ -8527,6 +8687,15 @@ class StatementSummariesCompanion extends UpdateCompanion<StatementSummaryRow> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (printedJson.present) {
+      map['printed_json'] = Variable<String>(printedJson.value);
+    }
+    if (instalmentsPaise.present) {
+      map['instalments_paise'] = Variable<int>(instalmentsPaise.value);
+    }
+    if (instalmentCount.present) {
+      map['instalment_count'] = Variable<int>(instalmentCount.value);
+    }
     return map;
   }
 
@@ -8544,7 +8713,10 @@ class StatementSummariesCompanion extends UpdateCompanion<StatementSummaryRow> {
           ..write('minDuePaise: $minDuePaise, ')
           ..write('creditLimitPaise: $creditLimitPaise, ')
           ..write('periodEnd: $periodEnd, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('printedJson: $printedJson, ')
+          ..write('instalmentsPaise: $instalmentsPaise, ')
+          ..write('instalmentCount: $instalmentCount')
           ..write(')'))
         .toString();
   }
@@ -22396,6 +22568,9 @@ typedef $$StatementSummariesTableCreateCompanionBuilder =
       Value<int?> creditLimitPaise,
       Value<DateTime?> periodEnd,
       Value<DateTime> createdAt,
+      Value<String?> printedJson,
+      Value<int?> instalmentsPaise,
+      Value<int?> instalmentCount,
     });
 typedef $$StatementSummariesTableUpdateCompanionBuilder =
     StatementSummariesCompanion Function({
@@ -22411,6 +22586,9 @@ typedef $$StatementSummariesTableUpdateCompanionBuilder =
       Value<int?> creditLimitPaise,
       Value<DateTime?> periodEnd,
       Value<DateTime> createdAt,
+      Value<String?> printedJson,
+      Value<int?> instalmentsPaise,
+      Value<int?> instalmentCount,
     });
 
 final class $$StatementSummariesTableReferences
@@ -22508,6 +22686,21 @@ class $$StatementSummariesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get printedJson => $composableBuilder(
+    column: $table.printedJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get instalmentsPaise => $composableBuilder(
+    column: $table.instalmentsPaise,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get instalmentCount => $composableBuilder(
+    column: $table.instalmentCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$ImportsTableFilterComposer get importId {
     final $$ImportsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -22596,6 +22789,21 @@ class $$StatementSummariesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get printedJson => $composableBuilder(
+    column: $table.printedJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get instalmentsPaise => $composableBuilder(
+    column: $table.instalmentsPaise,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get instalmentCount => $composableBuilder(
+    column: $table.instalmentCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$ImportsTableOrderingComposer get importId {
     final $$ImportsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -22672,6 +22880,21 @@ class $$StatementSummariesTableAnnotationComposer
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
+  GeneratedColumn<String> get printedJson => $composableBuilder(
+    column: $table.printedJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get instalmentsPaise => $composableBuilder(
+    column: $table.instalmentsPaise,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get instalmentCount => $composableBuilder(
+    column: $table.instalmentCount,
+    builder: (column) => column,
+  );
+
   $$ImportsTableAnnotationComposer get importId {
     final $$ImportsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -22741,6 +22964,9 @@ class $$StatementSummariesTableTableManager
                 Value<int?> creditLimitPaise = const Value.absent(),
                 Value<DateTime?> periodEnd = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> printedJson = const Value.absent(),
+                Value<int?> instalmentsPaise = const Value.absent(),
+                Value<int?> instalmentCount = const Value.absent(),
               }) => StatementSummariesCompanion(
                 id: id,
                 importId: importId,
@@ -22754,6 +22980,9 @@ class $$StatementSummariesTableTableManager
                 creditLimitPaise: creditLimitPaise,
                 periodEnd: periodEnd,
                 createdAt: createdAt,
+                printedJson: printedJson,
+                instalmentsPaise: instalmentsPaise,
+                instalmentCount: instalmentCount,
               ),
           createCompanionCallback:
               ({
@@ -22769,6 +22998,9 @@ class $$StatementSummariesTableTableManager
                 Value<int?> creditLimitPaise = const Value.absent(),
                 Value<DateTime?> periodEnd = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> printedJson = const Value.absent(),
+                Value<int?> instalmentsPaise = const Value.absent(),
+                Value<int?> instalmentCount = const Value.absent(),
               }) => StatementSummariesCompanion.insert(
                 id: id,
                 importId: importId,
@@ -22782,6 +23014,9 @@ class $$StatementSummariesTableTableManager
                 creditLimitPaise: creditLimitPaise,
                 periodEnd: periodEnd,
                 createdAt: createdAt,
+                printedJson: printedJson,
+                instalmentsPaise: instalmentsPaise,
+                instalmentCount: instalmentCount,
               ),
           withReferenceMapper: (p0) => p0
               .map(

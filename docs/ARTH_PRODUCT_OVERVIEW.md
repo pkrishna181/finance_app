@@ -39,9 +39,14 @@ bank SMS, statements or investment details to a cloud service.
 - With explicit in-app consent and the READ_SMS permission, Arth scans the SMS
   inbox for messages from known bank senders, newest first, resumably.
 - A cascade of bank-specific templates reads amount, direction, account,
-  merchant/VPA, references and balance. Supported templates today:
-  **HDFC, ICICI, SBI, Axis, Kotak, Paytm** (UPI, IMPS, NEFT, card, ATM, salary)
-  plus generic UPI/IMPS/NEFT patterns.
+  merchant/VPA, references and balance. Templates for **SBI** (UPI, SBI Card,
+  account alerts, NEFT, internet banking, ATM), **IDFC FIRST**, **IndusInd**
+  cards, **Axis** cards and **Paytm** are written from a real inbox; **HDFC,
+  ICICI, Kotak** and generic UPI/IMPS/NEFT patterns cover the rest.
+- Messages that aren't transactions are skipped for a stated reason: OTPs,
+  declines, bill reminders, collect requests, offers, notices. Card spends in
+  a foreign currency are skipped too — the rupee amount only appears on the
+  statement.
 - Messages the templates can't read are kept (encrypted) for the AI model to
   suggest a reading; nothing is added to the ledger without the user's review.
 - Future-dated mandate / e-NACH notices are recorded and used to predict
@@ -53,7 +58,11 @@ bank SMS, statements or investment details to a cloud service.
   several are imported in one batch with a per-file result.
 - Layout detection by bank profile with a generic fallback: **HDFC, ICICI,
   SBI, Axis, Kotak** savings accounts and **HDFC, ICICI, Axis** credit cards,
-  plus unknown layouts via header matching.
+  plus unknown layouts via header matching. PDFs whose table can't be mapped
+  that way (headers drawn as graphics, centred headers, wrapped rows — e.g.
+  SBI savings and SBI Card) are read line by line from word positions, with
+  the running balance or C/D markers deciding debit vs credit.
+- Before importing, a statement opens as a **summary** (see §3.8).
 - PDFs are read from their text layer (PDFium); scanned image-only PDFs are
   declined with a clear message. Legacy binary `.xls` must be exported as XLSX/CSV.
 - **Password-protected PDFs:** enter an issuer's password once and tick
@@ -62,8 +71,10 @@ bank SMS, statements or investment details to a cloud service.
 - From the statement text Arth also reads the **card/account last 4 digits**
   and, for cards, the **statement date, due date, total and minimum due, and
   credit limit**.
-- Overlapping statements and SMS for the same transaction are de-duplicated
-  (strong references like UPI/IMPS/UTR match across sources).
+- Overlapping statements and SMS for the same transaction are de-duplicated:
+  strong references like UPI/IMPS/UTR match across sources, and card
+  statement rows link to the SMS for the same purchase (same amount and card,
+  within a day — one to one, so two identical purchases stay two).
 
 ### 2.3 Investment statements (CAS)
 
@@ -159,6 +170,21 @@ on-device AI is only used to work out what an unusually worded question is
 asking, and the answer card shows how it was read. Each answer links to the
 matching transactions.
 
+### 3.8 Statement summaries
+
+Pick a bank or card statement and Arth shows what's in it before importing:
+
+- **Whether it adds up:** the rows are checked against every total the
+  statement prints — total debits and credits and their counts, opening and
+  closing balance; for cards, payments, purchases, fees and the outstanding.
+  If something doesn't match, the summary says which figure and by how much.
+- A short **overview** in plain sentences, money in and out, **fees,
+  interest and taxes** charged, interest earned, where money went and came
+  from, the largest payments, EMI instalments billed, and for cards the bill:
+  total and minimum due, due date, limit and available credit.
+- Every imported statement stays listed under **Import → Your statements**
+  with the same summary.
+
 ## 4. Privacy and security
 
 | Area | How it is handled |
@@ -184,7 +210,7 @@ matching transactions.
 | Charts | `fl_chart`, with a validated colour palette for light and dark themes |
 | Security | `flutter_secure_storage`, `local_auth`, `pointycastle` (AES-GCM, PBKDF2) |
 | Reminders | `flutter_local_notifications`, `timezone` |
-| Code size | ~32,700 lines of app Dart in 177 files; ~9,300 lines of tests in 68 files; 443 automated tests |
+| Code size | ~35,900 lines of app Dart in 186 files; ~10,800 lines of tests in 75 files; 522 automated tests |
 
 Design approach: pure, deterministic calculation modules (aggregation,
 budgets, recurring detection, anomalies, cash-flow, portfolio/XIRR, capital
@@ -193,9 +219,13 @@ Flutter screens on top — so the maths is unit-tested without a phone.
 
 ## 6. Known limitations
 
-- **Real-world parser coverage:** SMS templates and statement layouts cover
-  the banks listed above; CAS parsing is tested on synthetic statements
-  modelled on real layouts — real statements may need adjustments.
+- **Real-world parser coverage:** SMS parsing was measured on one real
+  inbox (SBI, IDFC FIRST, Axis, IndusInd, Paytm: only a few dozen messages
+  left unread, nearly all notices; foreign-currency card spends skipped) and
+  PDF parsing on one SBI savings statement and one SBI Card bill
+  (every printed total matched). Other banks rely on templates and profiles
+  not yet checked against real data; CAS parsing is tested on synthetic
+  statements modelled on real layouts.
 - **Ask** understands common phrasings instantly; unusual wording goes to the
   1B on-device model, which read about half of new test questions correctly
   (the answer card always shows how a question was read). No iOS
@@ -210,7 +240,7 @@ Flutter screens on top — so the maths is unit-tested without a phone.
 
 ## 7. What's next (suggested)
 
-1. Field-test with real SMS, statements and CAS files; add any failing samples as fixtures.
+1. Measure other banks' SMS and statements with the real-data harnesses (and real CAS files); add anonymised fixtures for what fails.
 2. Release signing and a Play-ready build; optional iOS setup.
 3. Background processing (WorkManager) for AI and reminders when the app is closed.
 4. More bank / card / broker statement profiles; share prices from a bulk public source if one fits the privacy policy.

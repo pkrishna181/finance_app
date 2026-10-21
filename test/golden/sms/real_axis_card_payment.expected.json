@@ -1,0 +1,18 @@
+{
+  "amount_paise": 5423232,
+  "direction": "credit",
+  "type": "card",
+  "booked_at": "2026-09-29T00:00:00.000Z",
+  "bank_code": "AXIS",
+  "account_hint": "2468",
+  "raw_merchant": "Payment",
+  "raw_description": "Payment of INR 54232.32 has been received towards your Axis Bank Credit Card XX2468 on 29-09-26 - Axis Bank",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": null,
+  "balance_after_paise": null,
+  "dedupe_key": "AXIS|2026-09-29|5423232|00:00|Payment of INR 54232.32 has been received towards your Axis Bank Credit Card XX2468 on 29-09-26 - Axis Bank",
+  "direction_inferred": false
+}

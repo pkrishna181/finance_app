@@ -7,6 +7,8 @@ import 'templates/axis.dart';
 import 'templates/generic.dart';
 import 'templates/hdfc.dart';
 import 'templates/icici.dart';
+import 'templates/idfc.dart';
+import 'templates/indusind.dart';
 import 'templates/kotak.dart';
 import 'templates/paytm.dart';
 import 'templates/sbi.dart';
@@ -22,7 +24,7 @@ import 'templates/sbi.dart';
 /// 7. Err([UnparsedSms])
 class SmsParseCascade {
   SmsParseCascade({Map<String, List<SmsTemplate>>? bankTemplates})
-      : _bankTemplates = bankTemplates ?? _defaultBankTemplates;
+    : _bankTemplates = bankTemplates ?? _defaultBankTemplates;
 
   final Map<String, List<SmsTemplate>> _bankTemplates;
   final List<SmsTemplate> _generic = genericTemplates();
@@ -59,8 +61,9 @@ class SmsParseCascade {
       return Ok(SmsParseSuccess.mandate(mandate));
     }
 
-    final bankCodeForTemplates =
-        bank == 'UNKNOWN' ? _guessBankFromBody(normalized) : bank;
+    final bankCodeForTemplates = bank == 'UNKNOWN'
+        ? _guessBankFromBody(normalized)
+        : bank;
 
     final bankList = _bankTemplates[bankCodeForTemplates];
     if (bankList != null) {
@@ -95,8 +98,9 @@ class SmsParseCascade {
     for (final t in _generic) {
       final txn = t.tryParse(
         normalized,
-        bankOverride:
-            bankCodeForTemplates == 'UNKNOWN' ? null : bankCodeForTemplates,
+        bankOverride: bankCodeForTemplates == 'UNKNOWN'
+            ? null
+            : bankCodeForTemplates,
         receivedAt: receivedAt,
       );
       if (txn != null) {
@@ -110,7 +114,9 @@ class SmsParseCascade {
         rawBody: normalized,
         sender: sender,
         receivedAt: receivedAt,
-        bankCode: bankCodeForTemplates == 'UNKNOWN' ? null : bankCodeForTemplates,
+        bankCode: bankCodeForTemplates == 'UNKNOWN'
+            ? null
+            : bankCodeForTemplates,
       ),
     );
   }
@@ -123,6 +129,8 @@ class SmsParseCascade {
     if (RegExp(r'\bAXIS\b').hasMatch(upper)) return 'AXIS';
     if (RegExp(r'\bKOTAK\b').hasMatch(upper)) return 'KOTAK';
     if (RegExp(r'\bPAYTM\b').hasMatch(upper)) return 'PAYTM';
+    if (RegExp(r'\bIDFC\b').hasMatch(upper)) return 'IDFC';
+    if (RegExp(r'\bINDUSIND\b').hasMatch(upper)) return 'INDUSIND';
     if (RegExp(r'\bSBI\b').hasMatch(upper)) return 'SBI';
     return 'UNKNOWN';
   }
@@ -135,4 +143,6 @@ final _defaultBankTemplates = <String, List<SmsTemplate>>{
   'AXIS': axisTemplates(),
   'KOTAK': kotakTemplates(),
   'PAYTM': paytmTemplates(),
+  'IDFC': idfcTemplates(),
+  'INDUSIND': indusindTemplates(),
 };

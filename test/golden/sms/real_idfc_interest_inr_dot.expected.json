@@ -1,0 +1,18 @@
+{
+  "amount_paise": 8839,
+  "direction": "credit",
+  "type": "other",
+  "booked_at": "2026-09-30T00:00:00.000Z",
+  "bank_code": "IDFC",
+  "account_hint": "7777",
+  "raw_merchant": "interest",
+  "raw_description": "Monthly interest of INR.88.39 earned on your Savings A/c XX7777 has been credited to your A/C on 30/09/26. New bal: INR.43,521.67. IDFC FIRST Bank",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": null,
+  "balance_after_paise": 4352167,
+  "dedupe_key": "IDFC|2026-09-30|8839|00:00|Monthly interest of INR.88.39 earned on your Savings A/c XX7777 has been credited to your A/C on 30/09/26. New bal: INR.43,521.67. IDFC FIRST Bank",
+  "direction_inferred": false
+}

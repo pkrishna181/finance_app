@@ -1,0 +1,18 @@
+{
+  "amount_paise": 742844,
+  "direction": "credit",
+  "type": "upi",
+  "booked_at": "2026-04-14T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "4321",
+  "raw_merchant": "reversal of txn",
+  "raw_description": "Dear SBI UPI User, ur A/cX4321 credited with Rs7428.44 on 14Apr26 against reversal of txn (Ref no 610492000006)",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": "610492000006",
+  "remarks": "reversal of txn",
+  "external_ref": "610492000006",
+  "balance_after_paise": null,
+  "dedupe_key": "SBI|742844|610492000006",
+  "direction_inferred": false
+}

@@ -1,0 +1,18 @@
+{
+  "amount_paise": 250000,
+  "direction": "credit",
+  "type": "upi",
+  "booked_at": "2026-07-29T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "4321",
+  "raw_merchant": "Ravi Kumar",
+  "raw_description": "Dear SBI User, your A/c X4321-credited by Rs.2500 on 29Jul26 transfer from Ravi Kumar Ref No 621009000004 -SBI",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": "621009000004",
+  "remarks": "Ravi Kumar",
+  "external_ref": "621009000004",
+  "balance_after_paise": null,
+  "dedupe_key": "SBI|250000|621009000004",
+  "direction_inferred": false
+}

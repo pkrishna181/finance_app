@@ -100,7 +100,13 @@ class PdfStatementLoader {
     final grid = _layout.buildFlatGrid(pages);
     if (grid.isEmpty) return const Err('pdf_no_table');
 
-    return Ok(TableGrid(rows: grid, sourceFormat: 'pdf'));
+    return Ok(
+      TableGrid(
+        rows: grid,
+        sourceFormat: 'pdf',
+        pdfLines: _layout.positionedLines(pages),
+      ),
+    );
   }
 
   Future<PdfDocument> _openWithPassword(

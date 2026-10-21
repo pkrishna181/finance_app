@@ -1,0 +1,18 @@
+{
+  "amount_paise": 3788873,
+  "direction": "debit",
+  "type": "other",
+  "booked_at": "2026-05-11T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "4321",
+  "raw_merchant": "RIVERSIDE MOTORS LLP",
+  "raw_description": "Your A/C XXXXX654321 Debited INR 37,888.73 on 11/05/26 -Transferred to RIVERSIDE MOTORS LLP. Avl Balance INR 44,068.22-SBI",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": null,
+  "balance_after_paise": 4406822,
+  "dedupe_key": "SBI|2026-05-11|3788873|00:00|Your A/C XXXXX654321 Debited INR 37,888.73 on 11/05/26 -Transferred to RIVERSIDE MOTORS LLP. Avl Balance INR 44,068.22-SBI",
+  "direction_inferred": false
+}

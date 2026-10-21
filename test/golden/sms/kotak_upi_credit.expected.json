@@ -8,7 +8,7 @@
   "raw_merchant": "friend@oksbi",
   "raw_description": "Kotak Bank A/c XX2211 credited with Rs.2,500.00 on 03-08-26 from friend@oksbi UPI Ref 701122334466. -Kotak Mahindra Bank",
   "upi_payer_vpa": "friend@oksbi",
-  "upi_payee_vpa": "friend@oksbi",
+  "upi_payee_vpa": null,
   "upi_ref": "701122334466",
   "remarks": null,
   "external_ref": "701122334466",

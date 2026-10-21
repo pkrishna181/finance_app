@@ -282,6 +282,15 @@ class StatementSummaries extends Table {
   /// Latest transaction date on the statement (fallback statement date).
   DateTimeColumn get periodEnd => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// Totals the statement prints about itself (`PrintedTotals` JSON), for
+  /// checking the imported rows against later (schema 18).
+  TextColumn get printedJson => text().nullable()();
+
+  /// Card EMI instalments billed on this statement — not imported as
+  /// transactions (schema 18).
+  IntColumn get instalmentsPaise => integer().nullable()();
+  IntColumn get instalmentCount => integer().nullable()();
 }
 
 /// Credit cards the user tracks (Phase 8.1).

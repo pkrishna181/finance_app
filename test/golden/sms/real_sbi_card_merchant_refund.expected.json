@@ -1,0 +1,18 @@
+{
+  "amount_paise": 1152,
+  "direction": "credit",
+  "type": "card",
+  "booked_at": "2025-08-26T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "1234",
+  "raw_merchant": "CANVA* PAAAAG",
+  "raw_description": "Dear Cardholder, Trxn. of Rs.11.52 on your SBI Credit Card ending 1234 at CANVA* PAAAAG dated 26-08-25 has been cancelled and refunded by the merchant.",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": null,
+  "balance_after_paise": null,
+  "dedupe_key": "SBI|2025-08-26|1152|00:00|Dear Cardholder, Trxn. of Rs.11.52 on your SBI Credit Card ending 1234 at CANVA* PAAAAG dated 26-08-25 has been cancelled and refunded by the merchant.",
+  "direction_inferred": false
+}

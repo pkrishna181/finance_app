@@ -1,0 +1,18 @@
+{
+  "amount_paise": 38580,
+  "direction": "debit",
+  "type": "upi",
+  "booked_at": "2021-04-13T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "4321",
+  "raw_merchant": "Unknown",
+  "raw_description": "Rs385.8 debited@SBI UPI frm A/cX4321 on 13Apr21 RefNo 110317000007. If not done by u, fwd this SMS to 9223008333/Call 1800111109 or 09449112211 to block UPI",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": "110317000007",
+  "remarks": "Unknown",
+  "external_ref": "110317000007",
+  "balance_after_paise": null,
+  "dedupe_key": "SBI|38580|110317000007",
+  "direction_inferred": false
+}

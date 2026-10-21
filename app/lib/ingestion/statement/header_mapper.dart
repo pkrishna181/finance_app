@@ -46,43 +46,45 @@ class ColumnMap {
   }
 
   Map<String, Object?> toJson() => {
-        'header_row_index': headerRowIndex,
-        'bank_code': bankCode,
-        'profile_id': profileId,
-        'overall_confidence': overallConfidence,
-        'bindings': [
-          for (final b in bindings)
-            {
-              'field': b.field.name,
-              'index': b.index,
-              'confidence': b.confidence,
-              'matched_header': b.matchedHeader,
-            },
-        ],
-      };
+    'header_row_index': headerRowIndex,
+    'bank_code': bankCode,
+    'profile_id': profileId,
+    'overall_confidence': overallConfidence,
+    'bindings': [
+      for (final b in bindings)
+        {
+          'field': b.field.name,
+          'index': b.index,
+          'confidence': b.confidence,
+          'matched_header': b.matchedHeader,
+        },
+    ],
+  };
 }
 
 /// Score candidate header rows and map columns via synonyms + fuzzy match.
 class HeaderMapper {
   HeaderMapper({List<StatementProfile>? profiles})
-      : _profiles = profiles ??
-            [
-              hdfcAccountProfile(),
-              hdfcCreditCardProfile(),
-              iciciAccountProfile(),
-              iciciCreditCardProfile(),
-              sbiAccountProfile(),
-              axisAccountProfile(),
-              axisCreditCardProfile(),
-              kotakAccountProfile(),
-              genericAccountProfile(),
-            ];
+    : _profiles =
+          profiles ??
+          [
+            hdfcAccountProfile(),
+            hdfcCreditCardProfile(),
+            iciciAccountProfile(),
+            iciciCreditCardProfile(),
+            sbiAccountProfile(),
+            axisAccountProfile(),
+            axisCreditCardProfile(),
+            kotakAccountProfile(),
+            genericAccountProfile(),
+          ];
 
   final List<StatementProfile> _profiles;
 
   /// Whether [profileId] (from [ColumnMap.profileId]) is a credit-card
   /// statement layout.
   static bool isCreditCardProfileId(String profileId) =>
+      profileId == 'line_card' ||
       HeaderMapper()._profiles.any((p) => p.id == profileId && p.isCreditCard);
 
   ColumnMap map(List<List<String>> rows) {
@@ -118,7 +120,9 @@ class HeaderMapper {
     return ColumnMap(
       headerRowIndex: bestIndex,
       bindings: bestBindings,
-      bankCode: profile.bankCode,
+      // A bank named in the file wins over the layout it resembles (an SBI
+      // Card statement can match the HDFC card layout).
+      bankCode: bankHint != 'UNKNOWN' ? bankHint : profile.bankCode,
       profileId: profile.id,
       overallConfidence: bestScore,
     );

@@ -1,0 +1,18 @@
+{
+  "amount_paise": 740521,
+  "direction": "debit",
+  "type": "card",
+  "booked_at": "2022-09-22T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "5678",
+  "raw_merchant": "PAYU-retail.www.Naukri",
+  "raw_description": "Rs.7,405.21 spent on your SBI Card ending with 5678 at PAYU-retail.www.Naukri on 22/09/22. If this trxn. wasn't done by you, click https://sbicard.com/DisputeRaise",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": "SBI-5678-2022-09-22-740521",
+  "balance_after_paise": null,
+  "dedupe_key": "SBI|2022-09-22|740521|SBI-5678-2022-09-22-740521",
+  "direction_inferred": false
+}

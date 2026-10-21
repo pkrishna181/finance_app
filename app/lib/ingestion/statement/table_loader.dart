@@ -5,6 +5,7 @@ import 'package:csv/csv.dart';
 import 'package:excel_community/excel_community.dart';
 
 import '../../core/result/result.dart';
+import 'pdf/layout_to_grid.dart' show PdfTextLine;
 
 /// Uniform grid produced by CSV / Excel loaders.
 class TableGrid {
@@ -13,12 +14,17 @@ class TableGrid {
     required this.sourceFormat,
     this.detectedDelimiter,
     this.detectedEncoding,
+    this.pdfLines,
   });
 
   final List<List<String>> rows;
-  final String sourceFormat; // csv | xlsx | xls
+  final String sourceFormat; // csv | xlsx | xls | pdf
   final String? detectedDelimiter;
   final String? detectedEncoding;
+
+  /// PDF only: the positioned lines the grid was built from, for
+  /// [LineStatementParser].
+  final List<PdfTextLine>? pdfLines;
 }
 
 /// Load CSV (delimiter + encoding sniff) or xlsx/xls into a string grid.

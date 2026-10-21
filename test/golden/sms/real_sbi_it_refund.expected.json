@@ -1,0 +1,18 @@
+{
+  "amount_paise": 254300,
+  "direction": "credit",
+  "type": "other",
+  "booked_at": "2026-08-08T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "4321",
+  "raw_merchant": "IT Refund",
+  "raw_description": "Dear Customer, For PAN XXXXXX111A, An IT Refund amount of Rs 2543 for AY-2026-27 has been credited to your account XXXXXXX4321 on 2026-08-08. -SBI",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": null,
+  "balance_after_paise": null,
+  "dedupe_key": "SBI|2026-08-08|254300|00:00|Dear Customer, For PAN XXXXXX111A, An IT Refund amount of Rs 2543 for AY-2026-27 has been credited to your account XXXXXXX4321 on 2026-08-08. -SBI",
+  "direction_inferred": false
+}

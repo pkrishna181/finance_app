@@ -1,0 +1,18 @@
+{
+  "amount_paise": 247600,
+  "direction": "debit",
+  "type": "card",
+  "booked_at": "2025-08-31T23:23:03.000Z",
+  "bank_code": "AXIS",
+  "account_hint": "2468",
+  "raw_merchant": "RAZORPAY RE",
+  "raw_description": "Spent Card no. XX2468 INR 2476 31-08-25 23:23:03 RAZORPAY RE Avl Lmt INR 34537 SMS BLOCK 2468 to 919951860002, if not you - Axis Bank",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": null,
+  "balance_after_paise": null,
+  "dedupe_key": "AXIS|2025-08-31|247600|23:23|Spent Card no. XX2468 INR 2476 31-08-25 23:23:03 RAZORPAY RE Avl Lmt INR 34537 SMS BLOCK 2468 to 919951860002, if not you - Axis Bank",
+  "direction_inferred": false
+}

@@ -1,0 +1,18 @@
+{
+  "amount_paise": 3940,
+  "direction": "debit",
+  "type": "upi",
+  "booked_at": "2025-09-10T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "4321",
+  "raw_merchant": "Daily Needs Super",
+  "raw_description": "Dear UPI user A/C X4321 debited by 39.4 on date 10Sep25 trf to Daily Needs Super Refno 561960000002. If not u? call 1800111109. -SBI",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": "561960000002",
+  "remarks": "Daily Needs Super",
+  "external_ref": "561960000002",
+  "balance_after_paise": null,
+  "dedupe_key": "SBI|3940|561960000002",
+  "direction_inferred": false
+}

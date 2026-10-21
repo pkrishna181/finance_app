@@ -1,0 +1,18 @@
+{
+  "amount_paise": 42813,
+  "direction": "debit",
+  "type": "card",
+  "booked_at": "2026-10-18T15:05:54.000Z",
+  "bank_code": "INDUSIND",
+  "account_hint": "1357",
+  "raw_merchant": "THE BELGIAN FRIES",
+  "raw_description": "INR 428.13 spent on IndusInd Card XX1357 on 18-10-2026 03:05:54 pm at UPI THE BELGIAN FRIES. Avl Lmt: INR 316,988.07. To dispute, call 18602677777/SMS BLOCK 1357 to 5676757",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": "INDUSIND-1357-2026-10-18-42813",
+  "balance_after_paise": null,
+  "dedupe_key": "INDUSIND|2026-10-18|42813|INDUSIND-1357-2026-10-18-42813",
+  "direction_inferred": false
+}
