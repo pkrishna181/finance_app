@@ -1,4 +1,5 @@
 import '../../parsing/common/extractors.dart';
+import 'printed_totals.dart';
 
 /// Facts printed around a statement's transaction table: which card/account
 /// it is, and (for cards) the bill. Every field is optional — banks vary.
@@ -21,6 +22,16 @@ class StatementSummary {
   final int? creditLimitPaise;
 
   bool get hasBill => totalDuePaise != null || dueDate != null;
+
+  /// Bill facts read by position from a PDF replace the grid's guesses.
+  StatementSummary withPrinted(PrintedTotals p) => StatementSummary(
+        last4: last4,
+        statementDate: p.statementDate ?? statementDate,
+        dueDate: p.dueDate ?? dueDate,
+        totalDuePaise: p.totalDuePaise ?? totalDuePaise,
+        minDuePaise: p.minDuePaise ?? minDuePaise,
+        creditLimitPaise: p.creditLimitPaise ?? creditLimitPaise,
+      );
 
   bool get isEmpty =>
       last4 == null &&

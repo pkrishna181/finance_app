@@ -18,6 +18,8 @@ import 'pdf/password_hints.dart';
 import 'pdf/pdf_loader.dart';
 import 'pdf/positioned_text.dart';
 import 'row_parser.dart';
+import 'printed_totals.dart';
+import 'statement_digest.dart';
 import 'statement_summary.dart';
 import 'table_loader.dart';
 
@@ -34,6 +36,9 @@ class StatementImportPreview {
     required this.duplicateCount,
     required this.unparseableCount,
     this.summary = const StatementSummary(),
+    this.printed = const PrintedTotals(),
+    this.instalmentsPaise = 0,
+    this.instalmentCount = 0,
   }) : transactions = [
          for (final t in parseResult.transactions)
            summary.last4 != null && t.accountHint == null
@@ -53,6 +58,34 @@ class StatementImportPreview {
 
   /// Card/account number and bill facts printed on the statement.
   final StatementSummary summary;
+
+  /// Totals the statement prints about itself (PDFs).
+  final PrintedTotals printed;
+
+  /// Card EMI instalments on the statement, kept out of [transactions].
+  final int instalmentsPaise;
+  final int instalmentCount;
+
+  /// The summary of these rows, checked against [printed]. Rebuilt on each
+  /// call so flipped directions count.
+  StatementDigest get digest => StatementDigest.build(
+    rows: [
+      for (final t in transactions)
+        DigestRow(
+          date: t.bookedAt,
+          paise: t.amountPaise.paise,
+          isDebit: t.direction == TransactionDirection.debit,
+          merchant: t.rawMerchant,
+          description: t.rawDescription,
+        ),
+    ],
+    printed: printed,
+    bankCode: columnMap.bankCode,
+    isCard: accountKind == 'card',
+    last4: summary.last4,
+    instalmentsPaise: instalmentsPaise,
+    instalmentCount: instalmentCount,
+  );
 
   /// bank | card, from the detected statement layout.
   String get accountKind =>
@@ -209,14 +242,21 @@ class StatementFileSource implements IngestionSource {
     );
     // PDFs whose table the header mapper can't read (headers drawn as
     // graphics, centred headers, wrapped rows): read them line by line.
+    var instalments = 0, instalmentCount = 0;
     if (grid.pdfLines != null) {
       final byLine = const LineStatementParser().parse(grid.pdfLines!);
       if (byLine.transactions.length > parseResult.transactions.length) {
         parseResult = byLine.toParseResult();
         columnMap = parseResult.columnMap;
+        instalments = byLine.instalmentsPaise;
+        instalmentCount = byLine.instalmentCount;
       }
     }
-    final summary = extractStatementSummary(grid.rows);
+    final printed = grid.pdfLines == null
+        ? const PrintedTotals()
+        : extractPrintedTotals(grid.pdfLines!);
+    // Read by position, the PDF's own figures beat the grid's guesses.
+    final summary = extractStatementSummary(grid.rows).withPrinted(printed);
 
     var duplicateCount = 0;
     var newCount = 0;
@@ -254,6 +294,9 @@ class StatementFileSource implements IngestionSource {
         duplicateCount: duplicateCount,
         unparseableCount: parseResult.unparsed.length,
         summary: summary,
+        printed: printed,
+        instalmentsPaise: instalments,
+        instalmentCount: instalmentCount,
       ),
     );
   }
@@ -396,31 +439,54 @@ class StatementFileSource implements IngestionSource {
       }
     }
 
+    // Every statement gets one: bill facts, printed totals, instalments.
     final sum = preview.summary;
-    if (!sum.isEmpty || preview.accountKind == 'card') {
-      DateTime? periodEnd;
-      for (final t in preview.transactions) {
-        if (periodEnd == null || t.bookedAt.isAfter(periodEnd)) {
-          periodEnd = t.bookedAt;
-        }
-      }
-      await db
-          .into(db.statementSummaries)
-          .insert(
-            StatementSummariesCompanion.insert(
-              importId: importId,
-              bankCode: preview.columnMap.bankCode,
-              accountKind: preview.accountKind,
-              last4: Value(sum.last4),
-              statementDate: Value(sum.statementDate),
-              dueDate: Value(sum.dueDate),
-              totalDuePaise: Value(sum.totalDuePaise),
-              minDuePaise: Value(sum.minDuePaise),
-              creditLimitPaise: Value(sum.creditLimitPaise),
-              periodEnd: Value(periodEnd),
-            ),
-          );
+    // Statements that print only "XX65": the card number of the SMS rows
+    // this import linked to, when they all agree.
+    var last4 = sum.last4;
+    if (last4 == null && preview.accountKind == 'card') {
+      final hints = await db
+          .customSelect(
+            'SELECT DISTINCT t.account_hint AS h FROM transactions t '
+            'JOIN transaction_imports ti ON ti.transaction_id = t.id '
+            'WHERE ti.import_id = ? AND t.account_hint IS NOT NULL',
+            variables: [Variable<int>(importId)],
+            readsFrom: {db.transactions, db.transactionImports},
+          )
+          .get();
+      if (hints.length == 1) last4 = hints.single.read<String>('h');
     }
+    DateTime? periodEnd;
+    for (final t in preview.transactions) {
+      if (periodEnd == null || t.bookedAt.isAfter(periodEnd)) {
+        periodEnd = t.bookedAt;
+      }
+    }
+    await db
+        .into(db.statementSummaries)
+        .insert(
+          StatementSummariesCompanion.insert(
+            importId: importId,
+            bankCode: preview.columnMap.bankCode,
+            accountKind: preview.accountKind,
+            last4: Value(last4),
+            statementDate: Value(sum.statementDate),
+            dueDate: Value(sum.dueDate),
+            totalDuePaise: Value(sum.totalDuePaise),
+            minDuePaise: Value(sum.minDuePaise),
+            creditLimitPaise: Value(sum.creditLimitPaise),
+            periodEnd: Value(preview.printed.periodEnd ?? periodEnd),
+            printedJson: Value(
+              preview.printed.isEmpty ? null : preview.printed.encode(),
+            ),
+            instalmentsPaise: Value(
+              preview.instalmentCount == 0 ? null : preview.instalmentsPaise,
+            ),
+            instalmentCount: Value(
+              preview.instalmentCount == 0 ? null : preview.instalmentCount,
+            ),
+          ),
+        );
 
     for (final u in preview.parseResult.unparsed) {
       await db.insertUnparsedStatementRow(

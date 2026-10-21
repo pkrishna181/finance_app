@@ -570,6 +570,11 @@ String cleanStatementNarration(String raw) {
   var s = normalizeText(raw);
   // A path split across lines: "KUMAR/ HDFC" → "KUMAR/HDFC".
   s = s.replaceAll(RegExp(r'/ (?=\S)'), '/');
+  // A reference split across lines: "*INDBH05054 057052*" → "*INDBH05054057052*".
+  s = s.replaceAllMapped(
+    RegExp(r'(\*[A-Z0-9]{4,}) ([A-Z0-9]{2,}\*)'),
+    (m) => '${m[1]}${m[2]}',
+  );
   s = s.replaceFirst(RegExp(r'^(?:WDL|DEP) TFR\s+', caseSensitive: false), '');
   s = s.replaceFirst(RegExp(r'\s+\d{10,16} AT \d{3,6}\b.*$'), '');
   return s.trim();

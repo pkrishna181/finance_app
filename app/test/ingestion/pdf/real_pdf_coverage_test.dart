@@ -4,6 +4,9 @@ import 'dart:typed_data';
 import 'package:arth/core/models/transaction_type.dart';
 import 'package:arth/ingestion/statement/header_mapper.dart';
 import 'package:arth/ingestion/statement/line_statement_parser.dart';
+import 'package:arth/ingestion/statement/printed_totals.dart';
+import 'package:arth/ingestion/statement/statement_digest.dart';
+import 'package:arth/ingestion/statement/statement_overview.dart';
 import 'package:arth/ingestion/statement/pdf/pdf_loader.dart';
 import 'package:arth/ingestion/statement/row_parser.dart';
 import 'package:arth/ingestion/statement/statement_summary.dart';
@@ -112,6 +115,47 @@ void main() {
       for (final u in line.unparsed) {
         out.writeln('  UNPARSED $u');
       }
+      final printed = extractPrintedTotals(
+        loaded.okOrNull!.pdfLines ?? const [],
+      );
+      out.writeln('--- printed: ${printed.toJson()}');
+      final digest = StatementDigest.build(
+        rows: [
+          for (final t in line.transactions)
+            DigestRow(
+              date: t.bookedAt,
+              paise: t.amountPaise.paise,
+              isDebit: t.direction == TransactionDirection.debit,
+              merchant: t.rawMerchant,
+              description: t.rawDescription,
+            ),
+        ],
+        printed: printed,
+        bankCode: line.bankCode,
+        isCard: line.isCard,
+        instalmentsPaise: line.instalmentsPaise,
+        instalmentCount: line.instalmentCount,
+      );
+      out
+        ..writeln(
+          '--- digest: ${digest.from} → ${digest.to} in ${digest.inPaise / 100} '
+          '(${digest.inCount}) out ${digest.outPaise / 100} (${digest.outCount}) '
+          'charges ${digest.chargesPaise / 100} interest ${digest.interestEarnedPaise / 100} '
+          'emi ${digest.instalmentsPaise / 100}x${digest.instalmentCount} reconciled ${digest.reconciled}',
+        )
+        ..writeln(
+          '    checks: ${[for (final c in digest.checks) '${c.what} printed ${c.printedPaise / 100} parsed ${c.parsedPaise / 100} ${c.ok ? 'OK' : 'DIFF'}'].join('; ')}',
+        )
+        ..writeln(
+          '    payees: ${[for (final p in digest.topPayees) '${p.name} ${p.paise / 100}x${p.count}'].join(', ')}',
+        )
+        ..writeln(
+          '    sources: ${[for (final p in digest.topSources) '${p.name} ${p.paise / 100}x${p.count}'].join(', ')}',
+        )
+        ..writeln(
+          '    charges: ${[for (final r in digest.charges) '${r.description} ${r.paise / 100}'].join(', ')}',
+        );
+      out.writeln('--- overview: ${statementOverview(digest).join(' ')}');
       out.writeln('--- unparsed:');
       for (final u in parsed.unparsed) {
         out.writeln('  $u');

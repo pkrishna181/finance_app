@@ -340,6 +340,15 @@ void main() {
     },
   );
 
+  test('NEFT reference wrapped onto the next line', () {
+    expect(
+      cleanStatementNarration(
+        'DEP TFR NEFT*INDB0000006*INDBH05054 057052*ACME PRIVATE 0099509044300 AT 11111',
+      ),
+      'NEFT*INDB0000006*INDBH05054057052*ACME PRIVATE',
+    );
+  });
+
   test('narration boilerplate', () {
     expect(
       cleanStatementNarration(

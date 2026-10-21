@@ -20,6 +20,7 @@ import '../widgets/pdf_password_dialog.dart';
 import 'batch_import_screen.dart';
 import 'sms_historical_scan_screen.dart';
 import 'statement_preview_screen.dart';
+import 'statements_screen.dart';
 
 class ImportScreen extends StatefulWidget {
   const ImportScreen({
@@ -132,6 +133,21 @@ class _ImportScreenState extends State<ImportScreen> {
               onTap: available ? () => _onSourceTap(context, source) : null,
             );
           }),
+          if (_db != null) ...[
+            const Divider(height: 24),
+            ListTile(
+              leading: const Icon(Icons.summarize_outlined),
+              title: const Text('Your statements'),
+              subtitle: const Text(
+                'Summary of each imported statement, checked against its totals',
+              ),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => StatementsScreen(db: _db!),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
