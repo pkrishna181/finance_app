@@ -1,0 +1,18 @@
+{
+  "amount_paise": 58622,
+  "direction": "debit",
+  "type": "card",
+  "booked_at": "2026-06-22T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "1234",
+  "raw_merchant": "GOOGLEPLAY",
+  "raw_description": "Transaction of Rs.586.22 at GOOGLEPLAY against E-mandate (SiHub ID - AbCdEf1234) registered by you at merchant has been debited to your SBI Credit Card ending 1234 on 22-06-26. To manage E-mandate, click: http://www.sbicard.com/emandate",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": "SBI-1234-2026-06-22-58622",
+  "balance_after_paise": null,
+  "dedupe_key": "SBI|2026-06-22|58622|SBI-1234-2026-06-22-58622",
+  "direction_inferred": false
+}

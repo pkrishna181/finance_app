@@ -258,6 +258,54 @@ CREATE TABLE IF NOT EXISTS llm_disagreements (
     return UpsertResult(transactionId: txnId, inserted: inserted);
   }
 
+  /// An SMS transaction that is the same payment as a statement row with no
+  /// shared reference (card purchases: the SMS has no ref the statement
+  /// prints). Same bank, amount and direction, booked within a day, card or
+  /// account number compatible (one ends with the other — statements may
+  /// print only the last two digits). Ids in [taken] were already matched to
+  /// another row of this statement, so two identical payments on one day
+  /// stay two.
+  Future<int?> findSmsMatch({
+    required String bankCode,
+    required int amountPaise,
+    required String direction,
+    required DateTime bookedAt,
+    String? accountHint,
+    Set<int> taken = const {},
+  }) async {
+    final day = DateTime.utc(bookedAt.year, bookedAt.month, bookedAt.day);
+    final rows = await customSelect(
+      'SELECT t.id, t.account_hint, t.booked_at FROM transactions t '
+      'WHERE t.bank_code = ? AND t.amount_paise = ? AND t.direction = ? '
+      'AND t.booked_at >= ? AND t.booked_at < ? '
+      'AND EXISTS (SELECT 1 FROM transaction_imports ti '
+      'JOIN imports i ON i.id = ti.import_id '
+      "WHERE ti.transaction_id = t.id AND i.source_type = 'sms') "
+      'ORDER BY t.booked_at',
+      variables: [
+        Variable<String>(bankCode),
+        Variable<int>(amountPaise),
+        Variable<String>(direction),
+        Variable<DateTime>(day.subtract(const Duration(days: 1))),
+        Variable<DateTime>(day.add(const Duration(days: 2))),
+      ],
+      readsFrom: {transactions, transactionImports, imports},
+    ).get();
+    bool compatible(String? a, String? b) =>
+        a == null || b == null || a.endsWith(b) || b.endsWith(a);
+    // Same day first, then the day either side.
+    final candidates = rows
+        .where((r) => !taken.contains(r.read<int>('id')))
+        .where((r) => compatible(r.read<String?>('account_hint'), accountHint))
+        .toList()
+      ..sort((a, b) {
+        int gap(QueryRow r) =>
+            r.read<DateTime>('booked_at').difference(day).inHours.abs();
+        return gap(a).compareTo(gap(b));
+      });
+    return candidates.isEmpty ? null : candidates.first.read<int>('id');
+  }
+
   /// Latest merchant-wide category rule for [rawMerchant]: a `category`
   /// correction with no transaction id whose normalized raw label matches.
   Future<String?> merchantCategoryRule(String rawMerchant) async {

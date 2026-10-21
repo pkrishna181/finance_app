@@ -1,0 +1,18 @@
+{
+  "amount_paise": 6605,
+  "direction": "debit",
+  "type": "other",
+  "booked_at": "2023-07-14T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "4321",
+  "raw_merchant": "Service Charge for forex trans",
+  "raw_description": "Your AC XXXXX654321 Debited INR 66.05 on 14/07/23 -Service Charge for forex trans. Avl Bal INR 77,110.90.-SBI",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": null,
+  "balance_after_paise": 7711090,
+  "dedupe_key": "SBI|2023-07-14|6605|00:00|Your AC XXXXX654321 Debited INR 66.05 on 14/07/23 -Service Charge for forex trans. Avl Bal INR 77,110.90.-SBI",
+  "direction_inferred": false
+}

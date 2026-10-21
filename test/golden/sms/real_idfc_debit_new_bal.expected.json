@@ -1,0 +1,18 @@
+{
+  "amount_paise": 38545,
+  "direction": "debit",
+  "type": "other",
+  "booked_at": "2025-11-08T13:15:00.000Z",
+  "bank_code": "IDFC",
+  "account_hint": "7777",
+  "raw_merchant": "Unknown",
+  "raw_description": "Your A/C XXXXX887777 is debited by INR 385.45 on 08/11/25 13:15. New Bal :INR 84,946.29. Call us on 180010888 for dispute. Team IDFC FIRST Bank",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": null,
+  "balance_after_paise": 8494629,
+  "dedupe_key": "IDFC|2025-11-08|38545|13:15|Your A/C XXXXX887777 is debited by INR 385.45 on 08/11/25 13:15. New Bal :INR 84,946.29. Call us on 180010888 for dispute. Team IDFC FIRST Bank",
+  "direction_inferred": false
+}

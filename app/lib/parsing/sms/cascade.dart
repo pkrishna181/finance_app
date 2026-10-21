@@ -7,6 +7,8 @@ import 'templates/axis.dart';
 import 'templates/generic.dart';
 import 'templates/hdfc.dart';
 import 'templates/icici.dart';
+import 'templates/idfc.dart';
+import 'templates/indusind.dart';
 import 'templates/kotak.dart';
 import 'templates/paytm.dart';
 import 'templates/sbi.dart';
@@ -127,6 +129,8 @@ class SmsParseCascade {
     if (RegExp(r'\bAXIS\b').hasMatch(upper)) return 'AXIS';
     if (RegExp(r'\bKOTAK\b').hasMatch(upper)) return 'KOTAK';
     if (RegExp(r'\bPAYTM\b').hasMatch(upper)) return 'PAYTM';
+    if (RegExp(r'\bIDFC\b').hasMatch(upper)) return 'IDFC';
+    if (RegExp(r'\bINDUSIND\b').hasMatch(upper)) return 'INDUSIND';
     if (RegExp(r'\bSBI\b').hasMatch(upper)) return 'SBI';
     return 'UNKNOWN';
   }
@@ -139,4 +143,6 @@ final _defaultBankTemplates = <String, List<SmsTemplate>>{
   'AXIS': axisTemplates(),
   'KOTAK': kotakTemplates(),
   'PAYTM': paytmTemplates(),
+  'IDFC': idfcTemplates(),
+  'INDUSIND': indusindTemplates(),
 };

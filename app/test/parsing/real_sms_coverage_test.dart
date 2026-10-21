@@ -12,7 +12,10 @@ import 'package:flutter_test/flutter_test.dart';
 ///
 ///   ARTH_SMS_DUMP=inbox.jsonl ARTH_SMS_REPORT=report.txt \
 ///     flutter test test/parsing/real_sms_coverage_test.dart
-final _money = RegExp(r'(?:rs\.?|inr|₹)\s*[\d,]+', caseSensitive: false);
+final _money = RegExp(
+  r'(?:rs\.?|inr|₹)\s*[\d,]+|\b(?:debited|credited) (?:by|with) [\d,]+',
+  caseSensitive: false,
+);
 final _moved = RegExp(
   r'\b(debited|credited|spent|withdrawn|sent|received|paid|transferred|'
   r'debit|credit|purchase|txn|transaction)\b',
@@ -37,12 +40,13 @@ void main() {
         .where((l) => l.trim().isNotEmpty)
         .map((l) => jsonDecode(l) as Map<String, dynamic>);
 
-    // entity → [scanned, parsed, nonTxn, err, missedTxnLooking]
-    final stats = <String, List<int>>{};
+    // bank → counters
+    final stats = <String, Map<String, int>>{};
+    final skips = <String, int>{};
     final samples = <String, List<String>>{};
     void sample(String key, String line) {
       final list = samples.putIfAbsent(key, () => []);
-      if (list.length < 40) list.add(line);
+      if (list.length < 60) list.add(line);
     }
 
     final known = knownSenderEntities;
@@ -51,55 +55,70 @@ void main() {
       final body = '${r['body']}';
       final match = matchSender(address);
       final upper = address.toUpperCase();
-      final scanned = known.any(upper.contains);
-      final s = stats.putIfAbsent(match.entity, () => List.filled(6, 0));
-      if (!scanned) {
+      final bank = match.bankCode == 'UNKNOWN' ? match.entity : match.bankCode;
+      final s = stats.putIfAbsent(bank, () => {});
+      void count(String k) => s[k] = (s[k] ?? 0) + 1;
+      if (!known.any(upper.contains)) {
         if (looksLikeTxn(body)) {
-          s[5]++;
-          sample('NOT SCANNED ${match.entity}', body);
+          count('notScanned');
+          sample('NOT SCANNED $bank', body);
         }
         continue;
       }
-      s[0]++;
-      final res = parser.parse(
+      if (!match.isTransactional) {
+        count('promoSender');
+        continue;
+      }
+      count('scanned');
+      final res = parser.parseDetailed(
         body: body,
         sender: address,
         receivedAt: DateTime.fromMillisecondsSinceEpoch(r['date'] as int),
       );
       switch (res) {
-        case Ok(:final value) when value.isNotEmpty:
-          s[1]++;
-          final t = value.first;
+        case Ok(:final value) when value.transactions.isNotEmpty:
+          count('txn');
+          final t = value.transactions.first;
           sample(
-            'PARSED ${match.entity}',
-            '${t.direction.name} ${t.amountPaise} ${t.type.name} '
-                'm=${t.rawMerchant} acct=${t.accountHint} | $body',
+            'TXN $bank',
+            '${t.direction.name} ${t.amountPaise / 100} ${t.type.name} '
+                '${t.bookedAt.toIso8601String().substring(0, 16)} '
+                'm=${t.rawMerchant} acct=${t.accountHint} ref=${t.externalRef} '
+                'bal=${t.balanceAfterPaise} | $body',
           );
-        case Ok():
-          s[2]++;
-          if (looksLikeTxn(body)) {
-            s[4]++;
-            sample('SILENT MISS ${match.entity}', body);
-          }
-        case Err(:final message):
-          s[3]++;
-          sample('ERR ${match.entity}', '$message | $body');
+        case Ok(:final value) when value.hasMandate:
+          count('mandate');
+          sample('MANDATE $bank', body);
+        case Ok(:final value):
+          count('skipped');
+          final why = value.skippedReason ?? '?';
+          skips[why] = (skips[why] ?? 0) + 1;
+          if (looksLikeTxn(body)) sample('SKIPPED $why', body);
+        case Err():
+          count('unparsed');
+          sample('UNPARSED $bank', body);
       }
     }
 
-    final out = StringBuffer()
-      ..writeln('entity  scanned parsed nonTxn err silentMiss notScannedTxn');
+    const cols = [
+      'scanned',
+      'txn',
+      'mandate',
+      'skipped',
+      'unparsed',
+      'promoSender',
+      'notScanned',
+    ];
+    int total(String k) =>
+        (stats[k]!['scanned'] ?? 0) + (stats[k]!['notScanned'] ?? 0);
+    final out = StringBuffer()..writeln('bank  ${cols.join(' ')}');
     final keys = stats.keys.toList()
-      ..sort(
-        (a, b) => (stats[b]![0] + stats[b]![5]).compareTo(
-          stats[a]![0] + stats[a]![5],
-        ),
-      );
+      ..sort((a, b) => total(b).compareTo(total(a)));
     for (final k in keys) {
-      final s = stats[k]!;
-      if (s[0] == 0 && s[5] == 0) continue;
-      out.writeln('$k  ${s.join(' ')}');
+      if (total(k) == 0) continue;
+      out.writeln('$k  ${cols.map((c) => stats[k]![c] ?? 0).join(' ')}');
     }
+    out.writeln('skip reasons: $skips');
     for (final e in samples.entries) {
       out
         ..writeln('\n=== ${e.key}')

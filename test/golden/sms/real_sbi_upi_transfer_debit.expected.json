@@ -1,0 +1,18 @@
+{
+  "amount_paise": 3010,
+  "direction": "debit",
+  "type": "upi",
+  "booked_at": "2023-07-11T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "4321",
+  "raw_merchant": "SMARTPOINT",
+  "raw_description": "Dear SBI User, your A/c X4321-debited by Rs30.1 on 11Jul23 transfer to SMARTPOINT Ref No 319242000003. If not done by u, fwd this SMS to 9223008333/Call 1800111109 or 09449112211 to block UPI -SBI",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": "319242000003",
+  "remarks": "SMARTPOINT",
+  "external_ref": "319242000003",
+  "balance_after_paise": null,
+  "dedupe_key": "SBI|3010|319242000003",
+  "direction_inferred": false
+}

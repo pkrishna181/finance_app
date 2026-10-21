@@ -3,6 +3,41 @@ import '../extractors.dart';
 import '../template.dart';
 
 List<SmsTemplate> axisTemplates() => [
+  // Card formats from real messages (2025–2026), one field per line.
+  SmsTemplate(
+    id: 'axis_card_spent_lines',
+    bankCode: 'AXIS',
+    type: TransactionType.card,
+    fixedDirection: TransactionDirection.debit,
+    pattern: RegExp(
+      r'Spent (?<amount>INR [0-9][0-9,]*(?:\.\d+)?) Axis Bank Card no\. X*(?<account>\d{4}) '
+      r'(?<date>\d{2}-\d{2}-\d{2,4}) (?<time>\d{2}:\d{2}:\d{2}) IST (?<merchant>.+?) '
+      r'Avl Li?mi?t',
+      caseSensitive: false,
+    ),
+  ),
+  SmsTemplate(
+    id: 'axis_card_spent_lines_old',
+    bankCode: 'AXIS',
+    type: TransactionType.card,
+    fixedDirection: TransactionDirection.debit,
+    pattern: RegExp(
+      r'Spent Card no\. X*(?<account>\d{4}) (?<amount>INR [0-9][0-9,]*(?:\.\d+)?) '
+      r'(?<date>\d{2}-\d{2}-\d{2,4}) (?<time>\d{2}:\d{2}:\d{2}) (?<merchant>.+?) Avl Lmt',
+      caseSensitive: false,
+    ),
+  ),
+  SmsTemplate(
+    id: 'axis_card_payment',
+    bankCode: 'AXIS',
+    type: TransactionType.card,
+    fixedDirection: TransactionDirection.credit,
+    pattern: RegExp(
+      r'(?<merchant>Payment) of (?<amount>INR [0-9][0-9,]*(?:\.\d+)?) has been received towards your '
+      r'Axis Bank Credit Card X*(?<account>\d{4}) on (?<date>\d{2}-\d{2}-\d{2,4})',
+      caseSensitive: false,
+    ),
+  ),
   SmsTemplate(
     id: 'axis_card_pos',
     bankCode: 'AXIS',

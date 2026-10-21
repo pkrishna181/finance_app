@@ -10,6 +10,7 @@ import '../../core/db/database.dart';
 import '../../core/models/parsed_transaction.dart';
 import '../../core/models/transaction_type.dart';
 import '../../core/result/result.dart';
+import '../../parsing/common/extractors.dart' show isStrongRef;
 import '../source.dart';
 import 'header_mapper.dart';
 import 'line_statement_parser.dart';
@@ -219,6 +220,7 @@ class StatementFileSource implements IngestionSource {
 
     var duplicateCount = 0;
     var newCount = 0;
+    final matched = <int>{};
     for (final t in parseResult.transactions) {
       final hash = buildDedupeHash(
         bankCode: t.bankCode,
@@ -230,7 +232,10 @@ class StatementFileSource implements IngestionSource {
       final exists = await (db.select(
         db.transactions,
       )..where((row) => row.dedupeHash.equals(hash))).getSingleOrNull();
-      if (exists == null) {
+      final sms = exists == null
+          ? await _smsMatch(db, t, summary.last4, matched)
+          : null;
+      if (exists == null && sms == null) {
         newCount++;
       } else {
         duplicateCount++;
@@ -252,6 +257,44 @@ class StatementFileSource implements IngestionSource {
       ),
     );
   }
+
+  /// Rows without a strong reference may be a payment an SMS already
+  /// recorded (see [ArthDatabase.findSmsMatch]).
+  Future<int?> _smsMatch(
+    ArthDatabase db,
+    ParsedTransaction t,
+    String? statementLast4,
+    Set<int> matched,
+  ) async {
+    if (t.externalRef != null && isStrongRef(t.externalRef!)) return null;
+    final id = await db.findSmsMatch(
+      bankCode: t.bankCode,
+      amountPaise: t.amountPaise.paise,
+      direction: t.direction.wireName,
+      bookedAt: t.bookedAt,
+      accountHint: t.accountHint ?? statementLast4,
+      taken: matched,
+    );
+    if (id != null) matched.add(id);
+    return id;
+  }
+
+  Future<void> _fillFromStatement(
+    ArthDatabase db,
+    int transactionId,
+    String accountKind,
+    String? accountHint,
+  ) => db.customUpdate(
+    'UPDATE transactions SET '
+    'account_kind = COALESCE(account_kind, ?), '
+    'account_hint = COALESCE(account_hint, ?) WHERE id = ?',
+    variables: [
+      Variable<String>(accountKind),
+      Variable<String>(accountHint),
+      Variable<int>(transactionId),
+    ],
+    updates: {db.transactions},
+  );
 
   Future<Result<int>> confirmImport({
     required ArthDatabase db,
@@ -280,7 +323,36 @@ class StatementFileSource implements IngestionSource {
 
     var inserted = 0;
     var duplicates = 0;
+    final matched = <int>{};
     for (final t in preview.transactions) {
+      final exactHash = buildDedupeHash(
+        bankCode: t.bankCode,
+        bookedAt: t.bookedAt,
+        amountPaise: t.amountPaise.paise,
+        ref: t.externalRef,
+        normalizedBody: t.rawDescription,
+      );
+      final known = await (db.select(
+        db.transactions,
+      )..where((row) => row.dedupeHash.equals(exactHash))).getSingleOrNull();
+      final sms = known == null
+          ? await _smsMatch(db, t, preview.summary.last4, matched)
+          : null;
+      if (sms != null) {
+        // The SMS already recorded this payment: link it, don't add another.
+        await db
+            .into(db.transactionImports)
+            .insert(
+              TransactionImportsCompanion.insert(
+                transactionId: sms,
+                importId: importId,
+              ),
+              mode: InsertMode.insertOrIgnore,
+            );
+        await _fillFromStatement(db, sms, preview.accountKind, t.accountHint);
+        duplicates++;
+        continue;
+      }
       final hash = buildDedupeHash(
         bankCode: t.bankCode,
         bookedAt: t.bookedAt,
@@ -315,16 +387,11 @@ class StatementFileSource implements IngestionSource {
       } else {
         duplicates++;
         // Already known (e.g. from SMS): fill in what the statement adds.
-        await db.customUpdate(
-          'UPDATE transactions SET '
-          'account_kind = COALESCE(account_kind, ?), '
-          'account_hint = COALESCE(account_hint, ?) WHERE id = ?',
-          variables: [
-            Variable<String>(preview.accountKind),
-            Variable<String>(t.accountHint),
-            Variable<int>(result.transactionId),
-          ],
-          updates: {db.transactions},
+        await _fillFromStatement(
+          db,
+          result.transactionId,
+          preview.accountKind,
+          t.accountHint,
         );
       }
     }

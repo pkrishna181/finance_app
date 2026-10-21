@@ -1,0 +1,18 @@
+{
+  "amount_paise": 31834,
+  "direction": "debit",
+  "type": "card",
+  "booked_at": "2026-10-13T20:49:28.000Z",
+  "bank_code": "AXIS",
+  "account_hint": "2468",
+  "raw_merchant": "ZOMATO - PD",
+  "raw_description": "Spent INR 318.34 Axis Bank Card no. XX2468 13-10-26 20:49:28 IST ZOMATO - PD Avl Limit: INR 16290.42 Not you? SMS BLOCK 2468 to 919951860002",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": null,
+  "balance_after_paise": null,
+  "dedupe_key": "AXIS|2026-10-13|31834|20:49|Spent INR 318.34 Axis Bank Card no. XX2468 13-10-26 20:49:28 IST ZOMATO - PD Avl Limit: INR 16290.42 Not you? SMS BLOCK 2468 to 919951860002",
+  "direction_inferred": false
+}

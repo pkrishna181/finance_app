@@ -1,0 +1,18 @@
+{
+  "amount_paise": 94156,
+  "direction": "debit",
+  "type": "upi",
+  "booked_at": "2026-10-13T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "4321",
+  "raw_merchant": "SUNRISE FOOD AND",
+  "raw_description": "Dear UPI user A/C X4321 debited by 941.56 on date 13Oct26 trf to SUNRISE FOOD AND Refno 665210000001 If not u? call-1800111109 for other services-18001234-SBI",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": "665210000001",
+  "remarks": "SUNRISE FOOD AND",
+  "external_ref": "665210000001",
+  "balance_after_paise": null,
+  "dedupe_key": "SBI|94156|665210000001",
+  "direction_inferred": false
+}

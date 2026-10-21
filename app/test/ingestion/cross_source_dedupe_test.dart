@@ -217,6 +217,78 @@ Date,Narration,Chq/Ref No,Withdrawal Amt.,Deposit Amt.,Closing Balance
     expect(preview2.isErr, isTrue);
     expect(preview2.errorOrNull, 'duplicate_file');
   });
+
+  test('card statement rows link to SMS purchases one to one', () async {
+    final db = ArthDatabase.memory();
+    addTearDown(db.close);
+    final smsImport = await db
+        .into(db.imports)
+        .insert(
+          ImportsCompanion.insert(
+            sourceType: 'sms',
+            sourceLabel: 'sms',
+            contentHash: 'sms-card',
+            status: const Value('succeeded'),
+          ),
+        );
+    // One SMS for 85.00 on 9 Oct (the statement has two such purchases).
+    final sms = RegexSmsParser()
+        .parse(
+          body:
+              'Rs.85.00 spent on your SBI Credit Card ending 4455 at PAYTM '
+              'on 09/10/26. Trxn. not done by you? Report at https://x.y/D',
+          sender: 'VM-SBICRD-T',
+        )
+        .okOrNull!
+        .single;
+    await db.upsertTransactionWithProvenance(
+      TransactionsCompanion.insert(
+        amountPaise: sms.amountPaise.paise,
+        direction: sms.direction.wireName,
+        txnType: sms.type.wireName,
+        bookedAt: sms.bookedAt,
+        bankCode: sms.bankCode,
+        rawMerchant: sms.rawMerchant,
+        rawDescription: sms.rawDescription,
+        dedupeHash: buildDedupeHash(
+          bankCode: sms.bankCode,
+          bookedAt: sms.bookedAt,
+          amountPaise: sms.amountPaise.paise,
+          ref: sms.externalRef,
+          normalizedBody: sms.rawDescription,
+        ),
+        accountHint: Value(sms.accountHint),
+        externalRef: Value(sms.externalRef),
+        importId: Value(smsImport),
+      ),
+      importId: smsImport,
+    );
+
+    final source = StatementFileSource();
+    final preview = (await source.previewBytes(
+      db: db,
+      bytes: utf8Bytes('''
+SBI Card
+Credit Card Statement
+Card Number,XXXX XXXX XXXX XX65
+Date,Transaction Details,Amount
+09/10/2026,PAYTM TRAVEL NOIDA IN,85.00 D
+09/10/2026,PAYTM TRAVEL NOIDA IN,85.00 D
+10/10/2026,PHP*Zepto Bengaluru IN,310.00 D
+'''),
+      fileName: 'sbi_card.csv',
+    )).okOrNull!;
+    expect(preview.columnMap.bankCode, 'SBI');
+    expect(preview.newCount, 2);
+    expect(preview.duplicateCount, 1);
+
+    await source.confirmImport(db: db, preview: preview);
+    final txns = await db.select(db.transactions).get();
+    expect(txns, hasLength(3));
+    final linked = txns.where((t) => t.rawDescription.contains('spent')).single;
+    expect(linked.accountKind, 'card');
+    expect(linked.accountHint, '4455');
+  });
 }
 
 Uint8List utf8Bytes(String s) => Uint8List.fromList(s.codeUnits);

@@ -1,0 +1,18 @@
+{
+  "amount_paise": 706032,
+  "direction": "credit",
+  "type": "neft",
+  "booked_at": "2026-08-04T00:00:00.000Z",
+  "bank_code": "IDFC",
+  "account_hint": "7777",
+  "raw_merchant": "BLUEOAK TRAINING AND SERVICES PRIVA",
+  "raw_description": "Your A/c XXXXXXX7777 has been credited with Rs. 7,060.32 on 04-08-2026. Info: NEFT/YESME62160000012/BLUEOAK TRAINING AND SERVICES PRIVA. New bal: Rs. 87,426.45. Team IDFC FIRST Bank",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": "NEFT/YESME62160000012/BLUEOAK TRAINING AND SERVICES PRIVA",
+  "external_ref": "YESME62160000012",
+  "balance_after_paise": 8742645,
+  "dedupe_key": "IDFC|706032|YESME62160000012",
+  "direction_inferred": false
+}

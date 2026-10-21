@@ -120,7 +120,9 @@ class HeaderMapper {
     return ColumnMap(
       headerRowIndex: bestIndex,
       bindings: bestBindings,
-      bankCode: profile.bankCode,
+      // A bank named in the file wins over the layout it resembles (an SBI
+      // Card statement can match the HDFC card layout).
+      bankCode: bankHint != 'UNKNOWN' ? bankHint : profile.bankCode,
       profileId: profile.id,
       overallConfidence: bestScore,
     );

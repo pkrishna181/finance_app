@@ -1,0 +1,18 @@
+{
+  "amount_paise": 1801900,
+  "direction": "credit",
+  "type": "upi",
+  "booked_at": "2020-12-09T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "4321",
+  "raw_merchant": "Mrs ASHA RAO",
+  "raw_description": "Dear SBI UPI User, ur A/cX4321 credited by Rs18019 on 09Dec20 by Mrs ASHA RAO (Ref no 034410000005)",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": "034410000005",
+  "remarks": "Mrs ASHA RAO",
+  "external_ref": "034410000005",
+  "balance_after_paise": null,
+  "dedupe_key": "SBI|1801900|034410000005",
+  "direction_inferred": false
+}

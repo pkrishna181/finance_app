@@ -1,0 +1,18 @@
+{
+  "amount_paise": 4217500,
+  "direction": "debit",
+  "type": "other",
+  "booked_at": "2024-11-03T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "4321",
+  "raw_merchant": "SHREE TRADE",
+  "raw_description": "Dear Customer, Thx for INB txn of Rs.42175 frm A/c X4321 to SHREE TRADE... Ref IT00AAAAA1 on 03NOV24. If not done, fwd this SMS to 7400165218 to block INB or call 1800111109",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": "IT00AAAAA1",
+  "balance_after_paise": null,
+  "dedupe_key": "SBI|2024-11-03|4217500|IT00AAAAA1",
+  "direction_inferred": false
+}

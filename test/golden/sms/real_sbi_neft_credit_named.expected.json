@@ -1,0 +1,18 @@
+{
+  "amount_paise": 13387396,
+  "direction": "credit",
+  "type": "neft",
+  "booked_at": "2026-10-03T00:00:00.000Z",
+  "bank_code": "SBI",
+  "account_hint": "4321",
+  "raw_merchant": "ACME PRIVATE LIMITED",
+  "raw_description": "Dear Customer, INR 1,33,873.96 credited to your A/c No XX4321 on 03/10/2026 through NEFT with UTR INDBH03108000009 by ACME PRIVATE LIMITED, INFO: BATCHID:0037-SBI",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": "INDBH03108000009",
+  "balance_after_paise": null,
+  "dedupe_key": "SBI|13387396|INDBH03108000009",
+  "direction_inferred": false
+}

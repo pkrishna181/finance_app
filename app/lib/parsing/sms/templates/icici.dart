@@ -4,6 +4,17 @@ import '../template.dart';
 
 List<SmsTemplate> iciciTemplates() => [
   SmsTemplate(
+    id: 'icici_eazypay',
+    bankCode: 'ICICI',
+    type: TransactionType.other,
+    fixedDirection: TransactionDirection.debit,
+    pattern: RegExp(
+      r'you have made a payment of (?<amount>Rs\.?\s*[0-9][0-9,]*(?:\.\d+)?) to '
+      r'(?<merchant>.+?) vide eazypay reference ID (?<ref>\d+)',
+      caseSensitive: false,
+    ),
+  ),
+  SmsTemplate(
     id: 'icici_imps_debit',
     bankCode: 'ICICI',
     type: TransactionType.imps,

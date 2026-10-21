@@ -44,6 +44,13 @@ const _entityToBank = <String, String>{
   'PAYTM': 'PAYTM',
   'PYTMPB': 'PAYTM',
   'IPBKL': 'PAYTM', // Paytm Payments Bank legacy
+  'IPAYTM': 'PAYTM',
+  'CBSSBI': 'SBI', // core banking alerts
+  'SBIPSG': 'SBI', // NEFT credits
+  'ATMSBI': 'SBI',
+  'SBIBNK': 'SBI',
+  'IDFCFB': 'IDFC',
+  'INDUSB': 'INDUSIND',
 };
 
 /// Entity tokens used for native SMS ContentProvider LIKE filters.

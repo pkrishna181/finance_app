@@ -1,0 +1,18 @@
+{
+  "amount_paise": 2594789,
+  "direction": "credit",
+  "type": "other",
+  "booked_at": "2026-10-16T09:42:00.000Z",
+  "bank_code": "IDFC",
+  "account_hint": "7777",
+  "raw_merchant": "Unknown",
+  "raw_description": "Your A/C XXXXX887777 is credited with INR 25,947.89 on 16/10/26 09:42. Your new balance is INR 37,782.43. Team IDFC FIRST Bank",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": null,
+  "balance_after_paise": 3778243,
+  "dedupe_key": "IDFC|2026-10-16|2594789|09:42|Your A/C XXXXX887777 is credited with INR 25,947.89 on 16/10/26 09:42. Your new balance is INR 37,782.43. Team IDFC FIRST Bank",
+  "direction_inferred": false
+}

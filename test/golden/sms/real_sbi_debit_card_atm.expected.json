@@ -1,0 +1,18 @@
+{
+  "amount_paise": 70584,
+  "direction": "debit",
+  "type": "card",
+  "booked_at": "2026-09-28T07:46:56.000Z",
+  "bank_code": "SBI",
+  "account_hint": "9876",
+  "raw_merchant": "99999999",
+  "raw_description": "Dear Customer, transaction number 627002000010 for Rs.705.84 by SBI Debit Card X9876 done at 99999999 on 28Sep26 at 07:46:56. Your updated available balance is Rs.30528.20. If not done by you, call 1800111109",
+  "upi_payer_vpa": null,
+  "upi_payee_vpa": null,
+  "upi_ref": null,
+  "remarks": null,
+  "external_ref": "627002000010",
+  "balance_after_paise": 3052820,
+  "dedupe_key": "SBI|70584|627002000010",
+  "direction_inferred": false
+}
