@@ -4,7 +4,7 @@ Working name for a privacy-first personal finance app for the Indian market.
 **Hard constraint:** no financial data ever leaves the device. No cloud APIs for
 inference, parsing, analytics, or crash reporting that includes user data.
 
-Last updated: Phase 11.5 — sheets (phase 11 complete)
+Last updated: Phase 12.3 — Ask screen (phase 12 complete)
 
 **Network exception (price data, Phase 9+):** the only planned network use is an
 **opt-in** download of public price lists (e.g. AMFI's all-schemes NAV file).
@@ -27,6 +27,7 @@ reimplement from docs/ideas only, never copy code).
 | 9 ✅ | Holdings layer: CAMS/KFintech + NSDL/CDSL CAS PDF import, manual assets (gold, FD, EPF/PPF, property); net worth; XIRR; opt-in price lists |
 | 10 ✅ | Capital gains (FIFO lots, current Indian rules — verify at build time), tax harvesting, Schedule AL, allocation targets, retirement goal, loans |
 | 11 ✅ | App lock; encrypted backup / restore; upcoming-payments calendar; reminders; notepad calculator ("sheets") |
+| 12 ✅ | Ask tab: questions answered on the device — rule-based parser first, the local model only to read unusual wording; numbers always from app code |
 
 Not adopted: plain-text journal editor, ledger/hledger/beancount backends,
 handlebars import templates (bank profiles cover this).
@@ -1192,6 +1193,102 @@ Verify release-only behaviour on the `arth_test` emulator (Android 35
 x86_64 with ARM translation runs the arm64 APK): SMS seeded with
 `adb emu sms send`, statements pushed to `/sdcard/Download`.
 
+### Ask — questions and answers (Phase 12.1)
+
+`lib/ask/`. The model never produces a number: a question becomes an
+`AskQuery` (intent + period + optional category / merchant), and
+`AskAnswerer` computes the answer with the same code as the rest of the app.
+
+- **Intents:** spend, income, savings, top categories, top merchants,
+  largest payments, last paid, monthly average, net worth, budgets,
+  upcoming payments.
+- **`AskParser`** (pure, instant): finds one date phrase (today, this /
+  last week, this / last month, month names — a month without a year is the
+  most recent one, `since april`, last N days / weeks / months as a rolling
+  range, this / last year, `FY 2025-26`, this / last FY), an intent from
+  keywords, a category (display names, slugs, `kCategorySynonyms`), and a
+  merchant from `AskVocabulary` (merchant names in the ledger). It is strict:
+  any leftover word that isn't filler, a category or a known merchant fails
+  the parse (`unknownWords`) instead of guessing. Default period: this month.
+- **`AskAnswerer`:** totals come from `InsightsAggregator.summarizeWithin`
+  per calendar month (new; `summarize` delegates to it), so whole months
+  match Insights exactly and partial ranges use the same rules (transfers
+  excluded, refunds net per category). Merchant totals and rankings count
+  payments only (`topMerchantsWithin`, optional category). Budgets use
+  `BudgetCalculator`, net worth `NetWorthRepository`, upcoming
+  `UpcomingRepository`, last paid `InsightsRepository.search`. Each answer
+  carries `understoodAs` ("Spending · Food Delivery · Sep 2026"), a headline,
+  rows, transactions, a note on what is / isn't counted, and a `TxnQuery`
+  string to open the matching transactions in Search. A period with no
+  transactions says so instead of answering ₹0.
+
+Tests: `test/ask/ask_parser_test.dart`, `test/ask/ask_answerer_test.dart`.
+
+### Ask — the model as a fallback reader (Phase 12.2)
+
+Only when `AskParser` fails. Measured on the real Gemma 3 1B, asking the
+model for every field (intent, category, merchant, period, month, n) read
+**2 / 24** unusual questions correctly — it can't do date arithmetic or
+copy merchants reliably. So the job is split:
+
+- **Parser, always:** even when it can't read the whole question it returns
+  an `AskPartial` — the period, a category named in the question, a merchant
+  named word-for-word (whole words of a ledger merchant name), a keyword
+  intent if any, look-ahead days / month counts, and `ignoredWords`. Number
+  words, "fortnight", "a couple of", "since the year began" are rewritten
+  first.
+- **Model, only classification:** `AskPrompt` (intent descriptions, the
+  user's category ids, 12 short examples) → grammar `{"intent":…,
+  "category":…}` from fixed lists (the user's own categories). ~10 output
+  tokens.
+- **Merge (`AskModelReader.validate`, pure):** a specific keyword intent
+  beats the model (plain "spend" doesn't); the question's category beats the
+  model's; an income category turns spend / savings / rankings into income;
+  fields that don't fit the intent are dropped; `last_paid` needs something
+  to look for. Dates and merchants never come from the model.
+
+`test/ask/ask_model_eval_test.dart` runs the real model (skipped unless
+`ARTH_MODEL_PATH` is set and `LD_LIBRARY_PATH` points at the desktop
+`libarth_llm.so`). Desktop, 4 threads, ~2.5 s per question. Results
+(Oct 2026):
+
+| Set | Overall | Parser | Model |
+|---|---|---|---|
+| Tuning (25, prompt and keywords tuned on these) | 24 / 25 | 2 / 2 | 22 / 23 |
+| Held out (20, never tuned on) | 12 / 20 | 5 / 5 | 7 / 15 |
+
+The model's usual mistake is defaulting to `spend`; answers it read show
+"Read by the on-device model as: …" plus ignored words, so a misreading is
+visible. Don't tune on the held-out set; add new held-out questions instead.
+
+`LlmBatchCoordinator.ensureEngineLoaded()` (extracted from `runNow`) loads
+the model for Ask; a busy engine (batch job running) returns `model_busy`.
+
+**FFI fix found by this work:** `arth_llm_load` takes `arth_llm_params` by
+value, but the Dart binding passed a pointer since Phase 4. C read the
+pointer's bits as `n_ctx` / `n_threads` (and garbage for `use_mmap`,
+`n_gpu_layers`): when the low 32 bits were negative it fell back to 2048 and
+worked; otherwise it tried a context of hundreds of millions of tokens and
+crashed (`std::bad_alloc`). The binding now passes the struct by value.
+`build_desktop.sh` now builds with `-fPIC` (the shared shim didn't link on
+desktop before).
+
+### Ask screen (Phase 12.3)
+
+`AskScreen(database, coordinator)` in the fourth tab. Intro with example
+questions; each exchange shows the question, then a card with how it was
+read (`understoodAs`, prefixed "Read by the on-device model as:" and followed by
+"Ignored: …" when the model was used, so a misreading is visible), the headline, rows, matching
+transactions, the note and **See transactions** (opens `SearchScreen` with
+the answer's query). Spending answers compare with the previous month in the
+headline. The vocabulary is rebuilt per question (imports add merchants).
+Not understood → which words weren't recognised plus examples; without the
+model, a button to *On-device AI model*; busy model → try again shortly.
+Conversations are kept in memory only.
+
+Tests: `test/ui/ask_screen_test.dart` (suggestion → answer → Search; typed
+merchant; no model; model path with `FakeLlmEngine`). Rendered light / dark.
+
 ---
 
 ## Engineering rules
@@ -1212,5 +1309,8 @@ x86_64 with ARM translation runs the arm64 APK): SMS seeded with
   section has its own header row; nested summary boxes may confuse header scan.
 - **Password formulas:** Hint map only; user must supply the correct password.
 - **LLM shim:** llama.cpp API pinned to b4531; upgrades need shim retest.
+  Struct arguments are passed **by value** — match `arth_llm.h` exactly in
+  `arth_llm_bindings.dart` (a pointer here silently corrupted load params
+  until Phase 12).
   Token callback uses a single trampoline (not re-entrant). Placeholder sha256
   in `ModelConfig` until weights are verified on device.

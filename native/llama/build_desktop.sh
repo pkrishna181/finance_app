@@ -13,7 +13,9 @@ if [[ ! -d "${VENDOR}/.git" ]]; then
     https://github.com/ggerganov/llama.cpp.git "${VENDOR}"
 fi
 
-cmake -S "${ROOT}" -B "${BUILD}" -DCMAKE_BUILD_TYPE=Release -DLLAMA_CPP_DIR="${VENDOR}"
+# PIC: libarth_llm.so links the static llama / ggml libraries.
+cmake -S "${ROOT}" -B "${BUILD}" -DCMAKE_BUILD_TYPE=Release -DLLAMA_CPP_DIR="${VENDOR}" \
+  -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 cmake --build "${BUILD}" --target grammar_validate
 chmod +x "${ROOT}/validate_grammars.sh"
 "${ROOT}/validate_grammars.sh"

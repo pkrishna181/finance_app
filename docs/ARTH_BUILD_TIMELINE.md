@@ -14,11 +14,11 @@ first commit; their content is reconstructed from the architecture record.*
 
 | | |
 |---|---|
-| Duration | 3 Aug 2026 → 13 Oct 2026 |
-| Phases | 0 → 11, plus a release-hardening pass |
+| Duration | 3 Aug 2026 → 20 Oct 2026 |
+| Phases | 0 → 12, plus a release-hardening pass |
 | Commits on `main` | 37 feature/fix commits, 4 merged pull requests |
-| App code | ~30,300 lines of Dart in 171 files |
-| Tests | 407 automated tests in 63 files (unit, repository, widget) |
+| App code | ~32,700 lines of Dart in 177 files |
+| Tests | 443 automated tests in 68 files (unit, repository, widget, real-model eval) |
 | Database | Encrypted SQLite, schema v17, 31 tables |
 | Release check | Release APK run on an Android 35 emulator: SMS import, statement + locked CAS import, AI model download verified |
 
@@ -36,6 +36,7 @@ Oct 12     ▕ PR #1 merged (Phases 4–6.5)
 Oct 12–13  ▕ Phase 11   app lock · encrypted backup · calendar · reminders · sheets
            ▕                                         → PR #3 merged
 Oct 13     ▕ Release fixes found on an emulator      → PR #4 merged
+Oct 20     ▕ Phase 12   Ask tab · FFI load-params fix
 ```
 
 ---
@@ -192,6 +193,22 @@ two PDFs (incl. a locked CAS, password prompted once) imported 13
 transactions; full 769 MB model download verified. Merged as **PR #4**; fixed
 APK exported.
 
+## Part 6 — Ask (20 October 2026)
+
+| Commit | Delivered |
+|---|---|
+| 12.1 `e4251a7` | Rule-based question parser and deterministic answers (spend, income, savings, rankings, largest, last paid, averages, net worth, budgets, upcoming) using the Insights rules. |
+| 12.2 `f0ab5e8` | On-device model fallback with a grammar and validation. |
+| 12.3 `5a32fb4` | Ask screen: example questions, answer cards showing how the question was read, link to the transactions. |
+| fix `3a8e6c8` | Model load parameters were passed by pointer instead of by value (random context size, sometimes a crash). |
+| 12.2 `96d7694` | Model narrowed to classifying the question after measuring it on the real model. |
+
+Measured with the real Gemma 3 1B on desktop (~2.5 s per question): asking
+the model for every field read 2 of 24 unusual questions correctly. After
+splitting the work (parser: dates, merchants, categories; model: question
+type only), 12 of 20 **held-out** questions were read correctly (parser 5 / 5,
+model 7 / 15). Misreadings are shown on the answer card.
+
 ---
 
 ## Bugs found and fixed during the session
@@ -209,6 +226,7 @@ APK exported.
 | App lock | Blank first frame; lock not covering pushed screens | Shell test; review |
 | Process | A test failure slipped into one commit via a piped `tail` | Noticed immediately; all later commits gated on the test exit code |
 | Release build | DB locking, PDF `$HOME`, missing INTERNET, debug-only model screen | Release APK on an emulator |
+| LLM shim | Load params passed by pointer to a by-value C struct (random `n_ctx`, occasional out-of-memory crash) | Loading the real model on desktop for the Ask evaluation |
 
 ## How the work was verified
 
@@ -254,6 +272,6 @@ into the current schema.
 
 - Field-test with real SMS / statements / CAS; add failing samples as fixtures.
 - Release signing key (current APK uses the development key).
-- *Ask* tab (on-device Q&A) — placeholder today.
+- Ask: check the model fallback on a phone (desktop measured ~2.5 s per question); grow the held-out question set.
 - Background processing when the app is closed.
 - CI when GitHub Actions quota allows.

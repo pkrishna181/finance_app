@@ -17,7 +17,7 @@ cat > "$tmp/before.html" <<HTML
   <div class="tag">Privacy-first personal finance for India</div>
   <div class="title">Product overview &amp; build timeline</div>
   <div class="meta">$(date '+%d %B %Y') · repository commit ${commit}<br>
-  App version 0.1.0 · database schema v17 · 407 automated tests</div>
+  App version 0.1.0 · database schema v17 · 443 automated tests</div>
 </div>
 HTML
 pandoc "$tmp/all.md" -f markdown -t html5 -s --toc --toc-depth=2 \
